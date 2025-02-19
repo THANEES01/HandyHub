@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <%- include('partials/navbar') %>
+
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Your Home, Our Expertise</h1>
+                <p>Experience reliable and professional home services at your fingertips. Book trusted experts for all your home maintenance needs.</p>
+                <a href="#services" class="btn btn-explore">Explore Services</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Section -->
+    <section class="stats">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-3 col-6">
+                    <div class="stat-item">
+                        <div class="stat-number">5000+</div>
+                        <div class="stat-label">Happy Customers</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-item">
+                        <div class="stat-number">500+</div>
+                        <div class="stat-label">Expert Professionals</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-item">
+                        <div class="stat-number">15+</div>
+                        <div class="stat-label">Services Offered</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-item">
+                        <div class="stat-number">4.8</div>
+                        <div class="stat-label">Average Rating</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section class="services" id="services">
+        <div class="container">
+            <div class="section-title">
+                <h2>Our Services</h2>
+                <p>Choose from our wide range of professional home services, delivered by verified experts</p>
+            </div>
+            <div class="row">
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="service-card">
+                      <div class="service-icon">
+                        <i class="bi bi-wrench"></i>
+                      </div>
+                      <h4>Plumbing</h4>
+                      <p>Expert plumbing solutions for leaks, repairs, and installations with 24/7 emergency service.</p>
+                    </div>
+                  </div>
+                  <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="service-card">
+                      <div class="service-icon">
+                        <i class="bi bi-lightning"></i>
+                      </div>
+                      <h4>Electrical Repairs</h4>
+                      <p>Professional electrical services for all your home wiring and installation needs.</p>
+                    </div>
+                  </div>
+                  <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="service-card">
+                      <div class="service-icon">
+                        <i class="bi bi-house"></i>
+                      </div>
+                      <h4>Roof Repairs</h4>
+                      <p>Complete roofing solutions including repairs, maintenance, and installations.</p>
+                    </div>
+                  </div>
+                  <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="service-card">
+                      <div class="service-icon">
+                        <i class="bi bi-bug"></i>
+                      </div>
+                      <h4>Pest Control</h4>
+                      <p>Effective pest control services to keep your home safe and hygienic.</p>
+                    </div>
+                  </div>
+                  <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="service-card">
+                      <div class="service-icon">
+                        <i class="bi bi-tools"></i>
+                      </div>
+                      <h4>Carpentry Service</h4>
+                      <p>Custom carpentry solutions for furniture repairs and home improvements.</p>
+                    </div>
+                  </div>
+                  <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="service-card">
+                      <div class="service-icon">
+                        <i class="bi bi-wind"></i>
+                      </div>
+                      <h4>AC Service</h4>
+                      <p>Complete AC maintenance, repair, and installation services.</p>
+                    </div>
+                  </div>
+                  <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="service-card">
+                      <div class="service-icon">
+                        <i class="bi bi-tree"></i>
+                      </div>
+                      <h4>Landscaping</h4>
+                      <p>Professional landscaping services to beautify your outdoor spaces.</p>
+                    </div>
+                  </div>
+                  <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="service-card">
+                      <div class="service-icon">
+                        <i class="bi bi-house-heart"></i>
+                      </div>
+                      <h4>Home Cleaning</h4>
+                      <p>Comprehensive cleaning services for a spotless and healthy home.</p>
+                    </div>
+                  </div>
+                  <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="service-card">
+                      <div class="service-icon">
+                        <i class="bi bi-gear"></i>
+                      </div>
+                      <h4>Appliance Service</h4>
+                      <p>Expert repair and maintenance for all home appliances.</p>
+                    </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <div class="section-title">
+                <h2>Why Choose HandyHub?</h2>
+                <p>We deliver quality service with trusted professionals</p>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="feature-item">
+                        <i class="bi bi-shield-check feature-icon"></i>
+                        <h4>Verified Professionals</h4>
+                        <p>All our service providers are thoroughly vetted and background checked for your peace of mind.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-item">
+                        <i class="bi bi-cash-stack feature-icon"></i>
+                        <h4>Transparent Pricing</h4>
+                        <p>Clear, upfront pricing with no hidden charges.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <%- include('partials/footer') %>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
