@@ -8,15 +8,10 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
+                <li class="nav-item"><a class="nav-link" href="#hero">About</a></li>
                 <li class="nav-item"><a class="nav-link" href="#services">Services</a></li>
                 <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
-                <% if (locals.user) { %>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
-                    <li class="nav-item"><a class="btn btn-login" href="/logout">Logout</a></li>
-                <% } else { %>
-                    <li class="nav-item"><a class="btn btn-login" href="/login">Login</a></li>
-                <% } %>
+                <a class="btn btn-login" href="/customer-login">Login</a>
             </ul>
         </div>
     </div>
