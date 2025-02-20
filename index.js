@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
-import authRoutes from './Routes/auth.routes.js';
+import authRoutes from './auth.js';
 
 dotenv.config();
 
