@@ -85,18 +85,15 @@
                 <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
                 
                 <% if (locals.user) { %>
-                    <!-- Dropdown for logged-in user -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-circle me-1"></i>
-                            <%= user.name %>
+                            <!-- Check for customer name from the session -->
+                            <%= user.firstName + ' ' + user.lastName %>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                             <li><a class="dropdown-item" href="/customer/profile">
                                 <i class="bi bi-person me-2"></i>Profile
-                            </a></li>
-                            <li><a class="dropdown-item" href="/customer/bookings">
-                                <i class="bi bi-calendar-check me-2"></i>My Bookings
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item text-danger" href="/auth/logout">
@@ -105,7 +102,6 @@
                         </ul>
                     </li>
                 <% } else { %>
-                    <!-- Login button for guests -->
                     <li class="nav-item">
                         <a class="btn btn-login" href="/auth/customer-login">Login</a>
                     </li>

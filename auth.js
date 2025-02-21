@@ -1,8 +1,17 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
-import supabase from './config/supabase.js';
+import pool from './config/database.js';
 //file upload
 import multer from 'multer';
+import session from 'express-session';
+
+// Add at the top of your auth.js, before defining routes
+// router.use(session({
+//     secret: 'your-secret-key',
+//     resave: false,
+//     saveUninitialized: true,
+//     cookie: { secure: false } // Set to true if using HTTPS
+//   }));
 
 const router = express.Router();
 
@@ -16,11 +25,10 @@ const isAuth = (req, res, next) => {
 };
 
 const isGuest = (req, res, next) => {
-    if (!req.session.user) {
+    if (!req.session?.user) {
         return next();
-    }
-    // Changed to always redirect to home page
-    res.redirect('/');
+      }
+      res.redirect('/');
 };
 
 const isCustomer = (req, res, next) => {
@@ -56,84 +64,83 @@ const showCustomerRegister = (req, res) => {
     res.render('auth/customer-register');
 };
 
+// Customer Registration
 const customerRegister = async (req, res) => {
+    const client = await pool.connect();
     try {
         const { firstName, lastName, email, phoneNumber, password } = req.body;
 
-        // Check if user exists
-        const { data: existingUser } = await supabase
-            .from('users')
-            .select('id')
-            .eq('email', email)
-            .single();
+        await client.query('BEGIN');
 
-        if (existingUser) {
+        // Check existing user
+        const existingUser = await client.query(
+            'SELECT id FROM users WHERE email = $1 AND user_type = $2',
+            [email, 'customer']
+        );
+
+        if (existingUser.rows.length) {
             req.session.error = 'Email already registered';
             return res.redirect('/auth/customer-register');
         }
 
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create new user
-        const { data: newUser, error } = await supabase
-            .from('users')
-            .insert([{
-                email,
-                password: hashedPassword,
-                first_name: firstName,
-                last_name: lastName,
-                phone_number: phoneNumber,
-                user_type: 'customer'
-            }])
-            .select()
-            .single();
+        // Create user
+        const newUser = await client.query(
+            'INSERT INTO users (email, password, user_type) VALUES ($1, $2, $3) RETURNING id',
+            [email, hashedPassword, 'customer']
+        );
 
-        if (error) {
-            console.error('Registration error:', error);
-            req.session.error = 'Registration failed. Please try again.';
-            return res.redirect('/auth/customer-register');
-        }
+        // Create customer profile
+        await client.query(
+            'INSERT INTO customers (user_id, first_name, last_name, phone_number) VALUES ($1, $2, $3, $4)',
+            [newUser.rows[0].id, firstName, lastName, phoneNumber]
+        );
 
+        await client.query('COMMIT');
         req.session.success = 'Registration successful! Please login.';
         res.redirect('/auth/customer-login');
 
     } catch (err) {
-        console.error('Registration error:', err);
+        await client.query('ROLLBACK');
+        console.error('Customer registration error:', err);
         req.session.error = 'Registration failed. Please try again.';
         res.redirect('/auth/customer-register');
+    } finally {
+        client.release();
     }
 };
 
+// Customer Login
 const customerLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Get user from database
-        const { data: user, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', email)
-            .eq('user_type', 'customer')
-            .single();
+        const result = await pool.query(`
+            SELECT u.*, c.first_name, c.last_name 
+            FROM users u
+            JOIN customers c ON u.id = c.user_id
+            WHERE u.email = $1 AND u.user_type = $2
+        `, [email, 'customer']);
 
-        if (error || !user) {
+        const user = result.rows[0];
+
+        if (!user) {
             req.session.error = 'Invalid email or password';
             return res.redirect('/auth/customer-login');
         }
 
-        // Verify password
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) {
             req.session.error = 'Invalid email or password';
             return res.redirect('/auth/customer-login');
         }
 
-        // Set session
         req.session.user = {
             id: user.id,
             email: user.email,
-            name: `${user.first_name} ${user.last_name}`,
+            firstName: user.first_name,
+            lastName: user.last_name,
             userType: 'customer'
         };
 
@@ -145,6 +152,7 @@ const customerLogin = async (req, res) => {
         res.redirect('/auth/customer-login');
     }
 };
+
 
 const logout = (req, res) => {
     req.session.destroy((err) => {
@@ -169,8 +177,9 @@ const showProviderRegister = (req, res) => {
     });
 };
 
-// Handle provider registration
+// Service Provider Registration
 const providerRegister = async (req, res) => {
+    const client = await pool.connect();
     try {
         const {
             businessName,
@@ -182,72 +191,55 @@ const providerRegister = async (req, res) => {
         } = req.body;
 
         const certification = req.file;
-
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create user account without checking for existing email
-        const { data: newUser, error: userError } = await supabase
-            .from('users')
-            .insert([{
-                email,
-                password: hashedPassword,
-                user_type: 'provider'
-            }])
-            .select()
-            .single();
+        await client.query('BEGIN');
 
-        if (userError) throw userError;
-
-        // Upload certification document
-        const { data: fileData, error: fileError } = await supabase
-            .storage
-            .from('certifications')
-            .upload(
-                `${newUser.id}/${certification.originalname}`,
-                certification.buffer,
-                {
-                    contentType: certification.mimetype
-                }
-            );
-
-        if (fileError) throw fileError;
+        // Create user
+        const newUser = await client.query(
+            'INSERT INTO users (email, password, user_type) VALUES ($1, $2, $3) RETURNING id',
+            [email, hashedPassword, 'provider']
+        );
 
         // Create provider profile
-        const { data: newProvider, error: providerError } = await supabase
-            .from('service_providers')
-            .insert([{
-                user_id: newUser.id,
-                business_name: businessName,
-                phone_number: phoneNumber,
-                services_offered: JSON.parse(services),
-                certification_url: fileData.path,
-                verification_status: 'pending'
-            }])
-            .select()
-            .single();
-
-        if (providerError) throw providerError;
+        const certificationUrl = certification ? certification.filename : null;
+        const newProvider = await client.query(
+            'INSERT INTO service_providers (user_id, business_name, phone_number, certification_url) VALUES ($1, $2, $3, $4) RETURNING id',
+            [newUser.rows[0].id, businessName, phoneNumber, certificationUrl]
+        );
 
         // Insert service categories
-        const categoryInserts = serviceCategories.map(category => ({
-            provider_id: newProvider.id,
-            category_name: category
-        }));
+        if (Array.isArray(serviceCategories)) {
+            for (const category of serviceCategories) {
+                await client.query(
+                    'INSERT INTO service_categories (provider_id, category_name) VALUES ($1, $2)',
+                    [newProvider.rows[0].id, category]
+                );
+            }
+        }
 
-        const { error: categoriesError } = await supabase
-            .from('provider_service_categories')
-            .insert(categoryInserts);
+        // Insert services
+        const servicesArray = JSON.parse(services);
+        if (Array.isArray(servicesArray)) {
+            for (const service of servicesArray) {
+                await client.query(
+                    'INSERT INTO services_offered (provider_id, service_name) VALUES ($1, $2)',
+                    [newProvider.rows[0].id, service]
+                );
+            }
+        }
 
-        if (categoriesError) throw categoriesError;
-
-        req.session.success = 'Registration successful! Please wait for admin verification before logging in.';
+        await client.query('COMMIT');
+        req.session.success = 'Registration successful! Please wait for admin verification.';
         res.redirect('/auth/provider-login');
 
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error('Provider registration error:', err);
         req.session.error = 'Registration failed. Please try again.';
         res.redirect('/auth/provider-register');
+    } finally {
+        client.release();
     }
 };
 
@@ -256,45 +248,40 @@ const providerLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Get user and provider data
-        const { data: user, error: userError } = await supabase
-            .from('users')
-            .select(`
-                *,
-                service_providers(*)
-            `)
-            .eq('email', email)
-            .eq('user_type', 'provider')
-            .single();
+        const result = await pool.query(`
+            SELECT u.*, sp.id as provider_id, sp.business_name, sp.is_verified 
+            FROM users u 
+            JOIN service_providers sp ON u.id = sp.user_id 
+            WHERE u.email = $1 AND u.user_type = $2
+        `, [email, 'provider']);
 
-        if (userError || !user) {
+        const user = result.rows[0];
+
+        if (!user) {
             req.session.error = 'Invalid email or password';
             return res.redirect('/auth/provider-login');
         }
 
-        // Check verification status
-        if (!user.service_providers[0].is_verified) {
-            req.session.error = 'Your account is pending verification. Please wait for admin approval.';
-            return res.redirect('/auth/provider-login');
-        }
-
-        // Verify password
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) {
             req.session.error = 'Invalid email or password';
             return res.redirect('/auth/provider-login');
         }
 
-        // Set session
+        if (!user.is_verified) {
+            req.session.error = 'Account pending verification. Please wait for admin approval.';
+            return res.redirect('/auth/provider-login');
+        }
+
         req.session.user = {
             id: user.id,
             email: user.email,
-            businessName: user.service_providers[0].business_name,
+            businessName: user.business_name,
             userType: 'provider',
-            serviceCategory: user.service_providers[0].service_category
+            providerId: user.provider_id
         };
 
-        res.redirect('/');
+        res.redirect('/provider/dashboard');
 
     } catch (err) {
         console.error('Provider login error:', err);
@@ -317,5 +304,6 @@ router.get('/provider-login', isGuest, showProviderLogin);
 router.post('/provider-login', isGuest, providerLogin);
 router.get('/provider-register', isGuest, showProviderRegister);
 router.post('/provider-register', upload.single('certification'), providerRegister);
+router.post('/provider-login', providerLogin);
 
 export default router;

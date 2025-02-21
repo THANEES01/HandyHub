@@ -38,15 +38,15 @@
             margin-bottom: 40px;
         }
 
-        .logo-section img {
-            width: 60px;
-            margin-bottom: 15px;
+        .logo-section i {
+            font-size: 2.5rem;
+            color: var(--primary-blue);
         }
 
         .logo-section h4 {
             color: var(--dark-blue);
             font-weight: 600;
-            margin: 0;
+            margin-top: 10px;
         }
 
         .form-label {
@@ -82,6 +82,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 10px;
+            align-items: center;
         }
 
         .service-input-group input {
@@ -95,19 +96,25 @@
             padding: 8px 12px;
             background: none;
             border: none;
-            color: red;
+            color: #dc3545;
             cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .service-input-group button:hover {
+            color: #a71d2a;
         }
 
         .add-service-btn {
             color: var(--primary-blue);
             background: none;
             border: 2px dashed var(--primary-blue);
-            padding: 8px 16px;
-            border-radius: 6px;
+            padding: 12px;
+            border-radius: 8px;
             width: 100%;
             cursor: pointer;
             transition: all 0.3s ease;
+            font-weight: 500;
         }
 
         .add-service-btn:hover {
@@ -115,32 +122,56 @@
         }
 
         .category-section {
-            margin-bottom: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--light-blue);
+            border-radius: 8px;
         }
 
         .category-checks {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 15px;
-            margin-top: 10px;
+            margin-top: 15px;
         }
 
         .category-check {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            padding: 8px;
+            background: white;
+            border-radius: 6px;
+            transition: transform 0.3s ease;
+        }
+
+        .category-check:hover {
+            transform: translateY(-2px);
+        }
+
+        .category-check input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .category-check label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: 500;
         }
 
         .btn-register {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             background: var(--primary-blue);
             color: white;
             border: none;
             border-radius: 8px;
             font-weight: 600;
+            font-size: 1.1rem;
             transition: all 0.3s ease;
-            margin-top: 20px;
+            margin-top: 30px;
         }
 
         .btn-register:hover {
@@ -151,37 +182,75 @@
         .alert {
             border-radius: 8px;
             margin-bottom: 20px;
+            padding: 15px 20px;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: var(--primary-blue);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Enhanced form validation styles */
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            background-image: none;
+        }
+
+        .invalid-feedback {
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: -15px;
+            margin-bottom: 15px;
         }
     </style>
 </head>
 <body>
+    <!-- Navbar -->
+    <%- include('../partials/navbar') %>
 
     <div class="register-container">
         <div class="register-card">
             <div class="logo-section">
-                <i class="bi bi-tools" style="font-size: 2.5rem; color: var(--primary-blue);"></i>
+                <i class="bi bi-tools"></i>
                 <h4>Service Provider Registration</h4>
+                <p class="text-muted mt-2">Join our network of trusted service providers</p>
             </div>
 
+
+            <!-- Add error and success messages -->
             <% if (locals.error) { %>
                 <div class="alert alert-danger" role="alert">
                     <%= error %>
                 </div>
             <% } %>
 
-            <form action="/auth/provider-register" method="POST" enctype="multipart/form-data">
-                <!-- Basic Information -->
-                <div class="mb-3">
+            <% if (locals.success) { %>
+                <div class="alert alert-success" role="alert">
+                    <%= success %>
+                </div>
+            <% } %>
+
+            <form id="providerRegistrationForm" action="/auth/provider-register" method="POST" enctype="multipart/form-data">
+                <!-- Business Information -->
+                <div class="mb-4">
                     <label class="form-label">Name/Business Name</label>
                     <input type="text" class="form-control" name="businessName" required>
                 </div>
 
-                <div class="mb-3">
+                <div class="mb-4">
                     <label class="form-label">Email Address</label>
                     <input type="email" class="form-control" name="email" required>
                 </div>
 
-                <div class="mb-3">
+                <div class="mb-4">
                     <label class="form-label">Contact Number</label>
                     <input type="tel" class="form-control" name="phoneNumber" required>
                 </div>
@@ -189,141 +258,171 @@
                 <!-- Service Categories -->
                 <div class="category-section">
                     <label class="form-label">Service Categories</label>
+                    <p class="text-muted small mb-3">Select one or more categories that best describe your services</p>
                     <div class="category-checks">
-                        <div class="category-check">
-                            <input type="checkbox" name="serviceCategories[]" value="plumbing" id="plumbing">
-                            <label for="plumbing">Plumbing</label>
-                        </div>
-                        <div class="category-check">
-                            <input type="checkbox" name="serviceCategories[]" value="electrical" id="electrical">
-                            <label for="electrical">Electrical Repairs</label>
-                        </div>
-                        <div class="category-check">
-                            <input type="checkbox" name="serviceCategories[]" value="roofing" id="roofing">
-                            <label for="roofing">Roof Repairs</label>
-                        </div>
-                        <div class="category-check">
-                            <input type="checkbox" name="serviceCategories[]" value="pest_control" id="pest_control">
-                            <label for="pest_control">Pest Control</label>
-                        </div>
-                        <div class="category-check">
-                            <input type="checkbox" name="serviceCategories[]" value="carpentry" id="carpentry">
-                            <label for="carpentry">Carpentry Services</label>
-                        </div>
-                        <div class="category-check">
-                            <input type="checkbox" name="serviceCategories[]" value="ac_service" id="ac_service">
-                            <label for="ac_service">AC Services</label>
-                        </div>
-                        <div class="category-check">
-                            <input type="checkbox" name="serviceCategories[]" value="landscaping" id="landscaping">
-                            <label for="landscaping">Landscaping</label>
-                        </div>
-                        <div class="category-check">
-                            <input type="checkbox" name="serviceCategories[]" value="cleaning" id="cleaning">
-                            <label for="cleaning">Home Cleaning</label>
-                        </div>
-                        <div class="category-check">
-                            <input type="checkbox" name="serviceCategories[]" value="appliance" id="appliance">
-                            <label for="appliance">Appliance Services</label>
-                        </div>
+                        <% const categories = [
+                            { id: 'plumbing', label: 'Plumbing' },
+                            { id: 'electrical', label: 'Electrical Repairs' },
+                            { id: 'roofing', label: 'Roof Repairs' },
+                            { id: 'pest_control', label: 'Pest Control' },
+                            { id: 'carpentry', label: 'Carpentry Services' },
+                            { id: 'ac_service', label: 'AC Services' },
+                            { id: 'landscaping', label: 'Landscaping' },
+                            { id: 'cleaning', label: 'Home Cleaning' },
+                            { id: 'appliance', label: 'Appliance Services' }
+                        ] %>
+                        
+                        <% categories.forEach(category => { %>
+                            <div class="category-check">
+                                <input type="checkbox" 
+                                       name="serviceCategories[]" 
+                                       value="<%= category.id %>" 
+                                       id="<%= category.id %>">
+                                <label for="<%= category.id %>"><%= category.label %></label>
+                            </div>
+                        <% }) %>
                     </div>
                 </div>
 
-                <!-- Services Offered -->
-                <div class="services-section">
-                    <label class="form-label">Services Offered</label>
-                    <div class="services-box" id="servicesBox">
-                        <div id="servicesList"></div>
-                        <button type="button" class="add-service-btn" onclick="addService()">
-                            <i class="bi bi-plus-circle"></i> Add Service
-                        </button>
+                    <div class="services-section">
+                        <label class="form-label">Services Offered</label>
+                        <p class="text-muted small mb-3">List the specific services you provide</p>
+                        <div class="services-box">
+                            <div id="servicesList"></div>
+                            <button type="button" class="add-service-btn" onclick="addService()">
+                                <i class="bi bi-plus-circle me-2"></i>Add Service
+                            </button>
+                        </div>
+                        <input type="hidden" name="services" id="servicesInput">
                     </div>
-                    <input type="hidden" name="services" id="servicesInput">
-                </div>
 
-                <!-- Certification -->
-                <div class="mb-3">
-                    <label class="form-label">Business/Skill Certification</label>
-                    <input type="file" class="form-control" name="certification" accept=".pdf,.jpg,.jpeg,.png" required>
-                    <small class="text-muted">Upload proof of business registration or skill certification (PDF, JPG, PNG)</small>
-                </div>
+                    <div class="mb-4">
+                        <label class="form-label">Business/Skill Certification</label>
+                        <input type="file" 
+                            class="form-control" 
+                            name="certification" 
+                            accept=".pdf,.jpg,.jpeg,.png" 
+                            required>
+                        <small class="text-muted">Upload proof of business registration or skill certification (PDF, JPG, PNG)</small>
+                    </div>
 
-                <!-- Password -->
-                <div class="mb-3">
+                <div class="mb-4">
                     <label class="form-label">Password</label>
-                    <input type="password" class="form-control" name="password" required>
+                    <input type="password" 
+                           class="form-control" 
+                           name="password" 
+                           required 
+                           minlength="8">
+                    <small class="text-muted">Minimum 8 characters</small>
                 </div>
 
-                <div class="mb-3">
+                <div class="mb-4">
                     <label class="form-label">Confirm Password</label>
-                    <input type="password" class="form-control" name="confirmPassword" required>
+                    <input type="password" 
+                           class="form-control" 
+                           name="confirmPassword" 
+                           required>
                 </div>
 
-                <button type="submit" class="btn-register">Register</button>
+                <button type="submit" class="btn-register">
+                    <i class="bi bi-person-plus-fill me-2"></i>Register as Service Provider
+                </button>
             </form>
+
+            <a href="/auth/provider-login" class="back-link">
+                <i class="bi bi-arrow-left me-2"></i>Already have an account? Login here
+            </a>
         </div>
     </div>
 
     <script>
-        let services = [];
+            const services = new Set();
 
-        function addService() {
-            const serviceInput = document.createElement('div');
-            serviceInput.className = 'service-input-group';
-            serviceInput.innerHTML = `
-                <input type="text" placeholder="Enter service name" class="form-control">
-                <button type="button" onclick="removeService(this)">
-                    <i class="bi bi-trash"></i>
-                </button>
-            `;
-            document.getElementById('servicesList').appendChild(serviceInput);
-            updateServices();
-        }
-
-        function removeService(button) {
-            button.parentElement.remove();
-            updateServices();
-        }
-
-        function updateServices() {
-            const inputs = document.querySelectorAll('.service-input-group input');
-            services = Array.from(inputs).map(input => input.value).filter(value => value.trim());
-            document.getElementById('servicesInput').value = JSON.stringify(services);
-        }
-
-        document.querySelector('form').addEventListener('submit', function(e) {
-            // Check if at least one category is selected
-            const categories = document.querySelectorAll('input[name="serviceCategories[]"]:checked');
-            if (categories.length === 0) {
-                e.preventDefault();
-                alert('Please select at least one service category');
-                return;
+            function addService() {
+                const serviceInput = document.createElement('div');
+                serviceInput.className = 'service-input-group';
+                const inputId = `service-${Date.now()}`;
+                serviceInput.innerHTML = `
+                    <input type="text" 
+                        id="${inputId}"
+                        placeholder="Enter service name" 
+                        class="form-control"
+                        onchange="updateServices(this)"
+                        onkeyup="updateServices(this)">
+                    <button type="button" onclick="removeService(this, '${inputId}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                `;
+                document.getElementById('servicesList').appendChild(serviceInput);
             }
 
-            // Get all service inputs
-            updateServices();
-            if (services.length === 0) {
-                e.preventDefault();
-                alert('Please add at least one service');
-                return;
+            function removeService(button, inputId) {
+                const input = document.getElementById(inputId);
+                if (input && input.value) {
+                    services.delete(input.value.trim());
+                    updateServicesInput();
+                }
+                button.parentElement.remove();
             }
 
-            // Password validation
-            const password = document.querySelector('input[name="password"]').value;
-            const confirmPassword = document.querySelector('input[name="confirmPassword"]').value;
-
-            if (password !== confirmPassword) {
-                e.preventDefault();
-                alert('Passwords do not match!');
-                return;
+            function updateServices(input) {
+                const value = input.value.trim();
+                if (value) {
+                    services.add(value);
+                } else {
+                    services.delete(value);
+                }
+                updateServicesInput();
             }
 
-            if (password.length < 8) {
-                e.preventDefault();
-                alert('Password must be at least 8 characters long!');
-                return;
+            function updateServicesInput() {
+                const servicesArray = Array.from(services).filter(Boolean);
+                document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
+                console.log('Updated services:', servicesArray); // Debug log
             }
-        });
+
+            document.getElementById('providerRegistrationForm').addEventListener('submit', function(e) {
+                const password = document.querySelector('input[name="password"]').value;
+                const confirmPassword = document.querySelector('input[name="confirmPassword"]').value;
+                const categories = document.querySelectorAll('input[name="serviceCategories[]"]:checked');
+                const servicesArray = Array.from(services).filter(Boolean);
+                
+                let isValid = true;
+                let errorMessage = '';
+
+                // Validate categories
+                if (categories.length === 0) {
+                    isValid = false;
+                    errorMessage = 'Please select at least one service category';
+                }
+
+                // Validate services
+                if (servicesArray.length === 0) {
+                    isValid = false;
+                    errorMessage = errorMessage || 'Please add at least one service';
+                }
+
+                // Validate passwords
+                if (password !== confirmPassword) {
+                    isValid = false;
+                    errorMessage = 'Passwords do not match';
+                }
+
+                if (password.length < 8) {
+                    isValid = false;
+                    errorMessage = 'Password must be at least 8 characters long';
+                }
+
+                if (!isValid) {
+                    e.preventDefault();
+                    alert(errorMessage);
+                } else {
+                    // Log the final data being submitted
+                    console.log('Submitting services:', servicesArray);
+                }
+            });
+
+                addService();
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

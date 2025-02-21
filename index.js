@@ -4,7 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
-import authRoutes from './auth.js';
+import authRoutes from './auth.js'; // Import authRoutes
+import providerRoutes from './provider.js'; // Import providerRoutes
 
 dotenv.config();
 
@@ -24,7 +25,7 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Session setup
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    secret: process.env.SESSION_SECRET || 'THANEES01',
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -47,6 +48,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/auth', authRoutes);
+app.use('/provider', providerRoutes);
 
 // Home route
 app.get('/', (req, res) => {
