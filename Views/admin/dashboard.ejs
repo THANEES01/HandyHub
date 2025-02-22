@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -121,15 +122,60 @@
         }
  
         .modal-content {
-            border-radius: 15px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.2);
-        }
- 
-        .modal-header {
-            background-color: var(--light-blue);
-            border-radius: 15px 15px 0 0;
-        }
+        border: none;
+    }
+    
+    .modal-header {
+        background-color: var(--primary-blue);
+        color: white;
+        border-bottom: none;
+        padding: 1.5rem;
+    }
+    
+    .modal-body {
+        padding: 2rem;
+    }
+    
+    .info-section {
+        background: #f8f9fa;
+        border-left: 4px solid var(--primary-blue);
+        margin-bottom: 1.5rem;
+        padding: 1.5rem;
+    }
+    
+    .info-section h5 {
+        color: var(--dark-blue);
+        margin-bottom: 1.2rem;
+        font-weight: 600;
+    }
+    
+    .service-tag {
+        background: var(--light-blue);
+        color: var(--dark-blue);
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+        margin: 0.3rem;
+        display: inline-block;
+        font-size: 0.9rem;
+        border: 1px solid var(--primary-blue);
+    }
+    
+    .verification-buttons {
+        margin-top: 1rem;
+    }
+    
+    .verification-buttons .btn {
+        padding: 0.8rem 2rem;
+        font-weight: 500;
+    }
+    
+    .badge {
+        padding: 0.5em 1em;
+        border-radius: 20px;
+        font-weight: 500;
+    }
     </style>
+
 </head>
 <body>
 <div class="container-fluid">
@@ -180,119 +226,228 @@
             </div>
 
             <!-- Service Providers Table -->
-            <div class="table-container">
-                <h4 class="mb-4">Service Providers</h4>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Service Category</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% pendingProviders.forEach(provider => { %>
+            <!-- Service Providers Section -->
+<div class="card mt-4">
+    <div class="card-body">
+        <h4 class="card-title">Service Providers</h4>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Service Category</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% pendingProviders.forEach(function(provider) { %>
                         <tr>
                             <td><%= provider.business_name %></td>
                             <td><%= provider.email %></td>
-                            <td><%= provider.category %></td>
-                            <td><span class="status-pending">Pending</span></td>
                             <td>
-                                <button class="btn btn-sm btn-primary" onclick="showProviderDetails('<%= provider.id %>')">View</button>
+                                <% if (provider.categories && provider.categories.length > 0) { %>
+                                    <% provider.categories.forEach(function(category) { %>
+                                        <span class="badge bg-info me-1"><%= category %></span>
+                                    <% }); %>
+                                <% } else { %>
+                                    <span class="text-muted">No categories</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <span class="badge bg-warning">Pending</span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="showProviderDetails('<%= provider.id %>')">
+                                    <i class="bi bi-eye"></i> View
+                                </button>
                             </td>
                         </tr>
-                        <% }) %>
-                    </tbody>
-                </table>
-            </div>
+                    <% }); %>
+                </tbody>
+            </table>
         </div>
     </div>
-</div>
+</div>       
 
 <!-- Add this modal at the bottom of dashboard.ejs -->
 <div class="modal fade" id="providerDetailsModal">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Provider Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="info-section">
-                    <h5>Business Information</h5>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <p><strong>Name:</strong><br><span id="businessName"></span></p>
-                        </div>
-                        <div class="col-md-4">
-                            <p><strong>Email:</strong><br><span id="businessEmail"></span></p>
-                        </div>
-                        <div class="col-md-4">
-                            <p><strong>Phone:</strong><br><span id="businessPhone"></span></p>
-                        </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Business Name:</strong><br><span id="providerName"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Email:</strong><br><span id="providerEmail"></span></p>
                     </div>
                 </div>
-
-                <div class="info-section">
-                    <h5>Documents</h5>
-                    <a id="certificationLink" href="" target="_blank" class="btn btn-primary">
-                        <i class="bi bi-file-earmark-text"></i> View Certification
-                    </a>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Phone:</strong><br><span id="providerPhone"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Categories:</strong><br><span id="providerCategories"></span></p>
+                    </div>
                 </div>
-
-                <div class="info-section">
-                    <h5>Service Categories</h5>
-                    <div id="serviceCategories" class="service-tag"></div>
-                </div>
-
-                <div class="info-section">
-                    <h5>Services Offered</h5>
-                    <div id="servicesOffered" class="service-tag"></div>
-                </div>
-
-                <div class="info-section">
-                    <h5>Verification Decision</h5>
-                    <form id="verificationForm">
-                        <button type="submit" name="status" value="approve" class="btn btn-success me-2">
-                            <i class="bi bi-check-circle"></i> Approve
+                <div class="mt-4">
+                    <h6>Verification Actions</h6>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success" onclick="updateVerificationStatus('approve')">
+                            Approve
                         </button>
-                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
-                            <i class="bi bi-x-circle"></i> Reject
+                        <button class="btn btn-danger" onclick="updateVerificationStatus('reject')">
+                            Reject
                         </button>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Customers Table -->
+<div class="table-container mt-4">
+    <h4 class="mb-4">Customers</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Join Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% if (customers && customers.length > 0) { %>
+                <% customers.forEach(function(customer) { %>
+                    <tr>
+                        <td><%= customer.first_name %> <%= customer.last_name %></td>
+                        <td><%= customer.email %></td>
+                        <td><%= customer.phone_number %></td>
+                        <td><%= new Date(customer.created_at).toLocaleDateString() %></td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="showCustomerDetails('<%= customer.id %>')">
+                                <i class="bi bi-eye"></i> View
+                            </button>
+                        </td>
+                    </tr>
+                <% }); %>
+            <% } else { %>
+                <tr>
+                    <td colspan="5" class="text-center">No customers found</td>
+                </tr>
+            <% } %>
+        </tbody>
+    </table>
+</div>
+
+<!-- Customer Details Modal -->
+<div class="modal fade" id="customerDetailsModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Customer Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Name:</strong><br><span id="customerName"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Email:</strong><br><span id="customerEmail"></span></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Phone:</strong><br><span id="customerPhone"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Joined:</strong><br><span id="customerJoinedDate"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <script>
-    function showProviderDetails(id) {
-        fetch(`/admin/provider/${id}/details`)
+    let currentProviderId = null;
+
+function showProviderDetails(id) {
+    currentProviderId = id;
+    fetch(`/admin/provider/${id}/details`)
         .then(response => response.json())
         .then(provider => {
-            document.getElementById('businessName').textContent = provider.business_name;
-            document.getElementById('businessEmail').textContent = provider.email;
-            document.getElementById('businessPhone').textContent = provider.phone_number;
-            document.getElementById('certificationLink').href = provider.certification_url;
-            
-            const categoriesHtml = provider.categories
-                .map(cat => `<span class="service-tag">${cat}</span>`)
-                .join('');
-            document.getElementById('serviceCategories').innerHTML = categoriesHtml;
-            
-            const servicesHtml = provider.services
-                .map(svc => `<span class="service-tag">${svc}</span>`)
-                .join('');
-            document.getElementById('servicesOffered').innerHTML = servicesHtml;
-            
-            document.getElementById('verificationForm').action = `/admin/provider/${provider.id}/verify`;
+            document.getElementById('providerName').textContent = provider.business_name;
+            document.getElementById('providerEmail').textContent = provider.email;
+            document.getElementById('providerPhone').textContent = provider.phone_number;
+            document.getElementById('providerCategories').innerHTML = 
+                provider.categories.map(cat => `<span class="badge bg-info me-1">${cat}</span>`).join('');
             
             new bootstrap.Modal(document.getElementById('providerDetailsModal')).show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading provider details');
         });
+}
+
+function updateVerificationStatus(status) {
+    if (!currentProviderId) return;
+
+    let data = { status };
+    if (status === 'reject') {
+        const reason = prompt('Please provide a reason for rejection:');
+        if (!reason) return;
+        data.rejectionReason = reason;
     }
+
+    fetch(`/admin/provider/${currentProviderId}/verify`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert(status === 'approve' ? 'Provider approved successfully' : 'Provider rejected successfully');
+            location.reload();
+        } else {
+            throw new Error(result.error || 'Operation failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating verification status');
+    });
+}
+
+    function showCustomerDetails(id) {
+    fetch(`/admin/customer/${id}/details`)
+        .then(response => response.json())
+        .then(customer => {
+            document.getElementById('customerName').textContent = `${customer.first_name} ${customer.last_name}`;
+            document.getElementById('customerEmail').textContent = customer.email;
+            document.getElementById('customerPhone').textContent = customer.phone_number;
+            document.getElementById('customerJoinedDate').textContent = 
+                new Date(customer.created_at).toLocaleDateString();
+            
+            new bootstrap.Modal(document.getElementById('customerDetailsModal')).show();
+        })
+        .catch(error => console.error('Error:', error));
+}
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
