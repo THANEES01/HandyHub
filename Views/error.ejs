@@ -1,0 +1,11 @@
+<!-- views/error.ejs -->
+<%- include('partials/header') %>
+<div class="container mt-5">
+    <div class="alert alert-danger">
+        <h4><%= message %></h4>
+        <% if (error) { %>
+            <p><%= error.message %></p>
+        <% } %>
+    </div>
+</div>
+<%- include('partials/footer') %>

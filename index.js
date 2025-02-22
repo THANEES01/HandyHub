@@ -6,6 +6,7 @@ import { dirname } from 'path';
 import dotenv from 'dotenv';
 import authRoutes from './auth.js'; // Import authRoutes
 import providerRoutes from './provider.js'; // Import providerRoutes
+import adminRoutes from './admin.js'; // Import adminRoutes
 
 dotenv.config();
 
@@ -49,6 +50,7 @@ app.use((req, res, next) => {
 // Routes
 app.use('/auth', authRoutes);
 app.use('/provider', providerRoutes);
+app.use('/admin', adminRoutes);
 
 // Home route
 app.get('/', (req, res) => {

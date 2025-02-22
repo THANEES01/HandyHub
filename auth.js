@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import pool from './config/database.js';
 //file upload
 import multer from 'multer';
-import session from 'express-session';
+
 
 // Add at the top of your auth.js, before defining routes
 // router.use(session({
@@ -247,29 +247,18 @@ const providerRegister = async (req, res) => {
 const providerLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
-
+        
         const result = await pool.query(`
-            SELECT u.*, sp.id as provider_id, sp.business_name, sp.is_verified 
+            SELECT u.*, sp.id as provider_id, sp.business_name
             FROM users u 
             JOIN service_providers sp ON u.id = sp.user_id 
             WHERE u.email = $1 AND u.user_type = $2
         `, [email, 'provider']);
 
         const user = result.rows[0];
-
-        if (!user) {
-            req.session.error = 'Invalid email or password';
-            return res.redirect('/auth/provider-login');
-        }
-
-        const validPassword = await bcrypt.compare(password, user.password);
-        if (!validPassword) {
-            req.session.error = 'Invalid email or password';
-            return res.redirect('/auth/provider-login');
-        }
-
-        if (!user.is_verified) {
-            req.session.error = 'Account pending verification. Please wait for admin approval.';
+        
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+            req.session.error = 'Invalid credentials';
             return res.redirect('/auth/provider-login');
         }
 
@@ -285,10 +274,47 @@ const providerLogin = async (req, res) => {
 
     } catch (err) {
         console.error('Provider login error:', err);
-        req.session.error = 'Login failed. Please try again.';
+        req.session.error = 'Login failed';
         res.redirect('/auth/provider-login');
     }
 };
+
+const adminLogin = async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        const result = await pool.query(`
+            SELECT u.*, a.id as admin_id 
+            FROM users u
+            JOIN admins a ON u.id = a.user_id
+            WHERE u.email = 'admin@handyhub.com'
+        `);
+ 
+        if (result.rows.length === 0) {
+            req.session.error = 'Invalid credentials';
+            return res.redirect('/auth/admin-login');
+        }
+ 
+        const admin = result.rows[0];
+        if (username === 'admin' && password === 'admin123') {
+            req.session.user = {
+                id: admin.id,
+                email: admin.email,
+                userType: 'admin',
+                adminId: admin.admin_id
+            };
+            return res.redirect('/admin/dashboard');
+        }
+ 
+        req.session.error = 'Invalid credentials';
+        res.redirect('/auth/admin-login');
+    } catch (err) {
+        console.error(err);
+        req.session.error = 'Login failed';
+        res.redirect('/auth/admin-login');
+    }
+ };
+
 
 
 // ====== Routes ======
@@ -305,5 +331,9 @@ router.post('/provider-login', isGuest, providerLogin);
 router.get('/provider-register', isGuest, showProviderRegister);
 router.post('/provider-register', upload.single('certification'), providerRegister);
 router.post('/provider-login', providerLogin);
+
+// Admin routes
+router.get('/admin-login', isGuest, (req, res) => res.render('auth/admin-login'));
+router.post('/admin-login', isGuest, adminLogin);
 
 export default router;
