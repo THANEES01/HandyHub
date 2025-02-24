@@ -1,6 +1,8 @@
 import express from 'express';
 import pool from './config/database.js';
 import nodemailer from 'nodemailer';
+// const { MailtrapClient } = require('mailtrap');
+import { MailtrapClient } from 'mailtrap';
 
 const router = express.Router();
 
@@ -9,13 +11,23 @@ const isAdmin = (req, res, next) => {
    res.redirect('/auth/admin-login');
 };
 
-const transporter = nodemailer.createTransport({
-   service: 'gmail',
-   auth: {
-     user: process.env.EMAIL,
-     password: process.env.EMAIL_PASSWORD
-   }
-});
+// Create Mailtrap client
+const client = new MailtrapClient({ token: process.env.MAILTRAP_TOKEN });
+const sender = { 
+    name: 'HandyHub', 
+    email: process.env.MAILTRAP_SENDER_EMAIL 
+};
+
+// Create a transporter using SMTP
+// const createTransporter = () => {
+//     return nodemailer.createTransport({
+//         service: 'gmail',
+//         auth: {
+//             user: process.env.EMAIL_USER,
+//             pass: process.env.EMAIL_PASS
+//         }
+//     });
+// };
 
 const getDashboard = async (req, res) => {
     try {
@@ -29,10 +41,18 @@ const getDashboard = async (req, res) => {
 
         // Get pending providers
         const pendingProvidersQuery = await pool.query(`
-            SELECT sp.*, u.email 
-            FROM service_providers sp 
-            JOIN users u ON sp.user_id = u.id 
+            SELECT 
+                sp.id, 
+                sp.business_name, 
+                sp.phone_number, 
+                sp.is_verified,
+                u.email,
+                ARRAY_AGG(DISTINCT sc.category_name) as categories
+            FROM service_providers sp
+            JOIN users u ON sp.user_id = u.id
+            LEFT JOIN service_categories sc ON sp.id = sc.provider_id
             WHERE sp.is_verified = false
+            GROUP BY sp.id, sp.business_name, sp.phone_number, sp.is_verified, u.email
         `);
 
         // Get all customers - Using the exact same query that works in test-db
@@ -57,7 +77,7 @@ const getDashboard = async (req, res) => {
             totalProviders: parseInt(providersCountQuery.rows[0].count),
             totalCustomers: parseInt(customersCountQuery.rows[0].count),
             pendingProviders: pendingProvidersQuery.rows,
-            customers: customersQuery.rows // This should now contain your customer data
+            customers: customersQuery.rows
         };
 
         console.log('Data being sent to template:', templateData);
@@ -77,12 +97,145 @@ const getDashboard = async (req, res) => {
 };
 
 const getProviderDetails = async (req, res) => {
+        try {
+            console.log('Provider ID:', req.params.id);
+    
+            const query = `
+                SELECT 
+                    sp.id,
+                    sp.business_name,
+                    sp.phone_number,
+                    sp.is_verified,
+                    u.email,
+                    ARRAY_AGG(DISTINCT sc.category_name) as categories,
+                    (
+                        SELECT ARRAY_AGG(so.service_name)
+                        FROM services_offered so
+                        WHERE so.provider_id = sp.id
+                    ) as services
+                FROM service_providers sp
+                JOIN users u ON sp.user_id = u.id
+                LEFT JOIN service_categories sc ON sc.provider_id = sp.id
+                WHERE sp.id = $1
+                GROUP BY sp.id, sp.business_name, sp.phone_number, sp.is_verified, u.email
+            `;
+    
+            const provider = await pool.query(query, [req.params.id]);
+    
+            if (provider.rows.length === 0) {
+                return res.status(404).json({ error: 'Provider not found' });
+            }
+    
+            console.log('Provider details:', provider.rows[0]);
+            res.json(provider.rows[0]);
+        } catch (err) {
+            console.error('Error in getProviderDetails:', err);
+            res.status(500).json({ error: 'Server error' });
+        }
+    };
+
+// Email sending function
+
+const sendVerificationEmail = async (provider) => {
     try {
-        const provider = await pool.query(`
+        // Import the library inside the function to ensure latest version
+        const { MailtrapClient } = await import('mailtrap');
+
+        // Create client with API details
+        const client = new MailtrapClient({ 
+            token: process.env.MAILTRAP_TOKEN,
+            endpoint: 'https://send.api.mailtrap.io'
+        });
+
+        // Sender configuration
+        const sender = {
+            email: process.env.MAILTRAP_SENDER_EMAIL,
+            name: "HandyHub"
+        };
+
+        // Recipient configuration
+        const recipient = {
+            email: provider.email,
+            name: provider.business_name
+        };
+
+        // Detailed logging before sending
+        console.log('Email Configuration:', {
+            sender: sender,
+            recipient: recipient,
+            token: process.env.MAILTRAP_TOKEN ? 'Token present' : 'Token MISSING'
+        });
+
+        // Send email with comprehensive configuration
+        const result = await client.send({
+            from: sender,
+            to: [recipient],
+            subject: "HandyHub - Service Provider Account Verified",
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4;">
+                    <div style="background-color: #0077be; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+                        <h1>Account Verification Successful</h1>
+                    </div>
+                    <div style="background-color: white; padding: 20px; border-radius: 0 0 10px 10px;">
+                        <p>Dear ${provider.business_name},</p>
+                        
+                        <p>Congratulations! Your service provider account on HandyHub has been successfully verified.</p>
+                        
+                        <h3>Your Verified Details:</h3>
+                        <ul>
+                            <li><strong>Business Name:</strong> ${provider.business_name}</li>
+                            <li><strong>Email:</strong> ${provider.email}</li>
+                            <li><strong>Phone:</strong> ${provider.phone_number}</li>
+                        </ul>
+
+                        <h3>Verified Categories:</h3>
+                        <p>${provider.categories ? provider.categories.join(', ') : 'No categories'}</p>
+
+                        <p>You can now log in and start using HandyHub.</p>
+                        
+                        <p>Best regards,<br>HandyHub Team</p>
+                    </div>
+                </div>
+            `
+        });
+
+        console.log('Email sent successfully:', result);
+        return result;
+
+    } catch (error) {
+        console.error('Email sending FAILED:', error);
+        
+        // Comprehensive error logging
+        if (error.response) {
+            console.error('Response status:', error.response.status);
+            console.error('Response data:', error.response.data);
+        }
+        
+        // Log the full error object
+        console.error('Full error object:', JSON.stringify(error, null, 2));
+        
+        throw error;
+    }
+};
+
+// In your updateVerificationStatus function
+const updateVerificationStatus = async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        
+        // Update provider's verification status
+        const result = await client.query(
+            'UPDATE service_providers SET is_verified = $1 WHERE id = $2 RETURNING *',
+            [req.body.status === 'approve', req.params.id]
+        );
+
+        // Fetch provider's complete details
+        const providerQuery = await client.query(`
             SELECT 
-                sp.id,
-                sp.business_name,
-                sp.phone_number,
+                sp.id, 
+                sp.business_name, 
+                sp.phone_number, 
                 u.email,
                 ARRAY_AGG(DISTINCT sc.category_name) as categories
             FROM service_providers sp
@@ -92,49 +245,33 @@ const getProviderDetails = async (req, res) => {
             GROUP BY sp.id, sp.business_name, sp.phone_number, u.email
         `, [req.params.id]);
 
-        if (provider.rows.length === 0) {
-            return res.status(404).json({ error: 'Provider not found' });
+        const provider = providerQuery.rows[0];
+
+        // If approving, send email
+        if (req.body.status === 'approve') {
+            try {
+                await sendVerificationEmail(provider);
+            } catch (emailError) {
+                console.error('Email sending failed in route:', emailError);
+                // Continue with the process even if email fails
+            }
         }
 
-        res.json(provider.rows[0]);
-    } catch (err) {
-        console.error('Error in getProviderDetails:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-};
-
-const updateVerificationStatus = async (req, res) => {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-        
-        const result = await client.query(
-            'UPDATE service_providers SET is_verified = $1 WHERE id = $2 RETURNING *',
-            [req.body.status === 'approve', req.params.id]
-        );
-
-        const providerEmail = await client.query(
-            'SELECT email FROM users WHERE id = $1',
-            [result.rows[0].user_id]
-        );
-
-        const emailContent = req.body.status === 'approve' 
-            ? 'Your service provider account has been approved. You can now login to HandyHub.'
-            : `Your account verification was rejected. Reason: ${req.body.rejectionReason}`;
-
-        await transporter.sendMail({
-            from: process.env.EMAIL,
-            to: providerEmail.rows[0].email,
-            subject: `HandyHub Verification ${req.body.status === 'approve' ? 'Approved' : 'Rejected'}`,
-            text: emailContent
+        await client.query('COMMIT');
+        res.json({ 
+            success: true, 
+            message: req.body.status === 'approve' 
+                ? 'Provider approved and email sent' 
+                : 'Provider rejected' 
         });
 
-        await client.query('COMMIT');
-        res.json({ success: true });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error in updateVerificationStatus:', err);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ 
+            error: 'Server error', 
+            details: err.message 
+        });
     } finally {
         client.release();
     }
@@ -143,6 +280,8 @@ const updateVerificationStatus = async (req, res) => {
 // Customer Details
 const getCustomerDetails = async (req, res) => {
     try {
+        console.log('Fetching customer details for ID:', req.params.id);
+
         const result = await pool.query(`
             SELECT 
                 c.id,
@@ -156,7 +295,10 @@ const getCustomerDetails = async (req, res) => {
             WHERE c.id = $1 AND u.user_type = 'customer'
         `, [req.params.id]);
 
+        console.log('Query result:', result.rows);
+
         if (result.rows.length === 0) {
+            console.log('No customer found with this ID');
             return res.status(404).json({ error: 'Customer not found' });
         }
 
@@ -171,9 +313,10 @@ const getCustomerDetails = async (req, res) => {
         res.json(customerData);
     } catch (error) {
         console.error('Error fetching customer details:', error);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: 'Server error', details: error.message });
     }
 };
+
 
 // Test route to verify database connection and data
 // router.get('/test-db', async (req, res) => {
