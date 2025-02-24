@@ -2,7 +2,7 @@ import express from 'express';
 import pool from './config/database.js';
 import nodemailer from 'nodemailer';
 // const { MailtrapClient } = require('mailtrap');
-import { MailtrapClient } from 'mailtrap';
+// import { MailtrapClient } from 'mailtrap';
 
 const router = express.Router();
 
@@ -12,11 +12,11 @@ const isAdmin = (req, res, next) => {
 };
 
 // Create Mailtrap client
-const client = new MailtrapClient({ token: process.env.MAILTRAP_TOKEN });
-const sender = { 
-    name: 'HandyHub', 
-    email: process.env.MAILTRAP_SENDER_EMAIL 
-};
+// const client = new MailtrapClient({ token: process.env.MAILTRAP_TOKEN });
+// const sender = { 
+//     name: 'HandyHub', 
+//     email: process.env.MAILTRAP_SENDER_EMAIL 
+// };
 
 // Create a transporter using SMTP
 // const createTransporter = () => {
@@ -28,6 +28,15 @@ const sender = {
 //         }
 //     });
 // };
+
+// Create a transporter using Gmail SMTP
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD
+    }
+});
 
 const getDashboard = async (req, res) => {
     try {
@@ -97,79 +106,55 @@ const getDashboard = async (req, res) => {
 };
 
 const getProviderDetails = async (req, res) => {
-        try {
-            console.log('Provider ID:', req.params.id);
-    
-            const query = `
-                SELECT 
-                    sp.id,
-                    sp.business_name,
-                    sp.phone_number,
-                    sp.is_verified,
-                    u.email,
-                    ARRAY_AGG(DISTINCT sc.category_name) as categories,
-                    (
-                        SELECT ARRAY_AGG(so.service_name)
-                        FROM services_offered so
-                        WHERE so.provider_id = sp.id
-                    ) as services
-                FROM service_providers sp
-                JOIN users u ON sp.user_id = u.id
-                LEFT JOIN service_categories sc ON sc.provider_id = sp.id
-                WHERE sp.id = $1
-                GROUP BY sp.id, sp.business_name, sp.phone_number, sp.is_verified, u.email
-            `;
-    
-            const provider = await pool.query(query, [req.params.id]);
-    
-            if (provider.rows.length === 0) {
-                return res.status(404).json({ error: 'Provider not found' });
-            }
-    
-            console.log('Provider details:', provider.rows[0]);
-            res.json(provider.rows[0]);
-        } catch (err) {
-            console.error('Error in getProviderDetails:', err);
-            res.status(500).json({ error: 'Server error' });
+    try {
+        console.log('Provider ID:', req.params.id);
+
+        const query = `
+            SELECT 
+                sp.id,
+                sp.business_name,
+                sp.phone_number,
+                sp.is_verified,
+                sp.certification_url,
+                u.email,
+                ARRAY_AGG(DISTINCT sc.category_name) as categories,
+                (
+                    SELECT ARRAY_AGG(so.service_name)
+                    FROM services_offered so
+                    WHERE so.provider_id = sp.id
+                ) as services
+            FROM service_providers sp
+            JOIN users u ON sp.user_id = u.id
+            LEFT JOIN service_categories sc ON sc.provider_id = sp.id
+            WHERE sp.id = $1
+            GROUP BY sp.id, sp.business_name, sp.phone_number, sp.is_verified, sp.certification_url, u.email
+        `;
+
+        const provider = await pool.query(query, [req.params.id]);
+
+        if (provider.rows.length === 0) {
+            return res.status(404).json({ error: 'Provider not found' });
         }
+
+        console.log('Provider details:', provider.rows[0]);
+        res.json(provider.rows[0]);
+    } catch (err) {
+        console.error('Error in getProviderDetails:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
     };
 
 // Email sending function
 
+// Updated Email sending function
 const sendVerificationEmail = async (provider) => {
     try {
-        // Import the library inside the function to ensure latest version
-        const { MailtrapClient } = await import('mailtrap');
+        // Log email attempt
+        console.log('Attempting to send verification email to:', provider.email);
 
-        // Create client with API details
-        const client = new MailtrapClient({ 
-            token: process.env.MAILTRAP_TOKEN,
-            endpoint: 'https://send.api.mailtrap.io'
-        });
-
-        // Sender configuration
-        const sender = {
-            email: process.env.MAILTRAP_SENDER_EMAIL,
-            name: "HandyHub"
-        };
-
-        // Recipient configuration
-        const recipient = {
-            email: provider.email,
-            name: provider.business_name
-        };
-
-        // Detailed logging before sending
-        console.log('Email Configuration:', {
-            sender: sender,
-            recipient: recipient,
-            token: process.env.MAILTRAP_TOKEN ? 'Token present' : 'Token MISSING'
-        });
-
-        // Send email with comprehensive configuration
-        const result = await client.send({
-            from: sender,
-            to: [recipient],
+        const info = await transporter.sendMail({
+            from: '"HandyHub" <handyhubinfo01@gmail.com>',
+            to: provider.email,
             subject: "HandyHub - Service Provider Account Verified",
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4;">
@@ -189,7 +174,7 @@ const sendVerificationEmail = async (provider) => {
                         </ul>
 
                         <h3>Verified Categories:</h3>
-                        <p>${provider.categories ? provider.categories.join(', ') : 'No categories'}</p>
+                        <p>${provider.categories ? provider.categories.join(', ') : 'No categories specified'}</p>
 
                         <p>You can now log in and start using HandyHub.</p>
                         
@@ -199,22 +184,15 @@ const sendVerificationEmail = async (provider) => {
             `
         });
 
-        console.log('Email sent successfully:', result);
-        return result;
+        console.log('Email sent successfully:', info);
+        return info;
 
     } catch (error) {
-        console.error('Email sending FAILED:', error);
-        
-        // Comprehensive error logging
+        console.error('Email sending failed:', error);
         if (error.response) {
-            console.error('Response status:', error.response.status);
-            console.error('Response data:', error.response.data);
+            console.error('Error details:', error.response.data);
         }
-        
-        // Log the full error object
-        console.error('Full error object:', JSON.stringify(error, null, 2));
-        
-        throw error;
+        return null;
     }
 };
 

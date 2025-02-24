@@ -20,6 +20,26 @@
             min-height: 100vh;
             color: white;
         }
+
+        .sidebar nav {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        }
+
+        .nav-link.text-danger {
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            margin-top: auto;
+            color: #dc3545 !important;
+        }
+    
+        .nav-link.text-danger:hover {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: #fff !important;
+        }
  
         .sidebar .nav-link {
             color: white;
@@ -197,6 +217,20 @@
     .verification-buttons .btn-reject:hover {
         background-color: #c82333;
     }
+
+    #documentPreview {
+        margin-top: 1rem;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 1rem;
+        background-color: white;
+    }
+
+    #documentPreview img {
+        max-width: 100%;
+        height: auto;
+    }
+
     </style>
 
 </head>
@@ -224,6 +258,12 @@
                 <a class="nav-link" href="/admin/earnings">
                     <i class="bi bi-cash"></i> Earnings
                 </a>
+                <!-- Add this at the bottom of the nav -->
+                <div class="mt-auto">
+                    <button onclick="logout()" class="nav-link text-danger">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </button>
+                </div>
             </nav>
         </div>
 
@@ -296,7 +336,7 @@
 
 <!-- Add this modal at the bottom of dashboard.ejs -->
 <div class="modal fade" id="providerDetailsModal">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Provider Details</h5>
@@ -326,6 +366,13 @@
                 <div class="info-section">
                     <h5>Services Offered</h5>
                     <div id="servicesOffered"></div>
+                </div>
+
+                <div class="info-section">
+                    <h5>Business Documentation</h5>
+                    <div id="documentPreview" class="text-center">
+                        <!-- Preview will be inserted here -->
+                    </div>
                 </div>
 
                 <div class="verification-buttons">
@@ -417,8 +464,7 @@
     let currentProviderId = null;
 
     function showProviderDetails(id) {
-
-    currentProviderId = id;  // Make sure this is set
+    currentProviderId = id;
     console.log('Current Provider ID set:', currentProviderId);
     
     fetch(`/admin/provider/${id}/details`)
@@ -452,6 +498,37 @@
                     .join('');
             } else {
                 servicesElement.innerHTML = '<span class="text-muted">No services offered</span>';
+            }
+
+            // Handle document preview
+            const documentPreview = document.getElementById('documentPreview');
+            if (provider.certification_file) {
+                const fileExt = provider.certification_file.split('.').pop().toLowerCase();
+                if (['pdf'].includes(fileExt)) {
+                    documentPreview.innerHTML = `
+                        <embed src="${provider.certification_file}" 
+                               type="application/pdf" 
+                               width="100%" 
+                               height="500px">
+                    `;
+                } else if (['jpg', 'jpeg', 'png'].includes(fileExt)) {
+                    documentPreview.innerHTML = `
+                        <img src="${provider.certification_file}" 
+                             class="img-fluid" 
+                             alt="Business Documentation"
+                             style="max-height: 500px;">
+                    `;
+                } else {
+                    documentPreview.innerHTML = `
+                        <a href="${provider.certification_file}" 
+                           class="btn btn-primary" 
+                           target="_blank">
+                            Download Document
+                        </a>
+                    `;
+                }
+            } else {
+                documentPreview.innerHTML = '<p class="text-muted">No documentation provided</p>';
             }
             
             // Show the modal
@@ -540,6 +617,26 @@ function showCustomerDetails(id) {
             alert(`Error loading customer details: ${error.message}`);
         });
 }
+
+function logout() {
+        if (confirm('Are you sure you want to logout?')) {
+            fetch('/admin/logout', {
+                method: 'POST',
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = '/auth/admin-login';
+                } else {
+                    throw new Error('Logout failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Logout failed. Please try again.');
+            });
+        }
+    }
 
 </script>
 

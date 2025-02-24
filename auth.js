@@ -1,19 +1,47 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
 import pool from './config/database.js';
-//file upload
 import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-
-// Add at the top of your auth.js, before defining routes
-// router.use(session({
-//     secret: 'your-secret-key',
-//     resave: false,
-//     saveUninitialized: true,
-//     cookie: { secure: false } // Set to true if using HTTPS
-//   }));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const router = express.Router();
+
+// Configure multer for file storage
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'public/uploads/certifications')
+    },
+    filename: function (req, file, cb) {
+        // Create unique filename: timestamp-originalname
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+// File filter
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    
+    if (allowedTypes.includes(ext)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Invalid file type. Only PDF, JPG, and PNG files are allowed.'));
+    }
+};
+
+const upload = multer({ 
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+});
 
 // ====== Middleware ======
 const isAuth = (req, res, next) => {
@@ -38,22 +66,6 @@ const isCustomer = (req, res, next) => {
     req.session.error = 'Access denied';
     res.redirect('/auth/customer-login');
 };
-
-//file upload middleware
-const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB limit
-    },
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
-        if (allowedTypes.includes(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new Error('Invalid file type. Only JPEG, PNG and PDF files are allowed.'));
-        }
-    }
-});
 
 // ====== Controllers ======
 const showCustomerLogin = (req, res) => {
@@ -164,9 +176,18 @@ const logout = (req, res) => {
 // Service Provider Authentication
 // Show provider login page
 const showProviderLogin = (req, res) => {
+    // Get messages from session
+    const error = req.session.error;
+    const success = req.session.success;
+    
+    // Clear messages from session
+    delete req.session.error;
+    delete req.session.success;
+    
+    // Render page with messages
     res.render('auth/provider-login', {
-        error: req.session.error,
-        success: req.session.success
+        error: error,
+        success: success
     });
 };
 
@@ -190,10 +211,9 @@ const providerRegister = async (req, res) => {
             password
         } = req.body;
 
-        const certification = req.file;
-        const hashedPassword = await bcrypt.hash(password, 10);
-
         await client.query('BEGIN');
+
+        const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create user
         const newUser = await client.query(
@@ -201,11 +221,12 @@ const providerRegister = async (req, res) => {
             [email, hashedPassword, 'provider']
         );
 
-        // Create provider profile
-        const certificationUrl = certification ? certification.filename : null;
+        // Create provider profile with certification file path
+        const certificationPath = req.file ? `/uploads/certifications/${req.file.filename}` : null;
+        
         const newProvider = await client.query(
             'INSERT INTO service_providers (user_id, business_name, phone_number, certification_url) VALUES ($1, $2, $3, $4) RETURNING id',
-            [newUser.rows[0].id, businessName, phoneNumber, certificationUrl]
+            [newUser.rows[0].id, businessName, phoneNumber, certificationPath]
         );
 
         // Insert service categories
@@ -230,14 +251,18 @@ const providerRegister = async (req, res) => {
         }
 
         await client.query('COMMIT');
-        req.session.success = 'Registration successful! Please wait for admin verification.';
-        res.redirect('/auth/provider-login');
+        req.session.success = 'Registration successful! Please login to continue.';
+        req.session.save(() => {
+            res.redirect('/auth/provider-login');
+        });
 
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Provider registration error:', err);
         req.session.error = 'Registration failed. Please try again.';
-        res.redirect('/auth/provider-register');
+        req.session.save(() => {
+            res.redirect('/auth/provider-register');
+        });
     } finally {
         client.release();
     }
@@ -248,33 +273,54 @@ const providerLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
         
+        // First, check if the user exists
         const result = await pool.query(`
-            SELECT u.*, sp.id as provider_id, sp.business_name
+            SELECT u.*, sp.id as provider_id, sp.business_name, sp.phone_number, sp.is_verified
             FROM users u 
             JOIN service_providers sp ON u.id = sp.user_id 
             WHERE u.email = $1 AND u.user_type = $2
         `, [email, 'provider']);
 
-        const user = result.rows[0];
-        
-        if (!user || !(await bcrypt.compare(password, user.password))) {
-            req.session.error = 'Invalid credentials';
+        if (result.rows.length === 0) {
+            req.session.error = 'Invalid email or password';
             return res.redirect('/auth/provider-login');
         }
 
+        const user = result.rows[0];
+        
+        // Verify password
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
+            req.session.error = 'Invalid email or password';
+            return res.redirect('/auth/provider-login');
+        }
+
+        // Set user session data
         req.session.user = {
             id: user.id,
             email: user.email,
             businessName: user.business_name,
+            phoneNumber: user.phone_number,
             userType: 'provider',
-            providerId: user.provider_id
+            providerId: user.provider_id,
+            isVerified: user.is_verified
         };
 
-        res.redirect('/provider/dashboard');
+        req.session.success = 'Login successful!';
+
+        // Save session and redirect
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                req.session.error = 'Login failed. Please try again.';
+                return res.redirect('/auth/provider-login');
+            }
+            res.redirect('/provider/dashboard');
+        });
 
     } catch (err) {
         console.error('Provider login error:', err);
-        req.session.error = 'Login failed';
+        req.session.error = 'Login failed. Please try again.';
         res.redirect('/auth/provider-login');
     }
 };
@@ -330,7 +376,7 @@ router.get('/provider-login', isGuest, showProviderLogin);
 router.post('/provider-login', isGuest, providerLogin);
 router.get('/provider-register', isGuest, showProviderRegister);
 router.post('/provider-register', upload.single('certification'), providerRegister);
-router.post('/provider-login', providerLogin);
+// router.post('/provider-login', providerLogin);
 
 // Admin routes
 router.get('/admin-login', isGuest, (req, res) => res.render('auth/admin-login'));
