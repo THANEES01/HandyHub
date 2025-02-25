@@ -156,7 +156,7 @@ const customerLogin = async (req, res) => {
             userType: 'customer'
         };
 
-        res.redirect('/');
+        res.redirect('/customer/dashboard');
 
     } catch (err) {
         console.error('Login error:', err);

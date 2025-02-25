@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .category-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .category-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        
+        .category-icon {
+            font-size: 3rem;
+            background-color: var(--light-blue);
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+        }
+        
+        .category-icon i {
+            color: var(--primary-blue);
+        }
+        
+        .category-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark-blue);
+            margin-bottom: 15px;
+        }
+        
+        .category-card .card-body {
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .btn-explore {
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-explore:hover {
+            background-color: var(--dark-blue);
+            transform: translateY(-2px);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <%- include('../partials/navbar') %>
+
+    <div class="container mt-5 mb-5">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h2 class="text-center mb-4">Browse Service Categories</h2>
+                <p class="text-center text-muted">Choose a category to find qualified service providers</p>
+            </div>
+        </div>
+
+        <% if (locals.error) { %>
+            <div class="alert alert-danger" role="alert">
+                <%= error %>
+            </div>
+        <% } %>
+        
+        <div class="row">
+            <% 
+            // Map category names to their icons
+            const categoryIcons = {
+                'plumbing': 'bi-wrench',
+                'electrical': 'bi-lightning',
+                'roofing': 'bi-house',
+                'pest control': 'bi-bug',
+                'carpentry': 'bi-tools',
+                'ac_service': 'bi-wind',
+                'landscaping': 'bi-tree',
+                'cleaning': 'bi-house-heart',
+                'appliance': 'bi-gear',
+                // Default icon for other categories
+                'default': 'bi-check-circle'
+            };
+            
+            // Function to get the appropriate icon
+            const getIcon = (category) => {
+                const normalizedCategory = category.toLowerCase().replace(/[_\s-]+/g, '');
+                
+                for (const [key, value] of Object.entries(categoryIcons)) {
+                    if (normalizedCategory.includes(key.replace(/[_\s-]+/g, ''))) {
+                        return value;
+                    }
+                }
+                
+                return categoryIcons.default;
+            };
+            %>
+            
+            <% categories.forEach(function(category) { %>
+                <div class="col-lg-4 col-md-6">
+                    <div class="card category-card">
+                        <div class="card-body">
+                            <div class="category-icon">
+                                <i class="bi <%= getIcon(category.category_name) %>"></i>
+                            </div>
+                            <h3 class="category-title"><%= category.category_name.charAt(0).toUpperCase() + category.category_name.slice(1) %></h3>
+                            <a href="/customer/category/<%= category.category_name %>" class="btn btn-explore">Explore Providers</a>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    </div>
+
+    <div id="contact">
+        <!-- Footer -->
+        <%- include('../partials/footer') %>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

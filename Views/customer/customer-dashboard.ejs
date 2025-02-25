@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<style>
+  /* Services Section Styling */
+.services {
+    padding: 70px 0;
+    background-color: white;
+}
+
+.section-title {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.section-title h2 {
+    font-size: 2.5rem;
+    color: var(--dark-blue);
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.section-title p {
+    color: #666;
+    font-size: 1.2rem;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.service-card {
+    background-color: white;
+    border-radius: 15px;
+    padding: 40px 30px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    height: 100%;
+    border: none;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.service-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+}
+
+.service-icon {
+    width: 80px;
+    height: 80px;
+    background-color: var(--light-blue);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 25px;
+    transition: all 0.3s ease;
+}
+
+.service-card:hover .service-icon {
+    background-color: var(--primary-blue);
+}
+
+.service-card:hover .service-icon i {
+    color: white;
+}
+
+.service-icon i {
+    font-size: 2.2rem;
+    color: var(--primary-blue);
+    transition: all 0.3s ease;
+}
+
+.service-card h4 {
+    color: var(--dark-blue);
+    margin: 0 0 15px 0;
+    font-weight: 600;
+    font-size: 1.4rem;
+}
+
+.service-card p {
+    color: #666;
+    margin: 0;
+    line-height: 1.6;
+    font-size: 1.1rem;
+}
+
+.btn-explore {
+    background-color: var(--primary-blue);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 15px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    margin-top: 15px;
+    display: inline-block;
+}
+
+.btn-explore:hover {
+    background-color: var(--dark-blue);
+    transform: translateY(-2px);
+    color: white;
+}
+
+/* Add spacing between service cards */
+.services .row > div {
+    padding: 15px;
+}
+
+/* Features Section Styling */
+.features {
+    padding: 80px 0;
+    background-color: var(--light-blue);
+}
+
+.features .container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.features .section-title {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.features .section-title h2 {
+    font-size: 2.5rem;
+    color: var(--dark-blue);
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.features .section-title p {
+    color: #666;
+    font-size: 1.2rem;
+    max-width: 600px;
+    margin: 0 auto 40px;
+}
+
+.features .row {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    padding: 0 20px;
+}
+
+.feature-item {
+    background: white;
+    padding: 40px;
+    border-radius: 15px;
+    transition: all 0.3s ease;
+    text-align: center;
+    width: 450px; /* Fixed width for both cards */
+    min-height: 300px; /* Minimum height to ensure consistency */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.feature-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.feature-icon {
+    font-size: 3rem;
+    color: var(--primary-blue);
+    margin-bottom: 25px;
+    display: inline-block;
+}
+
+.feature-item h4 {
+    color: var(--dark-blue);
+    margin-bottom: 20px;
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+.feature-item p {
+    color: #666;
+    margin: 0;
+    line-height: 1.6;
+    font-size: 1.1rem;
+    max-width: 350px; /* Control text width for better readability */
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+    .features .row {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .feature-item {
+        width: 100%;
+        max-width: 450px;
+    }
+}
+
+.dashboard-welcome {
+    background-color: var(--light-blue);
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+}
+
+/* Dashboard Stats */
+.stats {
+    padding: 30px 0;
+}
+
+.stat-item {
+    text-align: center;
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+    height: 100%;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary-blue);
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: #666;
+    font-size: 1rem;
+}
+</style>
+
+<body>
+    <!-- Navbar -->
+    <%- include('../partials/navbar') %>
+
+    <div class="container mt-4 mb-5">
+        <div class="dashboard-welcome">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h2>Welcome, <%= user.firstName ? user.firstName : 'Customer' %></h2>
+                    <p class="mb-0">Manage your service requests and bookings from your dashboard.</p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <p class="mb-0 text-muted"><%= new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Stats -->
+        <div class="row">
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-item">
+                    <div class="stat-number"><%= totalBookings %></div>
+                    <div class="stat-label">Total Bookings</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-item">
+                    <div class="stat-number"><%= activeServices %></div>
+                    <div class="stat-label">Active Services</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-item">
+                    <div class="stat-number">$<%= totalSpent %></div>
+                    <div class="stat-label">Total Spent</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-item">
+                    <div class="stat-number"><%= completedBookings %></div>
+                    <div class="stat-label">Completed</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity Section -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">Recent Bookings</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <% if (recentBookings && recentBookings.length > 0) { %>
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Service</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% recentBookings.forEach(function(booking) { %>
+                                        <tr>
+                                            <td><%= booking.serviceName %></td>
+                                            <td><%= new Date(booking.bookingDate).toLocaleDateString() %></td>
+                                            <td>
+                                                <span class="badge <%= booking.status === 'Completed' ? 'bg-success' : 'bg-warning text-dark' %>">
+                                                    <%= booking.status %>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
+                        <% } else { %>
+                            <div class="p-3 text-center">
+                                <p class="text-muted mb-0">No recent bookings found.</p>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">Active Services</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <% if (activeServicesList && activeServicesList.length > 0) { %>
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Service</th>
+                                        <th>Provider</th>
+                                        <th>Start Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% activeServicesList.forEach(function(service) { %>
+                                        <tr>
+                                            <td><%= service.name %></td>
+                                            <td><%= service.providerName %></td>
+                                            <td><%= new Date(service.startDate).toLocaleDateString() %></td>
+                                        </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
+                        <% } else { %>
+                            <div class="p-3 text-center">
+                                <p class="text-muted mb-0">No active services found.</p>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Services Section with Categories from Database -->
+        <section class="services" id="services">
+            <div class="section-title">
+                <h2>Our Services</h2>
+                <p>Choose from our wide range of professional home services, delivered by verified experts</p>
+            </div>
+            <div class="row">
+                <% if (categories && categories.length > 0) { %>
+                    <% 
+                    // Map category names to their icons
+                    const categoryIcons = {
+                        'plumbing': 'bi-wrench',
+                        'electrical': 'bi-lightning',
+                        'roofing': 'bi-house',
+                        'pest_control': 'bi-bug',
+                        'carpentry': 'bi-tools',
+                        'ac_service': 'bi-wind',
+                        'landscaping': 'bi-tree',
+                        'cleaning': 'bi-house-heart',
+                        'appliance': 'bi-gear',
+                        'roof_repairs': 'bi bi-house',
+                        'pest_control': 'bi bi-bug',
+                        'carpentru': 'bi bi-tools',
+                        // Default icon for other categories
+                        'default': 'bi-check-circle'
+                    };
+                    
+                    // Function to get the appropriate icon
+                    const getIcon = (category) => {
+                        const normalizedCategory = category.toLowerCase().replace(/[_\s-]+/g, '');
+                        
+                        for (const [key, value] of Object.entries(categoryIcons)) {
+                            if (normalizedCategory.includes(key.replace(/[_\s-]+/g, ''))) {
+                                return value;
+                            }
+                        }
+                        
+                        return categoryIcons.default;
+                    };
+
+                    // Get descriptions for categories
+                    const categoryDescriptions = {
+                        'plumbing': 'Expert plumbing solutions for leaks, repairs, and installations with 24/7 emergency service.',
+                        'electrical': 'Professional electrical services for all your home wiring and installation needs.',
+                        'roofing': 'Complete roofing solutions including repairs, maintenance, and installations.',
+                        'pest_control': 'Effective pest control services to keep your home safe and hygienic.',
+                        'carpentry': 'Custom carpentry solutions for furniture repairs and home improvements.',
+                        'ac_service': 'Complete AC maintenance, repair, and installation services.',
+                        'landscaping': 'Professional landscaping services to beautify your outdoor spaces.',
+                        'cleaning': 'Comprehensive cleaning services for a spotless and healthy home.',
+                        'appliance': 'Expert repair and maintenance for all home appliances.',
+                        'roof_repairs': 'Complete roofing solutions including repairs, maintenance, and installations.',
+                        'pest_control': 'Effective pest control services to keep your home safe and hygienic.',
+                        'carpentry': 'Custom carpentry solutions for furniture repairs and home improvements.',
+                        'default': 'Professional services provided by verified experts.'
+                    };
+                    
+                    // Function to get the description for a category
+                    const getDescription = (category) => {
+                        const normalizedCategory = category.toLowerCase().replace(/[_\s-]+/g, '');
+                        
+                        for (const [key, value] of Object.entries(categoryDescriptions)) {
+                            if (normalizedCategory.includes(key.replace(/[_\s-]+/g, ''))) {
+                                return value;
+                            }
+                        }
+                        
+                        return categoryDescriptions.default;
+                    };
+                    %>
+                    
+                    <% categories.forEach(function(category) { %>
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            <div class="service-card">
+                                <div class="service-icon">
+                                    <i class="bi <%= getIcon(category.category_name) %>"></i>
+                                </div>
+                                <h4><%= category.category_name.charAt(0).toUpperCase() + category.category_name.slice(1) %></h4>
+                                <p><%= getDescription(category.category_name) %></p>
+                                <a href="/customer/category/<%= category.category_name %>" class="btn btn-explore">Explore Providers</a>
+                            </div>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <div class="col-12">
+                        <div class="alert alert-info text-center" role="alert">
+                            No service categories available at the moment.
+                        </div>
+                    </div>
+                <% } %>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features">
+            <div class="container">
+                <div class="section-title">
+                    <h2>Why Choose HandyHub?</h2>
+                    <p>We deliver quality service with trusted professionals</p>
+                </div>
+                <div class="row">
+                    <div class="feature-item">
+                        <i class="bi bi-shield-check feature-icon"></i>
+                        <h4>Verified Professionals</h4>
+                        <p>All our service providers are thoroughly vetted and background checked for your peace of mind.</p>
+                    </div>
+                    <div class="feature-item">
+                        <i class="bi bi-cash-stack feature-icon"></i>
+                        <h4>Transparent Pricing</h4>
+                        <p>Clear, upfront pricing with no hidden charges.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="contact">
+        <!-- Footer -->
+        <%- include('../partials/footer') %>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
