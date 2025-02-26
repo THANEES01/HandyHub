@@ -36,8 +36,25 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({ 
-    storage: storage,
-    fileFilter: fileFilter,
+    storage: multer.diskStorage({
+        destination: function (req, file, cb) {
+            cb(null, 'public/uploads/certifications')
+        },
+        filename: function (req, file, cb) {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            cb(null, uniqueSuffix + path.extname(file.originalname));
+        }
+    }),
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png'];
+        const ext = path.extname(file.originalname).toLowerCase();
+        
+        if (allowedTypes.includes(ext)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Only PDF, JPG, and PNG files are allowed.'));
+        }
+    },
     limits: {
         fileSize: 5 * 1024 * 1024 // 5MB limit
     }
@@ -215,7 +232,8 @@ const providerRegister = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create user
+        // Remove the email uniqueness check 
+        // Create user WITHOUT checking for existing email
         const newUser = await client.query(
             'INSERT INTO users (email, password, user_type) VALUES ($1, $2, $3) RETURNING id',
             [email, hashedPassword, 'provider']
@@ -271,9 +289,10 @@ const providerRegister = async (req, res) => {
 // Handle provider login
 const providerLogin = async (req, res) => {
     try {
+        console.log("Provider login attempt:", req.body.email);
         const { email, password } = req.body;
         
-        // First, check if the user exists
+        // Modify query to get ALL providers with this email
         const result = await pool.query(`
             SELECT u.*, sp.id as provider_id, sp.business_name, sp.phone_number, sp.is_verified
             FROM users u 
@@ -281,40 +300,49 @@ const providerLogin = async (req, res) => {
             WHERE u.email = $1 AND u.user_type = $2
         `, [email, 'provider']);
 
+        console.log("Query result:", result.rows.length > 0 ? "User(s) found" : "No user found");
+
         if (result.rows.length === 0) {
             req.session.error = 'Invalid email or password';
             return res.redirect('/auth/provider-login');
         }
 
-        const user = result.rows[0];
-        
-        // Verify password
-        const validPassword = await bcrypt.compare(password, user.password);
-        if (!validPassword) {
+        // Try to find a matching password
+        let validUser = null;
+        for (const user of result.rows) {
+            const validPassword = await bcrypt.compare(password, user.password);
+            if (validPassword) {
+                validUser = user;
+                break;
+            }
+        }
+
+        if (!validUser) {
             req.session.error = 'Invalid email or password';
             return res.redirect('/auth/provider-login');
         }
 
         // Set user session data
         req.session.user = {
-            id: user.id,
-            email: user.email,
-            businessName: user.business_name,
-            phoneNumber: user.phone_number,
+            id: validUser.id,
+            email: validUser.email,
+            businessName: validUser.business_name,
+            phoneNumber: validUser.phone_number,
             userType: 'provider',
-            providerId: user.provider_id,
-            isVerified: user.is_verified
+            providerId: validUser.provider_id,
+            isVerified: validUser.is_verified
         };
 
-        req.session.success = 'Login successful!';
+        console.log("Session data set:", req.session.user);
 
-        // Save session and redirect
+        // Check if session is saving correctly
         req.session.save((err) => {
             if (err) {
                 console.error('Session save error:', err);
                 req.session.error = 'Login failed. Please try again.';
                 return res.redirect('/auth/provider-login');
             }
+            console.log("Session saved successfully, redirecting to dashboard");
             res.redirect('/provider/dashboard');
         });
 

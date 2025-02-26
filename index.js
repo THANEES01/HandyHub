@@ -19,7 +19,9 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // View engine setup
 app.set('view engine', 'ejs');
@@ -27,10 +29,11 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Session setup
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'THANEES01',
+    secret: 'your-secret-key',
     resave: false,
     saveUninitialized: false,
-    cookie: {
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production', // Only use secure cookies in production
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));

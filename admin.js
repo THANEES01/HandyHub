@@ -1,8 +1,12 @@
 import express from 'express';
 import pool from './config/database.js';
-import nodemailer from 'nodemailer';
+// import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
+import dotenv from 'dotenv';
 // const { MailtrapClient } = require('mailtrap');
 // import { MailtrapClient } from 'mailtrap';
+
+dotenv.config();
 
 const router = express.Router();
 
@@ -30,13 +34,22 @@ const isAdmin = (req, res, next) => {
 // };
 
 // Create a transporter using Gmail SMTP
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD
-    }
-});
+// const transporter = nodemailer.createTransport({
+//     service: 'gmail',
+//     auth: {
+//         user: process.env.GMAIL_USER,     // Your Gmail address
+//         pass: process.env.GMAIL_APP_PASSWORD  // App-specific password
+//     },
+//     // host: 'smtp.gmail.com',
+//     port: 465,
+//     secure: true,
+//     tls: {
+//         rejectUnauthorized: false
+//     }
+// });
+
+// Set SendGrid API Key
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const getDashboard = async (req, res) => {
     try {
@@ -48,8 +61,8 @@ const getDashboard = async (req, res) => {
         // Get total customers count
         const customersCountQuery = await pool.query('SELECT COUNT(*) FROM customers');
 
-        // Get pending providers
-        const pendingProvidersQuery = await pool.query(`
+        // Get all providers (pending, approved, and rejected)
+        const providersQuery = await pool.query(`
             SELECT 
                 sp.id, 
                 sp.business_name, 
@@ -60,8 +73,8 @@ const getDashboard = async (req, res) => {
             FROM service_providers sp
             JOIN users u ON sp.user_id = u.id
             LEFT JOIN service_categories sc ON sp.id = sc.provider_id
-            WHERE sp.is_verified = false
             GROUP BY sp.id, sp.business_name, sp.phone_number, sp.is_verified, u.email
+            ORDER BY sp.is_verified, sp.id
         `);
 
         // Get all customers - Using the exact same query that works in test-db
@@ -85,7 +98,7 @@ const getDashboard = async (req, res) => {
         const templateData = {
             totalProviders: parseInt(providersCountQuery.rows[0].count),
             totalCustomers: parseInt(customersCountQuery.rows[0].count),
-            pendingProviders: pendingProvidersQuery.rows,
+            providers: providersQuery.rows, // Include all providers
             customers: customersQuery.rows
         };
 
@@ -107,8 +120,6 @@ const getDashboard = async (req, res) => {
 
 const getProviderDetails = async (req, res) => {
     try {
-        console.log('Provider ID:', req.params.id);
-
         const query = `
             SELECT 
                 sp.id,
@@ -117,17 +128,29 @@ const getProviderDetails = async (req, res) => {
                 sp.is_verified,
                 sp.certification_url,
                 u.email,
-                ARRAY_AGG(DISTINCT sc.category_name) as categories,
-                (
-                    SELECT ARRAY_AGG(so.service_name)
-                    FROM services_offered so
-                    WHERE so.provider_id = sp.id
+                COALESCE(
+                    ARRAY_AGG(DISTINCT sc.category_name) FILTER (WHERE sc.category_name IS NOT NULL),
+                    ARRAY[]::text[]
+                ) as categories,
+                COALESCE(
+                    (
+                        SELECT ARRAY_AGG(so.service_name)
+                        FROM services_offered so
+                        WHERE so.provider_id = sp.id
+                    ),
+                    ARRAY[]::text[]
                 ) as services
             FROM service_providers sp
             JOIN users u ON sp.user_id = u.id
             LEFT JOIN service_categories sc ON sc.provider_id = sp.id
             WHERE sp.id = $1
-            GROUP BY sp.id, sp.business_name, sp.phone_number, sp.is_verified, sp.certification_url, u.email
+            GROUP BY 
+                sp.id, 
+                sp.business_name, 
+                sp.phone_number, 
+                sp.is_verified, 
+                sp.certification_url, 
+                u.email
         `;
 
         const provider = await pool.query(query, [req.params.id]);
@@ -136,26 +159,40 @@ const getProviderDetails = async (req, res) => {
             return res.status(404).json({ error: 'Provider not found' });
         }
 
-        console.log('Provider details:', provider.rows[0]);
-        res.json(provider.rows[0]);
+        const providerData = provider.rows[0];
+        
+        // Remove the duplicate '/uploads/certifications/' prefix
+        if (providerData.certification_url) {
+            const cleanPath = providerData.certification_url.replace(/^\/uploads\/certifications\//, '');
+            providerData.certification_file = `/uploads/certifications/${cleanPath}`;
+        }
+
+        console.log('Debug - Certification Details:');
+        console.log('Original URL:', providerData.certification_url);
+        console.log('Generated File Path:', providerData.certification_file);
+
+        res.json(providerData);
     } catch (err) {
         console.error('Error in getProviderDetails:', err);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ 
+            error: 'Server error', 
+            details: err.message 
+        });
     }
-    };
+};
 
 // Email sending function
 
-// Updated Email sending function
+// Verification Email Function
 const sendVerificationEmail = async (provider) => {
     try {
-        // Log email attempt
-        console.log('Attempting to send verification email to:', provider.email);
-
-        const info = await transporter.sendMail({
-            from: '"HandyHub" <handyhubinfo01@gmail.com>',
+        const msg = {
             to: provider.email,
-            subject: "HandyHub - Service Provider Account Verified",
+            from: {
+                email: process.env.SENDER_EMAIL,
+                name: 'HandyHub'
+            },
+            subject: 'HandyHub - Service Provider Account Verified',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4;">
                     <div style="background-color: #0077be; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
@@ -182,17 +219,83 @@ const sendVerificationEmail = async (provider) => {
                     </div>
                 </div>
             `
+        };
+
+        // Send email
+        const [response] = await sgMail.send(msg);
+        
+        console.log('Email sent successfully:', {
+            statusCode: response.statusCode,
+            headers: response.headers
         });
 
-        console.log('Email sent successfully:', info);
-        return info;
+        return response;
 
     } catch (error) {
-        console.error('Email sending failed:', error);
-        if (error.response) {
-            console.error('Error details:', error.response.data);
-        }
-        return null;
+        console.error('Verification Email Sending Error:', {
+            message: error.message,
+            response: error.response?.body
+        });
+        throw error;
+    }
+};
+
+// Add this new function for rejection email
+const sendRejectionEmail = async (provider, rejectionReason) => {
+    try {
+        const msg = {
+            to: provider.email,
+            from: {
+                email: process.env.SENDER_EMAIL,
+                name: 'HandyHub'
+            },
+            subject: 'HandyHub - Service Provider Registration Review',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4;">
+                    <div style="background-color: #dc3545; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+                        <h1>Registration Review Outcome</h1>
+                    </div>
+                    <div style="background-color: white; padding: 20px; border-radius: 0 0 10px 10px;">
+                        <p>Dear ${provider.business_name},</p>
+                        
+                        <p>We regret to inform you that your service provider registration has been rejected.</p>
+                        
+                        <h3>Reason for Rejection:</h3>
+                        <p style="background-color: #f8d7da; padding: 15px; border-radius: 5px; color: #721c24;">
+                            ${rejectionReason}
+                        </p>
+
+                        <h3>Next Steps:</h3>
+                        <ul>
+                            <li>Please review the feedback carefully</li>
+                            <li>Make necessary corrections to your application</li>
+                            <li>Re-submit your registration with updated information</li>
+                        </ul>
+
+                        <p>If you have any questions, please contact our support team.</p>
+                        
+                        <p>Best regards,<br>HandyHub Team</p>
+                    </div>
+                </div>
+            `
+        };
+
+        // Send email
+        const [response] = await sgMail.send(msg);
+        
+        console.log('Rejection email sent successfully:', {
+            statusCode: response.statusCode,
+            headers: response.headers
+        });
+
+        return response;
+
+    } catch (error) {
+        console.error('Rejection Email Sending Error:', {
+            message: error.message,
+            response: error.response?.body
+        });
+        throw error;
     }
 };
 
@@ -202,10 +305,29 @@ const updateVerificationStatus = async (req, res) => {
     try {
         await client.query('BEGIN');
         
+        // Correctly destructure the status and rejectionReason
+        const { status, rejectionReason } = req.body;
+        
+        // Log the received data for debugging
+        console.log('Received status:', status);
+        console.log('Received rejection reason:', rejectionReason);
+
+        // Ensure status is defined
+        if (!status) {
+            return res.status(400).json({ 
+                error: 'Status is required', 
+                details: 'No status provided in the request' 
+            });
+        }
+
         // Update provider's verification status
         const result = await client.query(
-            'UPDATE service_providers SET is_verified = $1 WHERE id = $2 RETURNING *',
-            [req.body.status === 'approve', req.params.id]
+            'UPDATE service_providers SET is_verified = $1, verification_status = $2 WHERE id = $3 RETURNING *',
+            [
+                status === 'approve', 
+                status === 'approve' ? 'approved' : 'rejected', 
+                req.params.id
+            ]
         );
 
         // Fetch provider's complete details
@@ -225,22 +347,29 @@ const updateVerificationStatus = async (req, res) => {
 
         const provider = providerQuery.rows[0];
 
-        // If approving, send email
-        if (req.body.status === 'approve') {
+        // If approving, send verification email
+        if (status === 'approve') {
             try {
                 await sendVerificationEmail(provider);
             } catch (emailError) {
-                console.error('Email sending failed in route:', emailError);
-                // Continue with the process even if email fails
+                console.error('Approval email sending failed:', emailError);
+            }
+        } 
+        // If rejecting, send rejection email
+        else if (status === 'reject' && rejectionReason) {
+            try {
+                await sendRejectionEmail(provider, rejectionReason);
+            } catch (emailError) {
+                console.error('Rejection email sending failed:', emailError);
             }
         }
 
         await client.query('COMMIT');
         res.json({ 
             success: true, 
-            message: req.body.status === 'approve' 
-                ? 'Provider approved and email sent' 
-                : 'Provider rejected' 
+            message: status === 'approve' 
+                ? 'Provider approved and verification email sent' 
+                : 'Provider rejected and notification email sent' 
         });
 
     } catch (err) {
@@ -294,6 +423,17 @@ const getCustomerDetails = async (req, res) => {
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 };
+
+// Admin logout route
+router.get('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Logout error:', err);
+            return res.status(500).json({ success: false, error: 'Logout failed' });
+        }
+        res.redirect('/auth/admin-login');
+    });
+});
 
 
 // Test route to verify database connection and data

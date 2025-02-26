@@ -14,7 +14,7 @@
             --light-blue: #e6f2ff;
             --sidebar-width: 250px;
         }
-
+        
         body {
             min-height: 100vh;
             background-color: #f8f9fa;
@@ -30,7 +30,7 @@
             top: 0;
             padding-top: 20px;
         }
-
+        
         .sidebar-brand {
             color: white;
             font-size: 1.5rem;
@@ -39,23 +39,23 @@
             display: block;
             margin-bottom: 20px;
         }
-
+        
         .nav-link {
             color: rgba(255, 255, 255, 0.8);
             padding: 12px 20px;
             margin: 4px 0;
             transition: all 0.3s ease;
         }
-
+        
         .nav-link:hover, .nav-link.active {
             color: white;
             background-color: rgba(255, 255, 255, 0.1);
         }
-
+        
         .nav-link i {
             margin-right: 10px;
         }
-
+        
         /* Main Content Styling */
         .main-content {
             margin-left: var(--sidebar-width);
@@ -81,7 +81,10 @@
             width: 120px;
             height: 120px;
             border-radius: 50%;
-            object-fit: cover;
+            background-color: var(--light-blue);
+            color: var(--dark-blue);
+            font-size: 3.5rem;
+            font-weight: 600;
             border: 3px solid var(--light-blue);
         }
 
@@ -215,7 +218,7 @@
             <a class="nav-link" href="/provider/earnings">
                 <i class="bi bi-wallet2"></i> Earnings
             </a>
-            <a class="nav-link text-danger" href="/auth/provider-login">
+            <a class="nav-link text-danger" href="/auth/logout">
                 <i class="bi bi-box-arrow-right"></i> Logout
             </a>
         </nav>
@@ -239,40 +242,41 @@
             <% } %>
     
             <!-- Profile Section -->
-            <div class="profile-section">
-                <div class="profile-header">
-                    <img src="/images/default-provider.jpg" alt="Provider Photo" class="profile-image">
-                    <div class="profile-info">
-                        <h2 class="business-name"><%= provider.business_name %></h2>
-                        <div class="info-item">
-                            <div class="info-label">Email:</div>
-                            <div><%= provider.email %></div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Phone:</div>
-                            <div><%= provider.phone_number %></div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Service Categories:</div>
-                            <div class="services-list">
-                                <% provider.categories.forEach(category => { %>
-                                    <span class="service-tag"><%= category.category_name %></span>
-                                <% }) %>
-                            </div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Services Offered:</div>
-                            <div class="services-list">
-                                <% provider.services.forEach(service => { %>
-                                    <span class="service-tag"><%= service.service_name %></span>
-                                <% }) %>
-                            </div>
+            <div class="profile-header">
+                <!-- Replace the image tag with a div containing the first letter -->
+                <div class="profile-image d-flex align-items-center justify-content-center bg-light-blue">
+                    <%= provider.business_name.charAt(0).toUpperCase() %>
+                </div>
+                <div class="profile-info">
+                    <h2 class="business-name"><%= provider.business_name %></h2>
+                    <div class="info-item">
+                        <div class="info-label">Email:</div>
+                        <div><%= provider.email %></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Phone:</div>
+                        <div><%= provider.phone_number %></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Service Categories:</div>
+                        <div class="services-list">
+                            <% provider.categories.forEach(category => { %>
+                                <span class="service-tag"><%= category.category_name %></span>
+                            <% }) %>
                         </div>
                     </div>
-                    <a href="/provider/profile" class="btn btn-edit">
-                        <i class="bi bi-pencil"></i> Edit Profile
-                    </a>
+                    <div class="info-item">
+                        <div class="info-label">Services Offered:</div>
+                        <div class="services-list">
+                            <% provider.services.forEach(service => { %>
+                                <span class="service-tag"><%= service.service_name %></span>
+                            <% }) %>
+                        </div>
+                    </div>
                 </div>
+                <a href="/provider/profile" class="btn btn-edit">
+                    <i class="bi bi-pencil"></i> Edit Profile
+                </a>
             </div>
 
             <!-- Statistics Section -->

@@ -305,8 +305,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <% pendingProviders.forEach(function(provider) { %>
-                        <tr>
+                    <% providers.forEach(function(provider) { %>
+                        <tr data-provider-id="<%= provider.id %>">
                             <td><%= provider.business_name %></td>
                             <td><%= provider.email %></td>
                             <td>
@@ -319,7 +319,11 @@
                                 <% } %>
                             </td>
                             <td>
-                                <span class="badge bg-warning">Pending</span>
+                                <% if (provider.is_verified === false) { %>
+                                    <span class="badge bg-warning">Pending</span>
+                                <% } else { %>
+                                    <span class="badge bg-success">Approved</span>
+                                <% } %>
                             </td>
                             <td>
                                 <button class="btn btn-sm btn-primary" onclick="showProviderDetails('<%= provider.id %>')">
@@ -464,7 +468,7 @@
     let currentProviderId = null;
 
     function showProviderDetails(id) {
-    currentProviderId = id;
+        currentProviderId = id;
     console.log('Current Provider ID set:', currentProviderId);
     
     fetch(`/admin/provider/${id}/details`)
@@ -500,32 +504,55 @@
                 servicesElement.innerHTML = '<span class="text-muted">No services offered</span>';
             }
 
-            // Handle document preview
+            // Handle document preview with extensive logging
             const documentPreview = document.getElementById('documentPreview');
+            console.log('Full document path:', provider.certification_file);
+
             if (provider.certification_file) {
                 const fileExt = provider.certification_file.split('.').pop().toLowerCase();
-                if (['pdf'].includes(fileExt)) {
-                    documentPreview.innerHTML = `
-                        <embed src="${provider.certification_file}" 
-                               type="application/pdf" 
-                               width="100%" 
-                               height="500px">
-                    `;
-                } else if (['jpg', 'jpeg', 'png'].includes(fileExt)) {
-                    documentPreview.innerHTML = `
-                        <img src="${provider.certification_file}" 
-                             class="img-fluid" 
-                             alt="Business Documentation"
-                             style="max-height: 500px;">
-                    `;
+                
+                // Clear previous content
+                documentPreview.innerHTML = '';
+
+                if (fileExt === 'pdf') {
+                    // For PDF files, use an embed element
+                    const pdfEmbed = document.createElement('embed');
+                    pdfEmbed.src = provider.certification_file;
+                    pdfEmbed.type = 'application/pdf';
+                    pdfEmbed.width = '100%';
+                    pdfEmbed.height = '500px';
+                    
+                    documentPreview.appendChild(pdfEmbed);
+
+                    pdfEmbed.addEventListener('error', () => {
+                        console.error('PDF failed to load:', provider.certification_file);
+                        documentPreview.innerHTML = `
+                            <div class="alert alert-danger">
+                                Unable to load PDF. 
+                                Check file path: ${provider.certification_file}
+                            </div>
+                        `;
+                    });
                 } else {
-                    documentPreview.innerHTML = `
-                        <a href="${provider.certification_file}" 
-                           class="btn btn-primary" 
-                           target="_blank">
-                            Download Document
-                        </a>
-                    `;
+                    // For image files, use img element
+                    const img = document.createElement('img');
+                    img.src = provider.certification_file;
+                    img.alt = 'Business Documentation';
+                    img.style.maxWidth = '100%';
+                    img.style.maxHeight = '500px';
+                    img.style.objectFit = 'contain';
+
+                    documentPreview.appendChild(img);
+
+                    img.addEventListener('error', () => {
+                        console.error('Image failed to load:', provider.certification_file);
+                        documentPreview.innerHTML = `
+                            <div class="alert alert-danger">
+                                Unable to load document. 
+                                Check file path: ${provider.certification_file}
+                            </div>
+                        `;
+                    });
                 }
             } else {
                 documentPreview.innerHTML = '<p class="text-muted">No documentation provided</p>';
@@ -536,56 +563,72 @@
         })
         .catch(error => {
             console.error('Error fetching provider details:', error);
-            alert('Error loading provider details. Please try again.');
+            
+            // Clear previous content
+            document.getElementById('documentPreview').innerHTML = `
+                <div class="alert alert-danger">
+                    Unable to load document. Error: ${error.message}
+                </div>
+            `;
+            
+            // Still show the modal with error message
+            new bootstrap.Modal(document.getElementById('providerDetailsModal')).show();
         });
 }
 
 function updateVerificationStatus(status) {
-    if (!currentProviderId) return;
+        if (!currentProviderId) return;
 
-    let data = { status };
-    if (status === 'reject') {
-        const reason = prompt('Please provide a reason for rejection:');
-        if (!reason) return;
-        data.rejectionReason = reason;
-    }
-
-    fetch(`/admin/provider/${currentProviderId}/verify`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            // Update the status in the table directly
-            const providerRow = document.querySelector(`tr[data-provider-id="${currentProviderId}"]`);
-            if (providerRow) {
-                // Update status column
-                const statusCell = providerRow.querySelector('.status-column');
-                if (statusCell) {
-                    statusCell.innerHTML = status === 'approve' 
-                        ? '<span class="badge bg-success">Approved</span>' 
-                        : '<span class="badge bg-danger">Rejected</span>';
-                }
-            }
-            
-            // Close the modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('providerDetailsModal'));
-            if (modal) modal.hide();
-
-            // Show success message
-            alert(result.message);
-        } else {
-            throw new Error(result.error || 'Operation failed');
+        const data = { status };
+        if (status === 'reject') {
+            const reason = prompt('Please provide a detailed reason for rejection:');
+            if (!reason) return; // Cancel if no reason is provided
+            data.rejectionReason = reason;
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error updating verification status');
-    });
+
+        fetch(`/admin/provider/${currentProviderId}/verify`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            // Log the raw response for debugging
+            console.log('Response status:', response.status);
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                // Find the row in the providers table
+                const providerRow = document.querySelector(`tr[data-provider-id="${currentProviderId}"]`);
+                
+                if (providerRow) {
+                    // Update status badge
+                    const statusCell = providerRow.querySelector('td:nth-child(4)');
+                    if (statusCell) {
+                        if (status === 'approve') {
+                            statusCell.innerHTML = '<span class="badge bg-success">Approved</span>';
+                        } else {
+                            statusCell.innerHTML = '<span class="badge bg-danger">Rejected</span>';
+                        }
+                    }
+                }
+                
+                // Close the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('providerDetailsModal'));
+                if (modal) modal.hide();
+
+                // Show success message
+                alert(result.message);
+            } else {
+                throw new Error(result.error || 'Operation failed');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating verification status');
+        });
 }
 
 function showCustomerDetails(id) {
@@ -619,24 +662,11 @@ function showCustomerDetails(id) {
 }
 
 function logout() {
-        if (confirm('Are you sure you want to logout?')) {
-            fetch('/admin/logout', {
-                method: 'POST',
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (response.ok) {
-                    window.location.href = '/auth/admin-login';
-                } else {
-                    throw new Error('Logout failed');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Logout failed. Please try again.');
-            });
-        }
+    if (confirm('Are you sure you want to logout?')) {
+        // Use browser's navigation to redirect to the logout route
+        window.location.href = '/auth/logout';
     }
+}
 
 </script>
 
