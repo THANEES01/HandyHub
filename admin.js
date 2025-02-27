@@ -1,7 +1,9 @@
 import express from 'express';
 import pool from './config/database.js';
 // import nodemailer from 'nodemailer';
-import sgMail from '@sendgrid/mail';
+// import sgMail from '@sendgrid/mail';
+import formData from 'form-data';
+import Mailgun from 'mailgun.js';
 import dotenv from 'dotenv';
 // const { MailtrapClient } = require('mailtrap');
 // import { MailtrapClient } from 'mailtrap';
@@ -10,10 +12,19 @@ dotenv.config();
 
 const router = express.Router();
 
+
+// Initialize Mailgun
+const mailgun = new Mailgun(formData);
+const mg = mailgun.client({
+    username: 'api',
+    key: process.env.MAILGUN_API_KEY
+});
+
 const isAdmin = (req, res, next) => {
    if (req.session.user?.userType === 'admin') return next();
    res.redirect('/auth/admin-login');
 };
+
 
 // Create Mailtrap client
 // const client = new MailtrapClient({ token: process.env.MAILTRAP_TOKEN });
@@ -49,7 +60,7 @@ const isAdmin = (req, res, next) => {
 // });
 
 // Set SendGrid API Key
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const getDashboard = async (req, res) => {
     try {
