@@ -1,12 +1,8 @@
 import express from 'express';
 import pool from './config/database.js';
-// import nodemailer from 'nodemailer';
-// import sgMail from '@sendgrid/mail';
-import formData from 'form-data';
-import Mailgun from 'mailgun.js';
+import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-// const { MailtrapClient } = require('mailtrap');
-// import { MailtrapClient } from 'mailtrap';
+
 
 dotenv.config();
 
@@ -14,10 +10,29 @@ const router = express.Router();
 
 
 // Initialize Mailgun
-const mailgun = new Mailgun(formData);
-const mg = mailgun.client({
-    username: 'api',
-    key: process.env.MAILGUN_API_KEY
+// const mailgun = new Mailgun(formData);
+// const mg = mailgun.client({
+//     username: 'api',
+//     key: process.env.MAILGUN_API_KEY
+// });
+
+// Create Mailtrap transporter
+const transporter = nodemailer.createTransport({
+    host: "sandbox.smtp.mailtrap.io",
+    port: 2525,
+    auth: {
+        user: process.env.MAILTRAP_USER,
+        pass: process.env.MAILTRAP_PASSWORD
+    }
+});
+
+// Verify connection configuration
+transporter.verify(function(error, success) {
+    if (error) {
+        console.log('SMTP verification error:', error);
+    } else {
+        console.log('SMTP server is ready to take our messages');
+    }
 });
 
 const isAdmin = (req, res, next) => {
@@ -31,17 +46,6 @@ const isAdmin = (req, res, next) => {
 // const sender = { 
 //     name: 'HandyHub', 
 //     email: process.env.MAILTRAP_SENDER_EMAIL 
-// };
-
-// Create a transporter using SMTP
-// const createTransporter = () => {
-//     return nodemailer.createTransport({
-//         service: 'gmail',
-//         auth: {
-//             user: process.env.EMAIL_USER,
-//             pass: process.env.EMAIL_PASS
-//         }
-//     });
 // };
 
 // Create a transporter using Gmail SMTP
@@ -88,7 +92,7 @@ const getDashboard = async (req, res) => {
             ORDER BY sp.is_verified, sp.id
         `);
 
-        // Get all customers - Using the exact same query that works in test-db
+        // Get all customers
         const customersQuery = await pool.query(`
             SELECT 
                 c.id,
@@ -109,7 +113,7 @@ const getDashboard = async (req, res) => {
         const templateData = {
             totalProviders: parseInt(providersCountQuery.rows[0].count),
             totalCustomers: parseInt(customersCountQuery.rows[0].count),
-            providers: providersQuery.rows, // Include all providers
+            providers: providersQuery.rows,
             customers: customersQuery.rows
         };
 
@@ -197,12 +201,9 @@ const getProviderDetails = async (req, res) => {
 // Verification Email Function
 const sendVerificationEmail = async (provider) => {
     try {
-        const msg = {
+        const mailOptions = {
+            from: '"HandyHub" <admin@handyhub.com>',
             to: provider.email,
-            from: {
-                email: process.env.SENDER_EMAIL,
-                name: 'HandyHub'
-            },
             subject: 'HandyHub - Service Provider Account Verified',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4;">
@@ -233,19 +234,19 @@ const sendVerificationEmail = async (provider) => {
         };
 
         // Send email
-        const [response] = await sgMail.send(msg);
+        const info = await transporter.sendMail(mailOptions);
         
-        console.log('Email sent successfully:', {
-            statusCode: response.statusCode,
-            headers: response.headers
+        console.log('Verification email sent successfully:', {
+            messageId: info.messageId,
+            previewURL: nodemailer.getTestMessageUrl(info)
         });
-
-        return response;
+        
+        return info;
 
     } catch (error) {
         console.error('Verification Email Sending Error:', {
             message: error.message,
-            response: error.response?.body
+            stack: error.stack
         });
         throw error;
     }
@@ -254,12 +255,9 @@ const sendVerificationEmail = async (provider) => {
 // Add this new function for rejection email
 const sendRejectionEmail = async (provider, rejectionReason) => {
     try {
-        const msg = {
+        const mailOptions = {
+            from: '"HandyHub" <admin@handyhub.com>',
             to: provider.email,
-            from: {
-                email: process.env.SENDER_EMAIL,
-                name: 'HandyHub'
-            },
             subject: 'HandyHub - Service Provider Registration Review',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4;">
@@ -292,19 +290,19 @@ const sendRejectionEmail = async (provider, rejectionReason) => {
         };
 
         // Send email
-        const [response] = await sgMail.send(msg);
+        const info = await transporter.sendMail(mailOptions);
         
         console.log('Rejection email sent successfully:', {
-            statusCode: response.statusCode,
-            headers: response.headers
+            messageId: info.messageId,
+            previewURL: nodemailer.getTestMessageUrl(info)
         });
-
-        return response;
+        
+        return info;
 
     } catch (error) {
         console.error('Rejection Email Sending Error:', {
             message: error.message,
-            response: error.response?.body
+            stack: error.stack
         });
         throw error;
     }
@@ -364,6 +362,7 @@ const updateVerificationStatus = async (req, res) => {
                 await sendVerificationEmail(provider);
             } catch (emailError) {
                 console.error('Approval email sending failed:', emailError);
+                // Continue with the process even if email fails
             }
         } 
         // If rejecting, send rejection email
@@ -372,6 +371,7 @@ const updateVerificationStatus = async (req, res) => {
                 await sendRejectionEmail(provider, rejectionReason);
             } catch (emailError) {
                 console.error('Rejection email sending failed:', emailError);
+                // Continue with the process even if email fails
             }
         }
 
