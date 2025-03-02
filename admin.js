@@ -8,14 +8,6 @@ dotenv.config();
 
 const router = express.Router();
 
-
-// Initialize Mailgun
-// const mailgun = new Mailgun(formData);
-// const mg = mailgun.client({
-//     username: 'api',
-//     key: process.env.MAILGUN_API_KEY
-// });
-
 // Create Mailtrap transporter
 const transporter = nodemailer.createTransport({
     host: "sandbox.smtp.mailtrap.io",
@@ -39,32 +31,6 @@ const isAdmin = (req, res, next) => {
    if (req.session.user?.userType === 'admin') return next();
    res.redirect('/auth/admin-login');
 };
-
-
-// Create Mailtrap client
-// const client = new MailtrapClient({ token: process.env.MAILTRAP_TOKEN });
-// const sender = { 
-//     name: 'HandyHub', 
-//     email: process.env.MAILTRAP_SENDER_EMAIL 
-// };
-
-// Create a transporter using Gmail SMTP
-// const transporter = nodemailer.createTransport({
-//     service: 'gmail',
-//     auth: {
-//         user: process.env.GMAIL_USER,     // Your Gmail address
-//         pass: process.env.GMAIL_APP_PASSWORD  // App-specific password
-//     },
-//     // host: 'smtp.gmail.com',
-//     port: 465,
-//     secure: true,
-//     tls: {
-//         rejectUnauthorized: false
-//     }
-// });
-
-// Set SendGrid API Key
-// sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const getDashboard = async (req, res) => {
     try {
@@ -135,6 +101,7 @@ const getDashboard = async (req, res) => {
 
 const getProviderDetails = async (req, res) => {
     try {
+        // Updated query to include pricing information
         const query = `
             SELECT 
                 sp.id,
@@ -154,7 +121,21 @@ const getProviderDetails = async (req, res) => {
                         WHERE so.provider_id = sp.id
                     ),
                     ARRAY[]::text[]
-                ) as services
+                ) as services,
+                COALESCE(
+                    (
+                        SELECT jsonb_agg(
+                            jsonb_build_object(
+                                'category', sc_pricing.category_name,
+                                'base_fee', sc_pricing.base_fee,
+                                'fee_type', sc_pricing.fee_type
+                            )
+                        )
+                        FROM service_categories sc_pricing
+                        WHERE sc_pricing.provider_id = sp.id
+                    ),
+                    '[]'::jsonb
+                ) as pricing
             FROM service_providers sp
             JOIN users u ON sp.user_id = u.id
             LEFT JOIN service_categories sc ON sc.provider_id = sp.id
@@ -185,6 +166,7 @@ const getProviderDetails = async (req, res) => {
         console.log('Debug - Certification Details:');
         console.log('Original URL:', providerData.certification_url);
         console.log('Generated File Path:', providerData.certification_file);
+        console.log('Provider Pricing Data:', providerData.pricing);
 
         res.json(providerData);
     } catch (err) {
@@ -195,8 +177,6 @@ const getProviderDetails = async (req, res) => {
         });
     }
 };
-
-// Email sending function
 
 // Verification Email Function
 const sendVerificationEmail = async (provider) => {
@@ -490,5 +470,6 @@ router.get('/dashboard', isAdmin, getDashboard);
 router.get('/provider/:id/details', isAdmin, getProviderDetails);
 router.get('/customer/:id/details', isAdmin, getCustomerDetails);
 router.post('/provider/:id/verify', isAdmin, updateVerificationStatus);
+
 
 export default router;

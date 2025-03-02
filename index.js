@@ -3,6 +3,7 @@ import session from 'express-session';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import authRoutes from './auth.js'; // Import authRoutes
 import providerRoutes from './provider.js'; // Import providerRoutes

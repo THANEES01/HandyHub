@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -231,6 +230,53 @@
         height: auto;
     }
 
+    /* Pricing table styles */
+    .pricing-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin-top: 10px;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .pricing-table th {
+        background-color: var(--primary-blue);
+        color: white;
+        font-weight: 600;
+        padding: 12px 15px;
+        text-align: left;
+    }
+    
+    .pricing-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #dee2e6;
+        background-color: white;
+    }
+    
+    .pricing-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .price-badge {
+        background-color: var(--primary-blue);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+
+    .fee-type-badge {
+        background-color: #e6f2ff;
+        color: var(--dark-blue);
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        border: 1px solid var(--primary-blue);
+    }
+
     </style>
 
 </head>
@@ -365,6 +411,25 @@
                 <div class="info-section">
                     <h5>Service Categories</h5>
                     <div id="serviceCategories"></div>
+                </div>
+
+                <!-- Add this new section for pricing information -->
+                <div class="info-section">
+                    <h5>Pricing Information</h5>
+                    <div id="pricingInfo">
+                        <table class="pricing-table">
+                            <thead>
+                                <tr>
+                                    <th>Service Category</th>
+                                    <th>Base Fee</th>
+                                    <th>Fee Type</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pricingTableBody">
+                                <!-- Pricing data will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div class="info-section">
@@ -502,6 +567,39 @@
                     .join('');
             } else {
                 servicesElement.innerHTML = '<span class="text-muted">No services offered</span>';
+            }
+
+            // Handle pricing display - NEW
+            const pricingTableBody = document.getElementById('pricingTableBody');
+            pricingTableBody.innerHTML = '';
+
+            if (provider.pricing && provider.pricing.length > 0) {
+                provider.pricing.forEach(pricing => {
+                    const row = document.createElement('tr');
+                    
+                    // Format the category name to be more readable
+                    const formattedCategory = pricing.category
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, c => c.toUpperCase());
+
+                    // Format the fee type to be more readable
+                    const formattedFeeType = pricing.fee_type
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, c => c.toUpperCase());
+                    
+                    row.innerHTML = `
+                        <td>${formattedCategory}</td>
+                        <td>$${pricing.base_fee.toFixed(2)}</td>
+                        <td><span class="fee-type-badge">${formattedFeeType}</span></td>
+                    `;
+                    pricingTableBody.appendChild(row);
+                });
+            } else {
+                pricingTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center">No pricing information available</td>
+                    </tr>
+                `;
             }
 
             // Handle document preview with extensive logging

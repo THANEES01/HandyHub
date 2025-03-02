@@ -225,14 +225,15 @@ const providerRegister = async (req, res) => {
             phoneNumber,
             serviceCategories,
             services,
-            password
+            password,
+            categoryFees,  // New field for base fees
+            feeTypes       // New field for fee types (per visit or per hour)
         } = req.body;
 
         await client.query('BEGIN');
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Remove the email uniqueness check 
         // Create user WITHOUT checking for existing email
         const newUser = await client.query(
             'INSERT INTO users (email, password, user_type) VALUES ($1, $2, $3) RETURNING id',
@@ -247,12 +248,17 @@ const providerRegister = async (req, res) => {
             [newUser.rows[0].id, businessName, phoneNumber, certificationPath]
         );
 
-        // Insert service categories
+        // Insert service categories with base fees
         if (Array.isArray(serviceCategories)) {
             for (const category of serviceCategories) {
+                // Get the base fee for this category (default to 0 if not set)
+                const baseFee = categoryFees && categoryFees[category] ? parseFloat(categoryFees[category]) : 0;
+                // Get the fee type for this category (default to 'per visit' if not set)
+                const feeType = feeTypes && feeTypes[category] ? feeTypes[category] : 'per visit';
+                
                 await client.query(
-                    'INSERT INTO service_categories (provider_id, category_name) VALUES ($1, $2)',
-                    [newProvider.rows[0].id, category]
+                    'INSERT INTO service_categories (provider_id, category_name, base_fee, fee_type) VALUES ($1, $2, $3, $4)',
+                    [newProvider.rows[0].id, category, baseFee, feeType]
                 );
             }
         }
