@@ -277,6 +277,92 @@
         border: 1px solid var(--primary-blue);
     }
 
+    .btn-outline-danger.delete-btn {
+        border-color: #dc3545;
+        color: #dc3545;
+        transition: all 0.3s ease;
+        border-radius: 6px;
+        font-weight: 500;
+    }
+    
+    .btn-outline-danger.delete-btn:hover {
+        background-color: #dc3545;
+        color: white;
+        box-shadow: 0 3px 8px rgba(220, 53, 69, 0.3);
+        transform: translateY(-2px);
+    }
+    
+    .btn-outline-primary {
+        border-radius: 6px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-outline-primary:hover {
+        box-shadow: 0 3px 8px rgba(0, 119, 190, 0.3);
+        transform: translateY(-2px);
+    }
+    
+    /* Animation for delete confirmation */
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    
+    .modal-danger .modal-content {
+        animation: pulse 1s;
+    }
+    
+    /* Updated modal styles */
+    #deleteConfirmModal .modal-content {
+        border: none;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    #deleteConfirmModal .modal-header {
+        background-color: #dc3545;
+        color: white;
+        border-bottom: none;
+        padding: 1.2rem 1.5rem;
+    }
+    
+    #deleteConfirmModal .modal-footer {
+        border-top: none;
+        padding: 1.2rem 1.5rem;
+    }
+    
+    #deleteConfirmModal .btn-danger {
+        background-color: #dc3545;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    #deleteConfirmModal .btn-danger:hover {
+        background-color: #c82333;
+        box-shadow: 0 3px 8px rgba(220, 53, 69, 0.3);
+        transform: translateY(-2px);
+    }
+    
+    #deleteConfirmModal .btn-secondary {
+        background-color: #6c757d;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    #deleteConfirmModal .btn-secondary:hover {
+        background-color: #5a6268;
+        box-shadow: 0 3px 8px rgba(108, 117, 125, 0.3);
+        transform: translateY(-2px);
+    }
+
     </style>
 
 </head>
@@ -336,6 +422,7 @@
 
             <!-- Service Providers Table -->
             <!-- Service Providers Section -->
+<!-- Update the providers table to include a delete button -->
 <div class="card mt-4">
     <div class="card-body">
         <h4 class="card-title">Service Providers</h4>
@@ -372,9 +459,14 @@
                                 <% } %>
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-primary" onclick="showProviderDetails('<%= provider.id %>')">
-                                    <i class="bi bi-eye"></i> View
-                                </button>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="showProviderDetails('<%= provider.id %>')">
+                                        <i class="bi bi-eye"></i> View
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger delete-btn" onclick="deleteProvider('<%= provider.id %>', '<%= provider.business_name %>')">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     <% }); %>
@@ -382,7 +474,7 @@
             </table>
         </div>
     </div>
-</div>       
+</div>
 
 <!-- Add this modal at the bottom of dashboard.ejs -->
 <div class="modal fade" id="providerDetailsModal">
@@ -452,6 +544,26 @@
                         Reject
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add a confirmation modal for deletion -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the service provider: <strong id="providerNameToDelete"></strong>?</p>
+                <p class="text-danger">This action cannot be undone. All associated data including bookings and reviews will be permanently deleted.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
             </div>
         </div>
     </div>
@@ -532,8 +644,8 @@
 <script>
     let currentProviderId = null;
 
-    function showProviderDetails(id) {
-        currentProviderId = id;
+function showProviderDetails(id) {
+    currentProviderId = id;
     console.log('Current Provider ID set:', currentProviderId);
     
     fetch(`/admin/provider/${id}/details`)
@@ -569,7 +681,7 @@
                 servicesElement.innerHTML = '<span class="text-muted">No services offered</span>';
             }
 
-            // Handle pricing display - NEW
+            // Handle pricing display with RM currency
             const pricingTableBody = document.getElementById('pricingTableBody');
             pricingTableBody.innerHTML = '';
 
@@ -589,7 +701,7 @@
                     
                     row.innerHTML = `
                         <td>${formattedCategory}</td>
-                        <td>$${pricing.base_fee.toFixed(2)}</td>
+                        <td>RM${pricing.base_fee.toFixed(2)}</td>
                         <td><span class="fee-type-badge">${formattedFeeType}</span></td>
                     `;
                     pricingTableBody.appendChild(row);
@@ -672,6 +784,54 @@
             // Still show the modal with error message
             new bootstrap.Modal(document.getElementById('providerDetailsModal')).show();
         });
+}
+
+function deleteProvider(id, businessName) {
+    // Set the provider ID and name for deletion
+    currentProviderId = id;
+    document.getElementById('providerNameToDelete').textContent = businessName;
+    
+    // Show the confirmation modal
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    deleteModal.show();
+    
+    // Set up the confirm button
+    document.getElementById('confirmDeleteBtn').onclick = function() {
+        // Send delete request to the server
+        fetch(`/admin/provider/${id}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                // Remove the row from the table
+                const providerRow = document.querySelector(`tr[data-provider-id="${id}"]`);
+                if (providerRow) {
+                    providerRow.remove();
+                }
+                
+                // Hide the modal
+                deleteModal.hide();
+                
+                // Show success message
+                alert('Service provider deleted successfully');
+            } else {
+                throw new Error(result.error || 'Failed to delete service provider');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting provider:', error);
+            alert(`Error: ${error.message}`);
+        });
+    };
 }
 
 function updateVerificationStatus(status) {

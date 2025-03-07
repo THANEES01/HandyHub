@@ -3,7 +3,6 @@ import pool from './config/database.js';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
-
 dotenv.config();
 
 const router = express.Router();
@@ -28,8 +27,11 @@ transporter.verify(function(error, success) {
 });
 
 const isAdmin = (req, res, next) => {
-   if (req.session.user?.userType === 'admin') return next();
-   res.redirect('/auth/admin-login');
+    if (req.session.user && req.session.user.userType === 'admin') {
+        return next();
+    }
+    req.session.error = 'Access denied';
+    res.redirect('/auth/admin-login');
 };
 
 const getDashboard = async (req, res) => {
@@ -177,6 +179,75 @@ const getProviderDetails = async (req, res) => {
         });
     }
 };
+
+// Delete a service provider
+router.delete('/provider/:id/delete', isAdmin, async (req, res) => {
+    const providerId = req.params.id;
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+        
+        // Get the user_id associated with this provider
+        const providerResult = await client.query(
+            'SELECT user_id FROM service_providers WHERE id = $1',
+            [providerId]
+        );
+        
+        if (providerResult.rows.length === 0) {
+            throw new Error('Service provider not found');
+        }
+        
+        const userId = providerResult.rows[0].user_id;
+        
+        // Delete related records in order to maintain referential integrity
+        
+        // 1. Delete service categories
+        await client.query('DELETE FROM service_categories WHERE provider_id = $1', [providerId]);
+        
+        // 2. Delete services offered
+        await client.query('DELETE FROM services_offered WHERE provider_id = $1', [providerId]);
+        
+        // 3. Delete bookings (if any)
+        // First get booking IDs to delete related booking_services
+        // const bookingResults = await client.query(
+        //     'SELECT id FROM bookings WHERE provider_id = $1',
+        //     [providerId]
+        // );
+        
+        // const bookingIds = bookingResults.rows.map(row => row.id);
+        
+        // if (bookingIds.length > 0) {
+        //     // 3a. Delete booking_services
+        //     await client.query('DELETE FROM booking_services WHERE booking_id = ANY($1::int[])', [bookingIds]);
+            
+        //     // 3b. Delete reviews related to these bookings
+        //     await client.query('DELETE FROM reviews WHERE booking_id = ANY($1::int[])', [bookingIds]);
+            
+        //     // 3c. Delete payment records related to these bookings
+        //     await client.query('DELETE FROM payments WHERE booking_id = ANY($1::int[])', [bookingIds]);
+            
+        //     // 3d. Finally delete the bookings
+        //     await client.query('DELETE FROM bookings WHERE id = ANY($1::int[])', [bookingIds]);
+        // }
+        
+        // 4. Delete provider record
+        await client.query('DELETE FROM service_providers WHERE id = $1', [providerId]);
+        
+        // 5. Delete user account
+        await client.query('DELETE FROM users WHERE id = $1', [userId]);
+        
+        await client.query('COMMIT');
+        
+        res.json({ success: true, message: 'Service provider deleted successfully' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error deleting service provider:', error);
+        res.status(500).json({ success: false, error: error.message });
+    } finally {
+        client.release();
+    }
+});
 
 // Verification Email Function
 const sendVerificationEmail = async (provider) => {
@@ -425,45 +496,6 @@ router.get('/logout', (req, res) => {
         res.redirect('/auth/admin-login');
     });
 });
-
-
-// Test route to verify database connection and data
-// router.get('/test-db', async (req, res) => {
-//     try {
-//         // Test users table
-//         const usersResult = await pool.query('SELECT * FROM users WHERE user_type = $1', ['customer']);
-//         console.log('Users:', usersResult.rows);
-
-//         // Test customers table
-//         const customersResult = await pool.query('SELECT * FROM customers');
-//         console.log('Customers:', customersResult.rows);
-
-//         // Test joined query
-//         const joinedResult = await pool.query(`
-//             SELECT 
-//                 c.id,
-//                 c.user_id,
-//                 c.first_name,
-//                 c.last_name,
-//                 c.phone_number,
-//                 u.email,
-//                 u.created_at
-//             FROM customers c
-//             JOIN users u ON c.user_id = u.id
-//             WHERE u.user_type = 'customer'
-//         `);
-//         console.log('Joined result:', joinedResult.rows);
-
-//         res.json({
-//             users: usersResult.rows,
-//             customers: customersResult.rows,
-//             joined: joinedResult.rows
-//         });
-//     } catch (error) {
-//         console.error('Test DB Error:', error);
-//         res.status(500).json({ error: error.message });
-//     }
-// });
 
 // Routes
 router.get('/dashboard', isAdmin, getDashboard);
