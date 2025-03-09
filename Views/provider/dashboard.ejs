@@ -197,6 +197,58 @@
         .rating {
             color: #ffc107;
         }
+
+        /* Pricing table styling */
+        .pricing-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .pricing-table th {
+            background-color: var(--primary-blue);
+            color: white;
+            font-weight: 600;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        
+        .pricing-table td {
+            padding: 12px 15px;
+            border-top: 1px solid #dee2e6;
+            background-color: white;
+        }
+        
+        .pricing-table tr:nth-child(even) td {
+            background-color: var(--light-blue);
+        }
+        
+        .pricing-badge {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .fee-type-badge {
+            background-color: #e6f2ff;
+            color: var(--dark-blue);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            border: 1px solid var(--primary-blue);
+        }
+
+        .price-value {
+            font-weight: 600;
+            color: var(--dark-blue);
+        }
     </style>
 </head>
 <body>
@@ -309,6 +361,35 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Pricing Information Section -->
+        <div class="data-section">
+            <h3 class="section-title">Pricing Information</h3>
+            <% if (provider.categories && provider.categories.length > 0) { %>
+                <div class="table-responsive">
+                    <table class="pricing-table">
+                        <thead>
+                            <tr>
+                                <th>Service Category</th>
+                                <th>Base Fee</th>
+                                <th>Fee Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% provider.categories.forEach(category => { %>
+                                <tr>
+                                    <td><strong><%= category.category_name %></strong></td>
+                                    <td><span class="price-value">RM <%= parseFloat(category.base_fee || 0).toFixed(2) %></span></td>
+                                    <td><span class="fee-type-badge"><%= category.fee_type || 'Per Visit' %></span></td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            <% } else { %>
+                <p class="text-center text-muted">No pricing information available</p>
+            <% } %>
         </div>
 
         <!-- Bookings Section -->
