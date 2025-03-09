@@ -40,6 +40,13 @@ const getDashboard = async (req, res) => {
             WHERE u.id = $1
         `, [req.session.user.id]);
 
+        // Store providerId in session if not already present
+        if (!req.session.user.providerId) {
+            req.session.user.providerId = providerResult.rows[0].id;
+            // Save session to persist the providerId
+            req.session.save();
+        }
+
         // Get provider's services
         const servicesResult = await pool.query(`
             SELECT service_name 
@@ -54,6 +61,9 @@ const getDashboard = async (req, res) => {
             LEFT JOIN category_pricing_models cpm ON LOWER(sc.category_name) = LOWER(cpm.category_name)
             WHERE sc.provider_id = $1
         `, [providerResult.rows[0].id]);
+
+        // Log categories for debugging
+        console.log('Provider categories for dashboard:', categoriesResult.rows);
 
         // Combine all data
         const providerData = {
@@ -87,6 +97,8 @@ const updateProfile = async (req, res) => {
     
     try {
         const providerId = req.session.user.providerId;
+        console.log('Using provider ID for update:', providerId);
+        
         const { 
             businessName, 
             phoneNumber, 
@@ -175,7 +187,7 @@ const updateProfile = async (req, res) => {
 };
 
 // Route to display the edit profile page
-router.get('/edit-profile', isAuthenticated, async (req, res) => {
+router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
     try {
         const providerId = req.session.user.providerId;
         
@@ -209,6 +221,8 @@ router.get('/edit-profile', isAuthenticated, async (req, res) => {
         
         // Log each category found for debugging
         console.log('Categories found for provider:', providerId);
+        console.log('Full categories result:', JSON.stringify(categoriesResult.rows, null, 2));
+        
         categoriesResult.rows.forEach((cat, index) => {
             console.log(`Category ${index+1}: ${cat.category_name}, Fee: ${cat.base_fee}, Type: ${cat.fee_type}`);
         });
@@ -235,7 +249,7 @@ router.get('/edit-profile', isAuthenticated, async (req, res) => {
             serviceCount: provider.services.length
         });
         
-        // Fetch category pricing models if needed, but don't join with service_categories
+        // Fetch category pricing models
         const pricingModelsResult = await pool.query(`
             SELECT category_name, default_fee_type, description
             FROM category_pricing_models
