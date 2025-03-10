@@ -188,10 +188,10 @@ router.get('/category/:categoryName', isCustomerAuth, async (req, res) => {
     try {
         const categoryName = req.params.categoryName;
         
-        // Get all service providers that offer services in this category
+        // Get all service providers that offer services in this category with pricing info
         const providersResult = await pool.query(`
             SELECT DISTINCT sp.id, sp.business_name, sp.phone_number, 
-                   u.email, sp.is_verified
+                   u.email, sp.is_verified, sc.base_fee, sc.fee_type
             FROM service_providers sp
             JOIN users u ON sp.user_id = u.id
             JOIN service_categories sc ON sp.id = sc.provider_id
@@ -233,6 +233,8 @@ router.get('/category/:categoryName', isCustomerAuth, async (req, res) => {
 router.get('/provider/:providerId', isCustomerAuth, async (req, res) => {
     try {
         const providerId = req.params.providerId;
+        // Get the category from query parameter if available
+        const categoryName = req.query.category;
         
         // Get provider details
         const providerResult = await pool.query(`
@@ -250,13 +252,24 @@ router.get('/provider/:providerId', isCustomerAuth, async (req, res) => {
         
         const provider = providerResult.rows[0];
         
-        // Get all categories offered by this provider
-        const categoriesResult = await pool.query(`
-            SELECT category_name
-            FROM service_categories
-            WHERE provider_id = $1
-            ORDER BY category_name ASC
-        `, [providerId]);
+        // If category is specified, get only that category's pricing
+        let categoriesResult;
+        if (categoryName) {
+            categoriesResult = await pool.query(`
+                SELECT category_name, base_fee, fee_type
+                FROM service_categories
+                WHERE provider_id = $1 AND category_name = $2
+                LIMIT 1
+            `, [providerId, categoryName]);
+        } else {
+            // Otherwise get all categories offered by this provider
+            categoriesResult = await pool.query(`
+                SELECT category_name, base_fee, fee_type
+                FROM service_categories
+                WHERE provider_id = $1
+                ORDER BY category_name ASC
+            `, [providerId]);
+        }
         
         // Get all services offered by this provider
         const servicesResult = await pool.query(`
@@ -265,12 +278,18 @@ router.get('/provider/:providerId', isCustomerAuth, async (req, res) => {
             WHERE provider_id = $1
             ORDER BY service_name ASC
         `, [providerId]);
+
+        // For debugging
+        console.log('Provider ID:', providerId);
+        console.log('Selected Category:', categoryName || 'All categories');
+        console.log('Categories for this provider:', categoriesResult.rows);
         
         res.render('customer/provider-details', { 
             title: provider.business_name,
             user: req.session.user,
             provider: provider,
             categories: categoriesResult.rows,
+            selectedCategory: categoryName,
             services: servicesResult.rows
         });
     } catch (error) {
@@ -301,9 +320,9 @@ router.get('/book-service/:providerId', isCustomerAuth, async (req, res) => {
         
         const provider = providerResult.rows[0];
         
-        // Get all categories offered by this provider
+        // Get all categories offered by this provider with pricing info
         const categoriesResult = await pool.query(`
-            SELECT category_name
+            SELECT category_name, base_fee, fee_type
             FROM service_categories
             WHERE provider_id = $1
             ORDER BY category_name ASC

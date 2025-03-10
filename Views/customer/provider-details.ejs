@@ -165,6 +165,19 @@
             margin-right: 10px;
             font-size: 1.2rem;
         }
+        
+        .provider-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .provider-info i {
+            font-size: 1.2rem;
+            color: var(--primary-blue);
+            margin-right: 10px;
+            width: 24px;
+        }
     </style>
 </head>
 <body>
@@ -191,10 +204,7 @@
                 <% } %>
                 
                 <h2><%= provider.business_name %></h2>
-                
-                <div class="profile-actions">
-                    <a href="#booking-section" class="btn btn-light">Book Now</a>
-                </div>
+        
             </div>
             
             <div class="profile-content">
@@ -230,15 +240,15 @@
                         </div>
                         
                         <div class="profile-section">
-                            <h3>Service Categories</h3>
-                            <div>
-                                <% if (categories && categories.length > 0) { %>
-                                    <% categories.forEach(category => { %>
-                                        <span class="category-tag"><%= category.category_name %></span>
-                                    <% }); %>
-                                <% } else { %>
-                                    <p class="text-muted">No categories listed</p>
-                                <% } %>
+                            <h3>Service Pricing</h3>
+                            
+                            <div id="category-info">
+                                <!-- This will be populated by client-side JavaScript -->
+                            </div>
+                            
+                            <div class="alert alert-info mt-3" role="alert">
+                                <i class="bi bi-info-circle"></i> 
+                                Additional charges may apply for parts and materials.
                             </div>
                         </div>
                         
@@ -257,16 +267,16 @@
                     </div>
                     
                     <div class="col-lg-4">
-                        <div class="booking-section">
-                            <h3>Book This Service</h3>
+                        <div class="booking-section" id="booking-section">
+                            <h3>Book This Service Provider</h3>
                             <p>Contact this provider directly or request a service through our platform.</p>
                             
                             <a href="/customer/book-service/<%= provider.id %>" class="btn btn-book-service w-100 mb-3">
                                 Book Now
                             </a>
                             
-                            <a href="tel:<%= provider.phone_number %>" class="btn btn-outline-primary w-100">
-                                <i class="bi bi-telephone"></i> Call Provider
+                            <a href="#" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-chat-dots"></i> Message Provider
                             </a>
                         </div>
                     </div>
@@ -354,7 +364,7 @@
     </div>
 
     <div id="contact">
-        <!-- Footer -->
+        <!-- Footer  -->
         <%- include('../partials/footer') %>
     </div>
 
@@ -362,8 +372,52 @@
     <script>
         // Set minimum date for booking to today
         document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('bookingDate').min = today;
+            if (document.getElementById('bookingDate')) {
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('bookingDate').min = today;
+            }
+
+            // Extract category from URL and update category info
+            const urlParams = new URLSearchParams(window.location.search);
+            const selectedCategory = urlParams.get('category');
+            const categories = <%- JSON.stringify(categories || []) %>;
+
+            if (categories && categories.length > 0) {
+                let categoryToShow = null;
+
+                if (selectedCategory) {
+                    for (let i = 0; i < categories.length; i++) {
+                        if (categories[i].category_name.toLowerCase() === selectedCategory.toLowerCase()) {
+                            categoryToShow = categories[i];
+                            break;
+                        }
+                    }
+                }
+
+                if (!categoryToShow) {
+                    categoryToShow = categories[0];
+                }
+
+                const categoryInfo = `
+                    <div class="provider-info">
+                        <i class="bi bi-cash-coin"></i>
+                        <span>
+                            <strong>Base Fee:</strong> RM ${parseFloat(categoryToShow.base_fee).toFixed(2).replace(/\.00$/, '')}
+                            <span class="badge bg-info text-dark">${categoryToShow.fee_type}</span>
+                        </span>
+                    </div>
+                `;
+                document.getElementById('category-info').innerHTML = categoryInfo;
+            } else {
+                document.getElementById('category-info').innerHTML = `
+                    <div class="provider-info">
+                        <i class="bi bi-cash-coin"></i>
+                        <span>
+                            <strong>Base Fee:</strong> RM NaN
+                        </span>
+                    </div>
+                `;
+            }
         });
     </script>
 </body>
