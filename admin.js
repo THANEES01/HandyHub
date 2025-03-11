@@ -103,7 +103,7 @@ const getDashboard = async (req, res) => {
 
 const getProviderDetails = async (req, res) => {
     try {
-        // Updated query to include pricing information
+        // Updated query to include pricing and availability information
         const query = `
             SELECT 
                 sp.id,
@@ -137,7 +137,23 @@ const getProviderDetails = async (req, res) => {
                         WHERE sc_pricing.provider_id = sp.id
                     ),
                     '[]'::jsonb
-                ) as pricing
+                ) as pricing,
+                COALESCE(
+                    (
+                        SELECT jsonb_agg(
+                            jsonb_build_object(
+                                'day_of_week', pa.day_of_week,
+                                'start_time', pa.start_time,
+                                'end_time', pa.end_time,
+                                'slot_duration', pa.slot_duration,
+                                'is_available', pa.is_available
+                            )
+                        )
+                        FROM provider_availability pa
+                        WHERE pa.provider_id = sp.id
+                    ),
+                    '[]'::jsonb
+                ) as availability
             FROM service_providers sp
             JOIN users u ON sp.user_id = u.id
             LEFT JOIN service_categories sc ON sc.provider_id = sp.id
@@ -165,10 +181,7 @@ const getProviderDetails = async (req, res) => {
             providerData.certification_file = `/uploads/certifications/${cleanPath}`;
         }
 
-        console.log('Debug - Certification Details:');
-        console.log('Original URL:', providerData.certification_url);
-        console.log('Generated File Path:', providerData.certification_file);
-        console.log('Provider Pricing Data:', providerData.pricing);
+        console.log('Provider Availability Data:', providerData.availability);
 
         res.json(providerData);
     } catch (err) {

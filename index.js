@@ -9,6 +9,7 @@ import authRoutes from './auth.js'; // Import authRoutes
 import providerRoutes from './provider.js'; // Import providerRoutes
 import adminRoutes from './admin.js'; // Import adminRoutes
 import customerRoutes from './customer.js';
+import bookingRoutes from './booking.js';
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ app.use('/auth', authRoutes);
 app.use('/provider', providerRoutes);
 app.use('/admin', adminRoutes);
 app.use('/customer', customerRoutes);
+app.use(bookingRoutes);
 
 // Home route
 app.get('/', (req, res) => {

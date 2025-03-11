@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -173,7 +172,7 @@
       <div class="content-wrapper">
           <div class="container mt-5 mb-5">
               <a href="/customer/provider/<%= provider.id %><%= selectedCategory ? '?category=' + selectedCategory : '' %>" class="back-link">
-                  <i class="bi bi-arrow-left"></i> Back to Provider Profile
+                  <i class="bi bi-arrow-left"></i>Back to Provider Profile
               </a>
               
               <div class="booking-container">
@@ -268,15 +267,11 @@
                                   <input type="date" class="form-control" id="preferredDate" name="preferredDate" required>
                               </div>
                               
+                               <!-- Replace the static time slot dropdown with this -->
                               <div class="mb-3">
                                   <label for="timeSlot" class="form-label">Available Time Slots</label>
-                                  <select class="form-select" id="timeSlot" name="timeSlot" required>
-                                      <option value="" disabled selected>Select a time slot</option>
-                                      <option value="8:00 AM - 10:00 AM">8:00 AM - 10:00 AM</option>
-                                      <option value="10:00 AM - 12:00 PM">10:00 AM - 12:00 PM</option>
-                                      <option value="12:00 PM - 2:00 PM">12:00 PM - 2:00 PM</option>
-                                      <option value="2:00 PM - 4:00 PM">2:00 PM - 4:00 PM</option>
-                                      <option value="4:00 PM - 6:00 PM">4:00 PM - 6:00 PM</option>
+                                  <select class="form-select" id="timeSlot" name="timeSlot" required disabled>
+                                      <option value="" disabled selected>Please select a date first</option>
                                   </select>
                               </div>
                           </div>
@@ -345,20 +340,63 @@
                     });
                 }
             });
+
+                // Add this to the script section in book-service.ejs
+                document.getElementById('preferredDate').addEventListener('change', function() {
+                const date = this.value;
+                const providerId = document.querySelector('input[name="providerId"]').value;
+                
+                if (date) {
+                    // Fetch available time slots for this date and provider
+                    fetch(`/api/available-slots?providerId=${providerId}&date=${date}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const timeSlotSelect = document.getElementById('timeSlot');
+                            timeSlotSelect.innerHTML = ''; // Clear existing options
+                            timeSlotSelect.disabled = false;
+                            
+                            if (data.slots && data.slots.length > 0) {
+                                data.slots.forEach(slot => {
+                                    const option = document.createElement('option');
+                                    option.value = slot;
+                                    option.textContent = slot;
+                                    timeSlotSelect.appendChild(option);
+                                });
+                            } else {
+                                const option = document.createElement('option');
+                                option.value = "";
+                                option.textContent = "No available slots for this date";
+                                option.disabled = true;
+                                option.selected = true;
+                                timeSlotSelect.appendChild(option);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching time slots:', error);
+                            const timeSlotSelect = document.getElementById('timeSlot');
+                            timeSlotSelect.innerHTML = '<option value="" disabled selected>Error loading time slots</option>';
+                        });
+                } else {
+                    const timeSlotSelect = document.getElementById('timeSlot');
+                    timeSlotSelect.innerHTML = '<option value="" disabled selected>Please select a date first</option>';
+                    timeSlotSelect.disabled = true;
+                }
             
             // Pre-fill user information if available
-            const user = <%- JSON.stringify(user || {}) %>;
-            if (user) {
-                if (document.getElementById('fullName') && user.firstName && user.lastName) {
-                    document.getElementById('fullName').value = user.firstName + ' ' + user.lastName;
-                }
-                if (document.getElementById('email') && user.email) {
-                    document.getElementById('email').value = user.email;
-                }
-                if (document.getElementById('phoneNumber') && user.phoneNumber) {
-                    document.getElementById('phoneNumber').value = user.phoneNumber;
-                }
-            }
+            // const user = <%- JSON.stringify(user || {}) %>;
+            // if (user) {
+            //     if (document.getElementById('fullName') && user.firstName && user.lastName) {
+            //         document.getElementById('fullName').value = user.firstName + ' ' + user.lastName;
+            //     }
+            //     if (document.getElementById('email') && user.email) {
+            //         document.getElementById('email').value = user.email;
+            //     }
+            //     if (document.getElementById('phoneNumber') && user.phoneNumber) {
+            //         document.getElementById('phoneNumber').value = user.phoneNumber;
+            //     }
+            // }
+
+
         });
     </script>
 </body>

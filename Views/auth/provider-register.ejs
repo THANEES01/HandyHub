@@ -333,6 +333,73 @@
                     </div>
                 </div>
 
+                <!-- Add this to the provider-register.ejs file -->
+                    <div class="form-section mt-4">
+                        <h3>Service Availability</h3>
+                        <p>Set your regular working hours for each day of the week</p>
+                        
+                        <div class="availability-container">
+                            <!-- Loop through days of week -->
+                            <% const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']; %>
+                            <% daysOfWeek.forEach(day => { %>
+                                <div class="day-availability mb-3">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input availability-toggle" type="checkbox" 
+                                                    id="<%= day.toLowerCase() %>Available" 
+                                                    name="availableDays" 
+                                                    value="<%= day %>" 
+                                                    checked>
+                                                <label class="form-check-label" for="<%= day.toLowerCase() %>Available">
+                                                    <%= day %>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-9 time-slots">
+                                            <div class="row">
+                                                <div class="col-5">
+                                                    <label class="small">Start Time</label>
+                                                    <select class="form-select form-select-sm" name="startTime_<%= day %>">
+                                                        <% for(let hour = 6; hour <= 20; hour++) { %>
+                                                            <% const displayHour = hour > 12 ? hour - 12 : hour; %>
+                                                            <% const ampm = hour >= 12 ? 'PM' : 'AM'; %>
+                                                            <option value="<%= hour %>:00" <%= hour === 9 ? 'selected' : '' %>>
+                                                                <%= displayHour %>:00 <%= ampm %>
+                                                            </option>
+                                                        <% } %>
+                                                    </select>
+                                                </div>
+                                                <div class="col-5">
+                                                    <label class="small">End Time</label>
+                                                    <select class="form-select form-select-sm" name="endTime_<%= day %>">
+                                                        <% for(let hour = 6; hour <= 20; hour++) { %>
+                                                            <% const displayHour = hour > 12 ? hour - 12 : hour; %>
+                                                            <% const ampm = hour >= 12 ? 'PM' : 'AM'; %>
+                                                            <option value="<%= hour %>:00" <%= hour === 17 ? 'selected' : '' %>>
+                                                                <%= displayHour %>:00 <%= ampm %>
+                                                            </option>
+                                                        <% } %>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }); %>
+                            
+                            <div class="mb-3">
+                                <label for="slotDuration" class="form-label">Appointment Duration</label>
+                                <select class="form-select" id="slotDuration" name="slotDuration">
+                                    <option value="60" selected>1 hour</option>
+                                    <option value="90">1.5 hours</option>
+                                    <option value="120">2 hours</option>
+                                    <option value="180">3 hours</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                 <div class="services-section">
                     <label class="form-label">Services Offered</label>
                     <p class="text-muted small mb-3">List the specific services you provide</p>

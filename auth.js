@@ -263,6 +263,20 @@ const providerRegister = async (req, res) => {
             }
         }
 
+        // Insert provider availability
+        if (Array.isArray(req.body.availableDays)) {
+            for (const day of req.body.availableDays) {
+                const startTime = req.body[`startTime_${day}`];
+                const endTime = req.body[`endTime_${day}`];
+                const slotDuration = parseInt(req.body.slotDuration);
+                
+                await client.query(
+                    'INSERT INTO provider_availability (provider_id, day_of_week, start_time, end_time, slot_duration) VALUES ($1, $2, $3, $4, $5)',
+                    [newProvider.rows[0].id, day, startTime, endTime, slotDuration]
+                );
+            }
+        }
+
         // Insert services
         const servicesArray = JSON.parse(services);
         if (Array.isArray(servicesArray)) {
