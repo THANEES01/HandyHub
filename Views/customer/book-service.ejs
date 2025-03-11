@@ -167,160 +167,152 @@
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <%- include('../partials/navbar') %>
+      <!-- Navbar -->
+      <%- include('../partials/navbar') %>
 
-    <div class="container mt-5 mb-5">
-        <a href="/customer/provider/<%= provider.id %>" class="back-link">
-            <i class="bi bi-arrow-left"></i> Back to Provider Profile
-        </a>
-        
-        <div class="booking-container">
-            <% if (locals.error) { %>
-                <div class="alert alert-danger" role="alert">
-                    <%= error %>
-                </div>
-            <% } %>
-            
-            <div class="booking-header">
-                <h2>Book Service</h2>
-                <p class="mb-0">Complete the form below to request a service booking</p>
-            </div>
-            
-            <div class="booking-content">
-                <div class="provider-info">
-                    <div class="provider-icon">
-                        <i class="bi bi-person-gear"></i>
-                    </div>
-                    <div class="provider-details">
-                        <h4><%= provider.business_name %></h4>
-                        <p><%= categories.map(cat => cat.category_name).join(', ') %></p>
-                    </div>
-                </div>
-                
-                <form action="/customer/book-service" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="providerId" value="<%= provider.id %>">
-                    
-                    <div class="form-section">
-                        <h3 class="form-section-title">1. Select Service</h3>
-                        
-                        <% if (services && services.length > 0) { %>
-                            <% services.forEach((service, index) => { %>
-                                <div class="service-option">
-                                    <label class="d-flex align-items-center">
-                                        <input type="radio" name="serviceType" value="<%= service.service_name %>" <%= index === 0 ? 'checked' : '' %>>
-                                        <span><%= service.service_name %></span>
-                                    </label>
-                                </div>
-                            <% }); %>
-                        <% } else { %>
-                            <p class="text-muted">No specific services listed. Please contact the provider directly.</p>
-                        <% } %>
-                    </div>
-                    
-                    <div class="form-section">
-                        <h3 class="form-section-title">2. Describe Your Issue</h3>
-                        
-                        <div class="mb-3">
-                            <label for="issueDescription" class="form-label">Describe the Issue</label>
-                            <textarea class="form-control" id="issueDescription" name="issueDescription" rows="4" placeholder="Please describe the problem in detail..." required></textarea>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Upload Problem Pictures (Optional)</label>
-                            <label for="problemImages" class="custom-file-upload">
-                                <i class="bi bi-camera me-2"></i> Choose Images
-                                <small class="d-block text-muted mt-1">You can select up to 5 images (10MB max each)</small>
-                            </label>
-                            <input type="file" id="problemImages" name="problemImages" multiple accept="image/jpeg,image/png,image/gif" style="display: none;">
-                            <div id="imagePreviewContainer" class="preview-container mt-2"></div>
-                            <div id="fileErrors" class="text-danger mt-2"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-section">
-                        <h3 class="form-section-title">3. Service Location</h3>
-                        
-                        <div class="row">
-                            <div class="col-12 mb-3">
-                                <label for="streetAddress" class="form-label">Street Address</label>
-                                <input type="text" class="form-control" id="streetAddress" name="streetAddress" placeholder="Enter your street address" required>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="city" class="form-label">City</label>
-                                <input type="text" class="form-control" id="city" name="city" required>
-                            </div>
-                            
-                            <div class="col-md-3 mb-3">
-                                <label for="state" class="form-label">State</label>
-                                <input type="text" class="form-control" id="state" name="state" required>
-                            </div>
-                            
-                            <div class="col-md-3 mb-3">
-                                <label for="zipCode" class="form-label">ZIP Code</label>
-                                <input type="text" class="form-control" id="zipCode" name="zipCode" required>
-                            </div>
-                            
-                            <div class="col-12 mb-3">
-                                <label for="accessInstructions" class="form-label">Access Instructions (Optional)</label>
-                                <textarea class="form-control" id="accessInstructions" name="accessInstructions" rows="2" placeholder="Gate code, entry instructions, parking information, etc."></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-section">
-                        <h3 class="form-section-title">4. Schedule Service</h3>
-                        
-                        <div class="mb-3">
-                            <label for="preferredDate" class="form-label">Preferred Date</label>
-                            <input type="date" class="form-control" id="preferredDate" name="preferredDate" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="timeSlot" class="form-label">Available Time Slots</label>
-                            <select class="form-select" id="timeSlot" name="timeSlot" required>
-                                <option value="" disabled selected>Select a time slot</option>
-                                <option value="8:00 AM - 10:00 AM">8:00 AM - 10:00 AM</option>
-                                <option value="10:00 AM - 12:00 PM">10:00 AM - 12:00 PM</option>
-                                <option value="12:00 PM - 2:00 PM">12:00 PM - 2:00 PM</option>
-                                <option value="2:00 PM - 4:00 PM">2:00 PM - 4:00 PM</option>
-                                <option value="4:00 PM - 6:00 PM">4:00 PM - 6:00 PM</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-section">
-                        <h3 class="form-section-title">5. Contact Information</h3>
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="fullName" class="form-label">Full Name</label>
-                                <input type="text" class="form-control" id="fullName" name="fullName" required>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="phoneNumber" class="form-label">Phone Number</label>
-                                <input type="tel" class="form-control" id="phoneNumber" name="phoneNumber" required>
-                            </div>
-                            
-                            <div class="col-12 mb-3">
-                                <label for="email" class="form-label">Email Address</label>
-                                <input type="email" class="form-control" id="email" name="email" required>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-submit">Submit Service Request</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div id="contact">
-        <!-- Footer -->
-        <%- include('../partials/footer') %>
-    </div>
+      <div class="content-wrapper">
+          <div class="container mt-5 mb-5">
+              <a href="/customer/provider/<%= provider.id %><%= selectedCategory ? '?category=' + selectedCategory : '' %>" class="back-link">
+                  <i class="bi bi-arrow-left"></i> Back to Provider Profile
+              </a>
+              
+              <div class="booking-container">
+                  <% if (locals.error) { %>
+                      <div class="alert alert-danger" role="alert">
+                          <%= error %>
+                      </div>
+                  <% } %>
+                  
+                  <div class="booking-header">
+                      <h2>Book Service</h2>
+                      <p class="mb-0">Complete the form below to request a service booking</p>
+                  </div>
+                  
+                  <div class="booking-content">
+                      <div class="provider-info">
+                          <div class="provider-icon">
+                              <i class="bi bi-person-gear"></i>
+                          </div>
+                          <div class="provider-details">
+                              <h4><%= provider.business_name %></h4>
+                              <% if (selectedCategory) { %>
+                                  <p><%= selectedCategory %></p>
+                              <% } else { %>
+                                  <p><%= categories.map(cat => cat.category_name).join(', ') %></p>
+                              <% } %>
+                          </div>
+                      </div>
+                      
+                      <form action="/customer/book-service" method="POST" enctype="multipart/form-data">
+                          <input type="hidden" name="providerId" value="<%= provider.id %>">
+                          
+                          <!-- Hidden service type input using the selected category or first category -->
+                          <input type="hidden" id="serviceType" name="serviceType" value="<%= selectedCategory || (categories && categories.length > 0 ? categories[0].category_name : '') %>">
+                          
+                          <div class="form-section">
+                              <h3 class="form-section-title">1. Describe Your Issue</h3>
+                              
+                              <div class="mb-3">
+                                  <label for="issueDescription" class="form-label">Describe the Issue</label>
+                                  <textarea class="form-control" id="issueDescription" name="issueDescription" rows="4" placeholder="Please describe the problem in detail..." required></textarea>
+                              </div>
+                              
+                              <div class="mb-3">
+                                  <label class="form-label">Upload Problem Pictures (Optional)</label>
+                                  <label for="problemImages" class="custom-file-upload">
+                                      <i class="bi bi-camera me-2"></i> Choose Images
+                                      <small class="d-block text-muted mt-1">You can select up to 5 images (10MB max each)</small>
+                                  </label>
+                                  <input type="file" id="problemImages" name="problemImages" multiple accept="image/jpeg,image/png,image/gif" style="display: none;">
+                                  <div id="imagePreviewContainer" class="preview-container mt-2"></div>
+                                  <div id="fileErrors" class="text-danger mt-2"></div>
+                              </div>
+                          </div>
+                          
+                          <div class="form-section">
+                              <h3 class="form-section-title">2. Service Location</h3>
+                              
+                              <div class="row">
+                                  <div class="col-12 mb-3">
+                                      <label for="streetAddress" class="form-label">Street Address</label>
+                                      <input type="text" class="form-control" id="streetAddress" name="streetAddress" placeholder="Enter your street address" required>
+                                  </div>
+                                  
+                                  <div class="col-md-6 mb-3">
+                                      <label for="city" class="form-label">City</label>
+                                      <input type="text" class="form-control" id="city" name="city" required>
+                                  </div>
+                                  
+                                  <div class="col-md-3 mb-3">
+                                      <label for="state" class="form-label">State</label>
+                                      <input type="text" class="form-control" id="state" name="state" required>
+                                  </div>
+                                  
+                                  <div class="col-md-3 mb-3">
+                                      <label for="zipCode" class="form-label">ZIP Code</label>
+                                      <input type="text" class="form-control" id="zipCode" name="zipCode" required>
+                                  </div>
+                                  
+                                  <div class="col-12 mb-3">
+                                      <label for="accessInstructions" class="form-label">Access Instructions (Optional)</label>
+                                      <textarea class="form-control" id="accessInstructions" name="accessInstructions" rows="2" placeholder="Gate code, entry instructions, parking information, etc."></textarea>
+                                  </div>
+                              </div>
+                          </div>
+                          
+                          <div class="form-section">
+                              <h3 class="form-section-title">3. Schedule Service</h3>
+                              
+                              <div class="mb-3">
+                                  <label for="preferredDate" class="form-label">Preferred Date</label>
+                                  <input type="date" class="form-control" id="preferredDate" name="preferredDate" required>
+                              </div>
+                              
+                              <div class="mb-3">
+                                  <label for="timeSlot" class="form-label">Available Time Slots</label>
+                                  <select class="form-select" id="timeSlot" name="timeSlot" required>
+                                      <option value="" disabled selected>Select a time slot</option>
+                                      <option value="8:00 AM - 10:00 AM">8:00 AM - 10:00 AM</option>
+                                      <option value="10:00 AM - 12:00 PM">10:00 AM - 12:00 PM</option>
+                                      <option value="12:00 PM - 2:00 PM">12:00 PM - 2:00 PM</option>
+                                      <option value="2:00 PM - 4:00 PM">2:00 PM - 4:00 PM</option>
+                                      <option value="4:00 PM - 6:00 PM">4:00 PM - 6:00 PM</option>
+                                  </select>
+                              </div>
+                          </div>
+                          
+                          <div class="form-section">
+                              <h3 class="form-section-title">4. Contact Information</h3>
+                              
+                              <div class="row">
+                                  <div class="col-md-6 mb-3">
+                                      <label for="fullName" class="form-label">Full Name</label>
+                                      <input type="text" class="form-control" id="fullName" name="fullName" required>
+                                  </div>
+                                  
+                                  <div class="col-md-6 mb-3">
+                                      <label for="phoneNumber" class="form-label">Phone Number</label>
+                                      <input type="tel" class="form-control" id="phoneNumber" name="phoneNumber" required>
+                                  </div>
+                                  
+                                  <div class="col-12 mb-3">
+                                      <label for="email" class="form-label">Email Address</label>
+                                      <input type="email" class="form-control" id="email" name="email" required>
+                                  </div>
+                              </div>
+                          </div>
+                          
+                          <button type="submit" class="btn btn-submit">Submit Service Request</button>
+                      </form>
+                  </div>
+              </div>
+          </div>
+      </div>
+  
+      <div class="footer-wrapper">
+          <!-- Footer -->
+          <%- include('../partials/footer') %>
+      </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -328,22 +320,6 @@
             // Set minimum date for booking to today
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('preferredDate').min = today;
-            
-            // Service option selection
-            const serviceOptions = document.querySelectorAll('.service-option');
-            serviceOptions.forEach(option => {
-                option.addEventListener('click', function() {
-                    // Clear previous selection
-                    serviceOptions.forEach(opt => opt.classList.remove('selected'));
-                    
-                    // Select current option
-                    this.classList.add('selected');
-                    
-                    // Check the radio button
-                    const radio = this.querySelector('input[type="radio"]');
-                    radio.checked = true;
-                });
-            });
             
             // Image preview functionality
             const imageInput = document.getElementById('problemImages');
@@ -371,16 +347,16 @@
             });
             
             // Pre-fill user information if available
-            // This would be populated from session if user is logged in
-            if (user) { 
-                if (document.getElementById('fullName')) {
-                    document.getElementById('fullName').value = '<%= user.firstName %> <%= user.lastName %>';
+            const user = <%- JSON.stringify(user || {}) %>;
+            if (user) {
+                if (document.getElementById('fullName') && user.firstName && user.lastName) {
+                    document.getElementById('fullName').value = user.firstName + ' ' + user.lastName;
                 }
-                if (document.getElementById('email')) {
-                    document.getElementById('email').value = '<%= user.email %>';
+                if (document.getElementById('email') && user.email) {
+                    document.getElementById('email').value = user.email;
                 }
-                if (document.getElementById('phoneNumber') && '<%= user.phoneNumber %>') {
-                    document.getElementById('phoneNumber').value = '<%= user.phoneNumber %>';
+                if (document.getElementById('phoneNumber') && user.phoneNumber) {
+                    document.getElementById('phoneNumber').value = user.phoneNumber;
                 }
             }
         });

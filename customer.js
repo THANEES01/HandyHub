@@ -303,6 +303,7 @@ router.get('/provider/:providerId', isCustomerAuth, async (req, res) => {
 router.get('/book-service/:providerId', isCustomerAuth, async (req, res) => {
     try {
         const providerId = req.params.providerId;
+        const categoryName = req.query.category; // Get the category from query parameter
         
         // Get provider details
         const providerResult = await pool.query(`
@@ -320,13 +321,24 @@ router.get('/book-service/:providerId', isCustomerAuth, async (req, res) => {
         
         const provider = providerResult.rows[0];
         
-        // Get all categories offered by this provider with pricing info
-        const categoriesResult = await pool.query(`
-            SELECT category_name, base_fee, fee_type
-            FROM service_categories
-            WHERE provider_id = $1
-            ORDER BY category_name ASC
-        `, [providerId]);
+        // If category is specified, get only that category's pricing
+        let categoriesResult;
+        if (categoryName) {
+            categoriesResult = await pool.query(`
+                SELECT category_name, base_fee, fee_type
+                FROM service_categories
+                WHERE provider_id = $1 AND category_name = $2
+                LIMIT 1
+            `, [providerId, categoryName]);
+        } else {
+            // Otherwise get all categories offered by this provider
+            categoriesResult = await pool.query(`
+                SELECT category_name, base_fee, fee_type
+                FROM service_categories
+                WHERE provider_id = $1
+                ORDER BY category_name ASC
+            `, [providerId]);
+        }
         
         // Get all services offered by this provider
         const servicesResult = await pool.query(`
@@ -341,6 +353,7 @@ router.get('/book-service/:providerId', isCustomerAuth, async (req, res) => {
             user: req.session.user,
             provider: provider,
             categories: categoriesResult.rows,
+            selectedCategory: categoryName,
             services: servicesResult.rows,
             error: req.session.error
         });
@@ -416,10 +429,32 @@ router.post('/book-service', isCustomerAuth, upload.array('problemImages', 5), h
             JSON.stringify(imageFiles)
         ]);
         
-        // If booking was successful
+        // If booking was successful, redirect to payment page
         if (bookingResult.rows.length > 0) {
-            req.session.success = 'Your service request has been submitted successfully';
-            return res.redirect('/customer/bookings');
+            const bookingId = bookingResult.rows[0].id;
+            
+            // Get service price information for the payment
+            const serviceInfo = await pool.query(`
+                SELECT sc.base_fee, sc.fee_type
+                FROM service_categories sc
+                JOIN service_providers sp ON sc.provider_id = sp.id
+                WHERE sp.id = $1 AND LOWER(sc.category_name) = LOWER($2)
+                LIMIT 1
+            `, [providerId, serviceType]);
+            
+            // Store essential payment info in session
+            req.session.paymentInfo = {
+                bookingId: bookingId,
+                providerId: providerId,
+                serviceType: serviceType,
+                baseFee: serviceInfo.rows.length > 0 ? serviceInfo.rows[0].base_fee : 0,
+                feeType: serviceInfo.rows.length > 0 ? serviceInfo.rows[0].fee_type : 'flat',
+                customerName: fullName,
+                customerEmail: email
+            };
+            
+            // Redirect to payment page
+            return res.redirect(`/customer/payment/${bookingId}`);
         } else {
             throw new Error('Failed to create booking');
         }
@@ -460,6 +495,110 @@ router.get('/bookings', isCustomerAuth, async (req, res) => {
         console.error('Error fetching bookings:', error);
         req.session.error = 'Failed to load your bookings';
         res.redirect('/customer/dashboard');
+    }
+});
+
+// Payment page route
+router.get('/payment/:bookingId', isCustomerAuth, async (req, res) => {
+    try {
+        const bookingId = req.params.bookingId;
+        
+        // Check if payment info exists in session
+        if (!req.session.paymentInfo || req.session.paymentInfo.bookingId != bookingId) {
+            // Get booking info from database if not in session
+            const bookingResult = await pool.query(`
+                SELECT sb.*, sp.business_name as provider_name, 
+                       sc.base_fee, sc.fee_type
+                FROM service_bookings sb
+                JOIN service_providers sp ON sb.provider_id = sp.id
+                LEFT JOIN service_categories sc ON sp.id = sc.provider_id AND LOWER(sc.category_name) = LOWER(sb.service_type)
+                WHERE sb.id = $1 AND sb.customer_id = $2
+                LIMIT 1
+            `, [bookingId, req.session.user.id]);
+            
+            if (bookingResult.rows.length === 0) {
+                req.session.error = 'Booking not found';
+                return res.redirect('/customer/bookings');
+            }
+            
+            const booking = bookingResult.rows[0];
+            
+            // Create payment info
+            req.session.paymentInfo = {
+                bookingId: booking.id,
+                providerId: booking.provider_id,
+                serviceType: booking.service_type,
+                baseFee: booking.base_fee || 0,
+                feeType: booking.fee_type || 'flat',
+                customerName: booking.customer_name,
+                customerEmail: booking.customer_email
+            };
+        }
+        
+        // Render payment page with payment info
+        res.render('customer/payment', {
+            title: 'Complete Payment',
+            user: req.session.user,
+            paymentInfo: req.session.paymentInfo,
+            error: req.session.error
+        });
+        
+        // Clear error message
+        delete req.session.error;
+        
+    } catch (error) {
+        console.error('Error loading payment page:', error);
+        req.session.error = 'Failed to load payment page';
+        res.redirect('/customer/bookings');
+    }
+});
+
+// Process payment submission
+router.post('/process-payment', isCustomerAuth, async (req, res) => {
+    try {
+        const { 
+            bookingId, 
+            paymentMethod,
+            cardNumber,
+            cardExpiry,
+            cardCvc
+        } = req.body;
+        
+        // Validate payment info
+        if (!bookingId || !paymentMethod) {
+            req.session.error = 'Payment information is incomplete';
+            return res.redirect(`/customer/payment/${bookingId}`);
+        }
+        
+        // For credit/debit card payments, validate card details
+        if (paymentMethod === 'card' && (!cardNumber || !cardExpiry || !cardCvc)) {
+            req.session.error = 'Please provide all card details';
+            return res.redirect(`/customer/payment/${bookingId}`);
+        }
+        
+        // In a real application, you would process the payment with a payment gateway here
+        // For this example, we'll just update the booking status
+        
+        // Update booking status to 'Confirmed' (payment completed)
+        await pool.query(`
+            UPDATE service_bookings
+            SET status = 'Confirmed', updated_at = NOW()
+            WHERE id = $1 AND customer_id = $2
+        `, [bookingId, req.session.user.id]);
+        
+        // Clear payment info from session
+        delete req.session.paymentInfo;
+        
+        // Set success message
+        req.session.success = 'Payment successful! Your booking has been confirmed.';
+        
+        // Redirect to bookings page
+        res.redirect('/customer/bookings');
+        
+    } catch (error) {
+        console.error('Payment processing error:', error);
+        req.session.error = 'Failed to process payment. Please try again.';
+        return res.redirect(`/customer/payment/${req.body.bookingId}`);
     }
 });
 
