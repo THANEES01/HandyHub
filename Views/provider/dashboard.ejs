@@ -392,6 +392,87 @@
             <% } %>
         </div>
 
+        <!-- Service Availability Section - Add this after the Pricing Information Section in dashboard.ejs -->
+<div class="data-section">
+    <h3 class="section-title">
+        <i class="bi bi-calendar-week"></i> Service Availability
+        <a href="/provider/edit-profile" class="btn btn-sm btn-outline-primary float-end">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+    </h3>
+    
+    <% if (provider.availability && provider.availability.length > 0) { %>
+        <div class="table-responsive">
+            <table class="pricing-table">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Status</th>
+                        <th>Hours</th>
+                        <th>Slot Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% provider.availability.forEach(day => { %>
+                        <tr>
+                            <td><strong><%= day.day_of_week %></strong></td>
+                            <td>
+                                <% if (day.is_available) { %>
+                                    <span class="badge bg-success">Available</span>
+                                <% } else { %>
+                                    <span class="badge bg-secondary">Not Available</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <% if (day.is_available) { %>
+                                    <% 
+                                        // Format time for display
+                                        function formatTime(timeStr) {
+                                            if (!timeStr) return '';
+                                            const [hours, minutes] = timeStr.split(':');
+                                            const h = parseInt(hours);
+                                            const ampm = h >= 12 ? 'PM' : 'AM';
+                                            const hour12 = h % 12 || 12;
+                                            return `${hour12}:${minutes || '00'} ${ampm}`;
+                                        }
+                                    %>
+                                    <%= formatTime(day.start_time) %> - <%= formatTime(day.end_time) %>
+                                <% } else { %>
+                                    <span class="text-muted">Closed</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <% if (day.is_available) { %>
+                                    <% if (day.slot_duration === 30) { %>
+                                        30 minutes
+                                    <% } else if (day.slot_duration === 60) { %>
+                                        1 hour
+                                    <% } else if (day.slot_duration === 90) { %>
+                                        1.5 hours
+                                    <% } else if (day.slot_duration === 120) { %>
+                                        2 hours
+                                    <% } else if (day.slot_duration === 180) { %>
+                                        3 hours
+                                    <% } else { %>
+                                        <%= day.slot_duration %> minutes
+                                    <% } %>
+                                <% } else { %>
+                                    <span class="text-muted">-</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    <% } else { %>
+        <div class="alert alert-info mt-3">
+            <i class="bi bi-info-circle me-2"></i>
+            You haven't set your availability yet. Please <a href="/provider/edit-profile">edit your profile</a> to set your working hours.
+        </div>
+    <% } %>
+</div>
+
         <!-- Bookings Section -->
         <div class="data-section">
             <h3 class="section-title">Recent Bookings</h3>

@@ -62,14 +62,32 @@ const getDashboard = async (req, res) => {
             WHERE sc.provider_id = $1
         `, [providerResult.rows[0].id]);
 
-        // Log categories for debugging
+        // Get provider's availability
+        const availabilityResult = await pool.query(`
+            SELECT day_of_week, start_time, end_time, slot_duration, is_available
+            FROM provider_availability
+            WHERE provider_id = $1
+            ORDER BY CASE
+                WHEN day_of_week = 'Monday' THEN 1
+                WHEN day_of_week = 'Tuesday' THEN 2
+                WHEN day_of_week = 'Wednesday' THEN 3
+                WHEN day_of_week = 'Thursday' THEN 4
+                WHEN day_of_week = 'Friday' THEN 5
+                WHEN day_of_week = 'Saturday' THEN 6
+                WHEN day_of_week = 'Sunday' THEN 7
+            END
+        `, [providerResult.rows[0].id]);
+
+        // Log categories and availability for debugging
         console.log('Provider categories for dashboard:', categoriesResult.rows);
+        console.log('Provider availability for dashboard:', availabilityResult.rows);
 
         // Combine all data
         const providerData = {
             ...providerResult.rows[0],
             services: servicesResult.rows,
-            categories: categoriesResult.rows
+            categories: categoriesResult.rows,
+            availability: availabilityResult.rows
         };
 
         res.render('provider/dashboard', {
@@ -105,18 +123,10 @@ const updateProfile = async (req, res) => {
             categories = [], 
             services = [],
             baseFees = {},
-            feeTypes = {}
+            feeTypes = {},
+            availableDays = [],
+            slotDuration
         } = req.body;
-        
-        // Debug log the form data
-        console.log('Update profile data received:');
-        console.log('- Provider ID:', providerId);
-        console.log('- Business Name:', businessName);
-        console.log('- Phone:', phoneNumber);
-        console.log('- Categories:', categories);
-        console.log('- Base Fees:', baseFees);
-        console.log('- Fee Types:', feeTypes);
-        console.log('- Services:', services);
         
         await client.query('BEGIN');
         
@@ -165,8 +175,34 @@ const updateProfile = async (req, res) => {
                 }
             }
         }
+
+        // Handle availability update
+        // First, delete existing availability
+        await client.query('DELETE FROM provider_availability WHERE provider_id = $1', [providerId]);
         
-        console.log(`Updated profile with ${insertedCategories} categories and ${insertedServices} services`);
+        // Get all days of the week
+        const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        
+        // Insert new availability for each day
+        for (const day of allDays) {
+            // Check if this day is available
+            const isAvailable = Array.isArray(availableDays) ? availableDays.includes(day) : false;
+            
+            // Get start and end times for this day
+            const startTime = req.body[`startTime_${day}`] || '09:00';
+            const endTime = req.body[`endTime_${day}`] || '17:00';
+            
+            // Insert the availability record
+            await client.query(`
+                INSERT INTO provider_availability 
+                (provider_id, day_of_week, start_time, end_time, slot_duration, is_available)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            `, [providerId, day, startTime, endTime, slotDuration || 60, isAvailable]);
+            
+            console.log(`Inserted availability for ${day}: ${isAvailable ? 'Available' : 'Not available'} from ${startTime} to ${endTime}`);
+        }
+        
+        console.log(`Updated profile with ${insertedCategories} categories, ${insertedServices} services, and 7 availability records`);
         
         await client.query('COMMIT');
         
@@ -193,7 +229,7 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         
         console.log('Loading edit profile for provider ID:', providerId);
         
-        // Fetch provider details including categories and services
+        // 1. Fetch basic provider details
         const providerResult = await pool.query(`
             SELECT sp.*, u.email
             FROM service_providers sp
@@ -208,8 +244,7 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         
         const provider = providerResult.rows[0];
         
-        // Fetch all categories with base fees and fee types
-        // Make sure we get ALL categories for this provider without any JOIN filtering
+        // 2. Fetch service categories with pricing details
         const categoriesResult = await pool.query(`
             SELECT 
                 category_name, 
@@ -219,15 +254,9 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
             WHERE provider_id = $1
         `, [providerId]);
         
-        // Log each category found for debugging
-        console.log('Categories found for provider:', providerId);
-        console.log('Full categories result:', JSON.stringify(categoriesResult.rows, null, 2));
+        console.log('Categories found:', categoriesResult.rows.length);
         
-        categoriesResult.rows.forEach((cat, index) => {
-            console.log(`Category ${index+1}: ${cat.category_name}, Fee: ${cat.base_fee}, Type: ${cat.fee_type}`);
-        });
-        
-        // Fetch all services
+        // 3. Fetch services offered
         const servicesResult = await pool.query(`
             SELECT service_name
             FROM services_offered
@@ -236,29 +265,66 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         
         console.log('Services found:', servicesResult.rows.length);
         
-        // Add categories and services to provider object
-        provider.categories = categoriesResult.rows;
-        provider.services = servicesResult.rows;
+        // 4. Fetch provider availability
+        const availabilityResult = await pool.query(`
+            SELECT 
+                day_of_week, 
+                start_time, 
+                end_time, 
+                slot_duration, 
+                is_available
+            FROM provider_availability
+            WHERE provider_id = $1
+            ORDER BY CASE
+                WHEN day_of_week = 'Monday' THEN 1
+                WHEN day_of_week = 'Tuesday' THEN 2
+                WHEN day_of_week = 'Wednesday' THEN 3
+                WHEN day_of_week = 'Thursday' THEN 4
+                WHEN day_of_week = 'Friday' THEN 5
+                WHEN day_of_week = 'Saturday' THEN 6
+                WHEN day_of_week = 'Sunday' THEN 7
+            END
+        `, [providerId]);
         
-        // Debug - log what's being passed to the template
-        console.log('Provider data for template:', {
-            id: provider.id,
-            businessName: provider.business_name,
-            categoryCount: provider.categories.length,
-            categories: provider.categories.map(c => c.category_name),
-            serviceCount: provider.services.length
-        });
+        console.log('Availability records found:', availabilityResult.rows.length);
         
-        // Fetch category pricing models
-        const pricingModelsResult = await pool.query(`
-            SELECT category_name, default_fee_type, description
-            FROM category_pricing_models
-        `);
+        // 5. Format the data for the frontend
         
+        // Format categories - ensure consistent structure
+        const formattedCategories = categoriesResult.rows.map(cat => ({
+            category_name: cat.category_name,
+            base_fee: parseFloat(cat.base_fee || 0),
+            fee_type: cat.fee_type || 'per visit'
+        }));
+        
+        // Format services - ensure consistent structure
+        const formattedServices = servicesResult.rows.map(service => ({
+            service_name: service.service_name
+        }));
+        
+        // Format availability - ensure consistent structure and types
+        const formattedAvailability = availabilityResult.rows.map(day => ({
+            day_of_week: day.day_of_week,
+            start_time: day.start_time,
+            end_time: day.end_time,
+            slot_duration: parseInt(day.slot_duration || 60),
+            is_available: day.is_available === true
+        }));
+        
+        // Log the formatted data for debugging
+        console.log('Formatted categories:', formattedCategories);
+        console.log('Formatted services:', formattedServices);
+        console.log('Formatted availability:', formattedAvailability);
+        
+        // 6. Add the formatted data to the provider object
+        provider.categories = formattedCategories;
+        provider.services = formattedServices;
+        provider.availability = formattedAvailability;
+        
+        // 7. Render the template with the complete provider data
         res.render('provider/edit-profile', {
             title: 'Edit Profile',
             provider: provider,
-            pricingModels: pricingModelsResult.rows,
             error: req.session.error,
             success: req.session.success
         });

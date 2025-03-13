@@ -247,6 +247,9 @@
         <div class="edit-profile-section">
             <h3 class="section-title">Edit Profile</h3>
             
+            <!-- Store provider data in hidden inputs for JS access -->
+            <input type="hidden" id="providerData" data-categories="<%= encodeURIComponent(JSON.stringify(provider.categories || [])) %>" data-services="<%= encodeURIComponent(JSON.stringify(provider.services || [])) %>">
+            
             <form action="/provider/profile/update" method="POST">
                 <!-- Business Profile Section -->
                 <div class="mb-4">
@@ -275,139 +278,141 @@
                     </div>
                 </div>
 
-               <!-- Service Categories Section -->
-                    <div class="mb-4">
-                        <h4 class="form-section-title">Service Categories</h4>
-                        <p class="text-muted mb-3">Select the categories that best describe your services:</p>
+                <!-- Service Categories Section -->
+                <div class="mb-4">
+                    <h4 class="form-section-title">Service Categories</h4>
+                    <p class="text-muted mb-3">Select the categories that best describe your services:</p>
+                    
+                    <div class="row" id="categories-container">
+                        <% 
+                        // Define all available categories
+                        const availableCategories = [
+                            "Plumbing", 
+                            "Electrical Repairs", 
+                            "Roof Repairs", 
+                            "Pest Control", 
+                            "Carpentry Service", 
+                            "AC Service", 
+                            "Landscaping", 
+                            "Home Cleaning", 
+                            "Appliance Service"
+                        ];
                         
-                        <div class="row">
-                            <% 
-                            // Define all available categories
-                            const availableCategories = [
-                                "Plumbing", 
-                                "Electrical Repairs", 
-                                "Roof Repairs", 
-                                "Pest Control", 
-                                "Carpentry Service", 
-                                "AC Service", 
-                                "Landscaping", 
-                                "Home Cleaning", 
-                                "Appliance Service"
-                            ];
-                            
-                            // Create a function to check if a category is selected
-                            function isCategorySelected(category, providerCategories) {
-                                if (!providerCategories || !Array.isArray(providerCategories)) {
-                                    return false;
-                                }
-                                
-                                const categoryLower = category.toLowerCase();
-                                return providerCategories.some(cat => {
-                                    // Check if cat is an object with category_name or just a string
-                                    const catName = typeof cat === 'string' ? cat : (cat.category_name || '');
-                                    return catName.toLowerCase().trim() === categoryLower;
-                                });
-                            }
-                            %>
-                            
-                            <% availableCategories.forEach((category, index) => { %>
-                                <div class="col-md-4 mb-2">
-                                    <div class="form-check">
-                                        <input 
-                                            class="form-check-input" 
-                                            type="checkbox" 
-                                            name="categories[]" 
-                                            value="<%= category %>" 
-                                            id="category<%= index %>"
-                                            <% if (isCategorySelected(category, provider.categories)) { %> checked <% } %>
-                                        >
-                                        <label class="form-check-label" for="category<%= index %>">
-                                            <%= category %>
-                                        </label>
-                                    </div>
-                                </div>
-                            <% }); %>
-                        </div>
-                    </div>
-
-                   <!-- Pricing Information Section -->
-<div class="mb-4">
-    <h4 class="form-section-title">Pricing Information</h4>
-    <p class="text-muted mb-3">Set your base fees for each service category:</p>
-    
-    <div id="pricing-container">
-        <% if (provider.categories && provider.categories.length > 0) { %>
-            <% provider.categories.forEach((category, index) => { %>
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <h5 class="card-title"><%= category.category_name %></h5>
-                        
-                        <div class="row g-3 align-items-center mb-3">
-                            <div class="col-md-6">
-                                <label for="baseFee<%= index %>" class="form-label">Base Fee (RM)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">RM</span>
+                        availableCategories.forEach((category, index) => { 
+                        %>
+                            <div class="col-md-4 mb-2">
+                                <div class="form-check">
                                     <input 
-                                        type="number" 
-                                        class="form-control" 
-                                        id="baseFee<%= index %>" 
-                                        name="baseFees[<%= category.category_name %>]" 
-                                        value="<%= category.base_fee || 0 %>" 
-                                        min="0" 
-                                        step="0.01"
-                                        placeholder="0.00"
+                                        class="form-check-input category-checkbox" 
+                                        type="checkbox" 
+                                        name="categories[]" 
+                                        value="<%= category %>" 
+                                        id="category<%= index %>"
                                     >
+                                    <label class="form-check-label" for="category<%= index %>">
+                                        <%= category %>
+                                    </label>
                                 </div>
-                                <small class="text-muted">Enter the base fee for this service category</small>
                             </div>
-                            
-                            <div class="col-md-6">
-                                <label for="feeType<%= index %>" class="form-label">Fee Type</label>
-                                <select class="form-select" id="feeType<%= index %>" name="feeTypes[<%= category.category_name %>]">
-                                    <option value="per visit" <%= category.fee_type === 'per visit' ? 'selected' : '' %>>Per Visit</option>
-                                    <option value="per hour" <%= category.fee_type === 'per hour' ? 'selected' : '' %>>Per Hour</option>
-                                    <option value="fixed" <%= category.fee_type === 'fixed' ? 'selected' : '' %>>Fixed Price</option>
-                                </select>
-                                <small class="text-muted">Select how you'd like to charge for this service</small>
-                            </div>
-                        </div>
+                        <% }); %>
                     </div>
                 </div>
-            <% }); %>
-        <% } else { %>
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle"></i> 
-                Select service categories above to set their base fees.
-            </div>
-        <% } %>
-    </div>
-</div>
+
+                <!-- Pricing Information Section -->
+                <div class="mb-4">
+                    <h4 class="form-section-title">Pricing Information</h4>
+                    <p class="text-muted mb-3">Set your base fees for each service category:</p>
+                    
+                    <div id="pricing-container">
+                        <!-- Dynamic content will be added here by JavaScript -->
+                    </div>
+                </div>
 
                 <!-- Services Offered Section -->
                 <div class="mb-4">
                     <h4 class="form-section-title">Services Offered</h4>
                     <div id="services-container">
-                        <% if (provider.services && provider.services.length > 0) { %>
-                            <% provider.services.forEach((service, index) => { %>
-                                <div class="dynamic-field">
-                                    <input type="text" class="form-control" name="services[]" value="<%= service.service_name %>" required>
-                                    <button type="button" class="remove-field-btn" onclick="removeField(this)">
-                                        <i class="bi bi-x-circle"></i>
-                                    </button>
-                                </div>
-                            <% }); %>
-                        <% } else { %>
-                            <div class="dynamic-field">
-                                <input type="text" class="form-control" name="services[]" placeholder="Enter a service" required>
-                                <button type="button" class="remove-field-btn" onclick="removeField(this)">
-                                    <i class="bi bi-x-circle"></i>
-                                </button>
-                            </div>
-                        <% } %>
+                        <!-- Services will be populated by JavaScript -->
                     </div>
                     <button type="button" class="add-field-btn" onclick="addServiceField()">
                         <i class="bi bi-plus-circle"></i> Add Service
                     </button>
+                </div>
+                
+                <!-- Availability Section -->
+                <div class="mb-4">
+                    <h4 class="form-section-title">Service Availability</h4>
+                    <p class="text-muted mb-3">Set your regular working hours for each day of the week:</p>
+                    
+                    <div class="availability-container">
+                        <!-- Days of the week -->
+                        <% const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']; %>
+                        <% daysOfWeek.forEach(day => { %>
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input availability-toggle" 
+                                                    type="checkbox" 
+                                                    id="<%= day.toLowerCase() %>Available" 
+                                                    name="availableDays" 
+                                                    value="<%= day %>">
+                                                <label class="form-check-label" for="<%= day.toLowerCase() %>Available">
+                                                    <strong><%= day %></strong>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-9 time-slots">
+                                            <div class="row g-3" id="<%= day.toLowerCase() %>TimeSlots">
+                                                <div class="col-md-5">
+                                                    <label class="form-label small mb-1">Start Time</label>
+                                                    <select class="form-select" name="startTime_<%= day %>">
+                                                        <% for(let hour = 6; hour <= 20; hour++) { %>
+                                                            <% const hourStr = hour < 10 ? '0' + hour : '' + hour; %>
+                                                            <% const displayHour = hour > 12 ? hour - 12 : hour; %>
+                                                            <% const ampm = hour >= 12 ? 'PM' : 'AM'; %>
+                                                            <option value="<%= hourStr %>:00">
+                                                                <%= displayHour %>:00 <%= ampm %>
+                                                            </option>
+                                                        <% } %>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-5">
+                                                    <label class="form-label small mb-1">End Time</label>
+                                                    <select class="form-select" name="endTime_<%= day %>">
+                                                        <% for(let hour = 6; hour <= 20; hour++) { %>
+                                                            <% const hourStr = hour < 10 ? '0' + hour : '' + hour; %>
+                                                            <% const displayHour = hour > 12 ? hour - 12 : hour; %>
+                                                            <% const ampm = hour >= 12 ? 'PM' : 'AM'; %>
+                                                            <option value="<%= hourStr %>:00">
+                                                                <%= displayHour %>:00 <%= ampm %>
+                                                            </option>
+                                                        <% } %>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }); %>
+                        
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="slotDuration" class="form-label">Appointment Duration</label>
+                                    <select class="form-select" id="slotDuration" name="slotDuration">
+                                        <option value="30">30 minutes</option>
+                                        <option value="60" selected>1 hour</option>
+                                        <option value="90">1.5 hours</option>
+                                        <option value="120">2 hours</option>
+                                        <option value="180">3 hours</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Form Buttons -->
@@ -419,196 +424,458 @@
         </div>
     </div>
 
+    <!-- Store provider data in hidden input for JavaScript access -->
+<input type="hidden" id="providerData" 
+    data-categories="<%= encodeURIComponent(JSON.stringify(provider.categories || [])) %>" 
+    data-services="<%= encodeURIComponent(JSON.stringify(provider.services || [])) %>"
+    data-availability="<%= encodeURIComponent(JSON.stringify(provider.availability || [])) %>">
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-         // Auto-dismiss alerts after 5 seconds
-    document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
-            });
-        }, 5000);
 
-        // Debug - Log provider categories to console
-        console.log('Provider categories loaded:', 
-            Array.from(document.querySelectorAll('input[name="categories[]"]:checked'))
-                .map(el => el.value)
-        );
-    });
-
-    // Function to add a new category field
-    function addCategoryField() {
-        const container = document.getElementById('categories-container');
-        const newField = document.createElement('div');
-        newField.className = 'dynamic-field';
-        newField.innerHTML = `
-            <input type="text" class="form-control" name="categories[]" placeholder="Enter a service category" required>
-            <button type="button" class="remove-field-btn" onclick="removeField(this)">
-                <i class="bi bi-x-circle"></i>
-            </button>
-        `;
-        container.appendChild(newField);
-    }
-
-    // Function to add a new service field
-    function addServiceField() {
-        const container = document.getElementById('services-container');
-        const newField = document.createElement('div');
-        newField.className = 'dynamic-field';
-        newField.innerHTML = `
-            <input type="text" class="form-control" name="services[]" placeholder="Enter a service" required>
-            <button type="button" class="remove-field-btn" onclick="removeField(this)">
-                <i class="bi bi-x-circle"></i>
-            </button>
-        `;
-        container.appendChild(newField);
-    }
-
-    // Function to remove a field
-    function removeField(button) {
-        const field = button.parentNode;
-        const container = field.parentNode;
-        
-        // Don't remove the last field
-        if (container.children.length > 1) {
-            container.removeChild(field);
-        } else {
-            // Clear the input value instead
-            field.querySelector('input').value = '';
-        }
-    }
-
-    // When the document is ready, set up category checkbox event listeners
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get all category checkboxes
-        const categoryCheckboxes = document.querySelectorAll('input[name="categories[]"]');
-        
-        // Add event listener to each checkbox
-        categoryCheckboxes.forEach(function(checkbox) {
-            checkbox.addEventListener('change', updatePricingSection);
-        });
-        
-        // Initial update on page load to ensure pricing cards are displayed
-        updatePricingSection();
-
-        // Log the initially checked categories
-        console.log('Initially checked categories:', 
-            Array.from(document.querySelectorAll('input[name="categories[]"]:checked'))
-                .map(el => el.value)
-        );
-    });
+    // console.log('Server-side provider data:');
+    // console.log('Categories:', <%- JSON.stringify(provider.categories || []) %>);
+    // console.log('Services:', <%- JSON.stringify(provider.services || []) %>);
+    // console.log('Availability:', <%- JSON.stringify(provider.availability || []) %>);
+        document.addEventListener('DOMContentLoaded', function() {
+    // Get provider data from hidden input
+    const providerData = getProviderData();
+    console.log('Provider data loaded:', providerData);
     
-    // Function to get case-insensitive value from an object
-    function getCaseInsensitiveValue(obj, key, defaultValue) {
-        // Try exact match first
-        if (obj[key] !== undefined) {
-            return obj[key];
+    // Initialize form components with provider data
+    initializeBusinessProfile(providerData);
+    initializeCategories(providerData.categories);
+    initializeServices(providerData.services);
+    initializeAvailability(providerData.availability);
+    
+    // Set up event listeners for form interactions
+    setupEventListeners();
+    
+    // Auto-dismiss alerts after 5 seconds
+    setupAlertDismissal();
+});
+
+// Function to retrieve provider data from hidden input
+function getProviderData() {
+    try {
+        const providerDataEl = document.getElementById('providerData');
+        if (!providerDataEl) {
+            console.error('Provider data element not found');
+            return { categories: [], services: [], availability: [] };
         }
         
-        // Try case-insensitive match
-        const lowerKey = key.toLowerCase();
-        for (const k in obj) {
-            if (k.toLowerCase() === lowerKey) {
-                return obj[k];
-            }
-        }
+        // Get and parse all data attributes
+        const categories = JSON.parse(decodeURIComponent(providerDataEl.dataset.categories || '[]'));
+        const services = JSON.parse(decodeURIComponent(providerDataEl.dataset.services || '[]'));
+        const availability = JSON.parse(decodeURIComponent(providerDataEl.dataset.availability || '[]'));
         
-        // Return default if no match
-        return defaultValue;
+        // Debug logging
+        console.log('Raw provider data:');
+        console.log('Categories:', categories);
+        console.log('Services:', services);
+        console.log('Availability:', availability);
+        
+        return {
+            categories: categories,
+            services: services,
+            availability: availability
+        };
+    } catch (error) {
+        console.error('Error parsing provider data:', error);
+        return { categories: [], services: [], availability: [] };
+    }
+}
+
+// Initialize business profile section (name, phone, email)
+function initializeBusinessProfile(providerData) {
+    if (!providerData) return;
+    
+    // Set business name
+    const businessNameInput = document.getElementById('businessName');
+    if (businessNameInput && providerData.business_name) {
+        businessNameInput.value = providerData.business_name;
+        console.log('Set business name:', providerData.business_name);
     }
     
-    // Function to update the pricing section based on selected categories
-    function updatePricingSection() {
-        const pricingContainer = document.getElementById('pricing-container');
-        const selectedCheckboxes = document.querySelectorAll('input[name="categories[]"]:checked');
+    // Set phone number
+    const phoneInput = document.getElementById('phoneNumber');
+    if (phoneInput && providerData.phone_number) {
+        phoneInput.value = providerData.phone_number;
+        console.log('Set phone number:', providerData.phone_number);
+    }
+    
+    // Email is read-only, so we don't need to set it
+}
+
+// Initialize service categories
+function initializeCategories(categories) {
+    if (!categories || !Array.isArray(categories)) {
+        console.warn('No valid categories data provided');
+        return;
+    }
+    
+    console.log('Initializing', categories.length, 'categories');
+    
+    // Select all category checkboxes
+    const checkboxes = document.querySelectorAll('.category-checkbox');
+    if (!checkboxes.length) {
+        console.warn('No category checkboxes found in the form');
+        return;
+    }
+    
+    // Uncheck all checkboxes first
+    checkboxes.forEach(checkbox => checkbox.checked = false);
+    
+    // Check boxes that match provider's categories
+    checkboxes.forEach(checkbox => {
+        const categoryName = checkbox.value;
+        const matchingCategory = findMatchingCategory(categoryName, categories);
         
-        // If no categories selected, show message
-        if (selectedCheckboxes.length === 0) {
-            pricingContainer.innerHTML = `
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle"></i> 
-                    Select service categories above to set their base fees.
-                </div>
-            `;
-            return;
+        if (matchingCategory) {
+            checkbox.checked = true;
+            console.log('Selected category:', categoryName);
         }
+    });
+    
+    // Update pricing section based on selected categories
+    updatePricingSection(categories);
+}
+
+// Find a matching category by name with flexible matching
+function findMatchingCategory(name, categoryList) {
+    if (!categoryList || !Array.isArray(categoryList)) return null;
+    
+    const normalizedName = name.toLowerCase().trim();
+    
+    return categoryList.find(category => {
+        // Handle category as string or object
+        const categoryName = typeof category === 'string' 
+            ? category 
+            : (category.category_name || '');
         
-        // Preserve existing values when possible
-        const existingFees = {};
-        const existingTypes = {};
+        const normalizedCategoryName = categoryName.toLowerCase().trim();
         
-        // Get existing values from current form fields
-        document.querySelectorAll('[name^="baseFees["]').forEach(input => {
-            const match = input.name.match(/baseFees\[(.*?)\]/);
-            if (match && match[1]) {
-                existingFees[match[1]] = input.value;
+        // Check for exact match or variations with spaces/underscores
+        return normalizedCategoryName === normalizedName
+            || normalizedCategoryName.replace(/_/g, ' ') === normalizedName
+            || normalizedName.replace(/ /g, '_') === normalizedCategoryName;
+    });
+}
+
+// Initialize services offered section
+function initializeServices(services) {
+    if (!services || !Array.isArray(services)) {
+        console.warn('No valid services data provided');
+        // Add an empty service field if none exists
+        addServiceField();
+        return;
+    }
+    
+    console.log('Initializing', services.length, 'services');
+    
+    // Get the services container
+    const container = document.getElementById('services-container');
+    if (!container) {
+        console.warn('Services container not found');
+        return;
+    }
+    
+    // Clear existing service fields
+    container.innerHTML = '';
+    
+    // Add each service
+    if (services.length > 0) {
+        services.forEach(service => {
+            // Extract service name from the object
+            const serviceName = typeof service === 'string' 
+                ? service 
+                : (service.service_name || '');
+                
+            if (serviceName) {
+                addServiceItem(serviceName);
+                console.log('Added service:', serviceName);
             }
         });
+    } else {
+        // Add an empty service field if no services
+        addServiceField();
+    }
+}
+
+// Add a service field with a value
+function addServiceItem(value) {
+    const container = document.getElementById('services-container');
+    if (!container) return;
+    
+    const newField = document.createElement('div');
+    newField.className = 'dynamic-field';
+    newField.innerHTML = `
+        <input type="text" class="form-control" name="services[]" value="${value || ''}" placeholder="Enter a service" required>
+        <button type="button" class="remove-field-btn" onclick="removeField(this)">
+            <i class="bi bi-x-circle"></i>
+        </button>
+    `;
+    container.appendChild(newField);
+}
+
+// Add an empty service field
+function addServiceField() {
+    addServiceItem('');
+}
+
+// Remove a service field
+function removeField(button) {
+    const field = button.parentNode;
+    const container = field.parentNode;
+    
+    if (!container) return;
+    
+    // Don't remove the last field
+    if (container.children.length > 1) {
+        container.removeChild(field);
+    } else {
+        // Clear the input value instead
+        const input = field.querySelector('input');
+        if (input) input.value = '';
+    }
+}
+
+// Initialize availability section
+function initializeAvailability(availability) {
+    if (!availability || !Array.isArray(availability)) {
+        console.warn('No valid availability data provided');
+        return;
+    }
+    
+    console.log('Initializing availability for', availability.length, 'days');
+    
+    // Get all days of week
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    
+    // Process each day
+    daysOfWeek.forEach(day => {
+        // Find data for this day
+        const dayData = availability.find(a => 
+            a.day_of_week === day || 
+            a.day_of_week.toLowerCase() === day.toLowerCase()
+        );
         
-        document.querySelectorAll('[name^="feeTypes["]').forEach(select => {
-            const match = select.name.match(/feeTypes\[(.*?)\]/);
-            if (match && match[1]) {
-                existingTypes[match[1]] = select.value;
+        if (dayData) {
+            console.log(`Setting availability for ${day}:`, dayData);
+            
+            // Set toggle status
+            const toggle = document.getElementById(`${day.toLowerCase()}Available`);
+            if (toggle) {
+                toggle.checked = dayData.is_available === true;
+                console.log(`${day} availability toggle:`, toggle.checked);
             }
-        });
+            
+            // Set start time
+            if (dayData.start_time) {
+                const startSelect = document.querySelector(`select[name="startTime_${day}"]`);
+                if (startSelect) {
+                    setTimeSelectValue(startSelect, dayData.start_time);
+                }
+            }
+            
+            // Set end time
+            if (dayData.end_time) {
+                const endSelect = document.querySelector(`select[name="endTime_${day}"]`);
+                if (endSelect) {
+                    setTimeSelectValue(endSelect, dayData.end_time);
+                }
+            }
+            
+            // Update UI based on availability
+            updateDayAvailability(day.toLowerCase(), dayData.is_available === true);
+        }
+    });
+    
+    // Set slot duration
+    if (availability.length > 0 && availability[0].slot_duration) {
+        const slotDuration = parseInt(availability[0].slot_duration);
+        const durationSelect = document.getElementById('slotDuration');
         
-        console.log('Existing fees:', existingFees);
-        console.log('Existing types:', existingTypes);
+        if (durationSelect) {
+            for (let i = 0; i < durationSelect.options.length; i++) {
+                if (parseInt(durationSelect.options[i].value) === slotDuration) {
+                    durationSelect.selectedIndex = i;
+                    console.log('Set slot duration:', slotDuration);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// Helper function to set time select value
+function setTimeSelectValue(selectElement, timeValue) {
+    if (!selectElement || !timeValue) return;
+    
+    // Normalize time format (09:00, 9:00, etc.)
+    let formattedTime = timeValue;
+    if (formattedTime.includes(':')) {
+        const [hours, minutes] = formattedTime.split(':');
+        const hoursInt = parseInt(hours, 10);
+        formattedTime = `${hoursInt < 10 ? '0' + hoursInt : hoursInt}:${minutes}`;
+    }
+    
+    console.log('Setting time select to:', formattedTime);
+    
+    // Try to find matching option
+    let optionFound = false;
+    for (let i = 0; i < selectElement.options.length; i++) {
+        const optionValue = selectElement.options[i].value;
         
-        // Create pricing fields for each selected category
-        let pricingFields = '';
-        selectedCheckboxes.forEach(function(checkbox, index) {
-            const categoryName = checkbox.value;
+        // Check for exact match or close matches
+        if (optionValue === formattedTime || 
+            optionValue.replace(':00', '') === formattedTime.replace(':00', '') ||
+            formattedTime.includes(optionValue.replace(':00', ''))) {
             
-            // Get existing values or defaults using case-insensitive matching
-            const fee = getCaseInsensitiveValue(existingFees, categoryName, '0.00');
-            const feeType = getCaseInsensitiveValue(existingTypes, categoryName, 'per visit');
+            selectElement.selectedIndex = i;
+            optionFound = true;
+            console.log('Time option found at index', i);
+            break;
+        }
+    }
+    
+    if (!optionFound) {
+        console.warn('No matching time option found for:', formattedTime);
+    }
+}
+
+// Update pricing section based on selected categories
+function updatePricingSection(providerCategories) {
+    const pricingContainer = document.getElementById('pricing-container');
+    if (!pricingContainer) {
+        console.warn('Pricing container not found');
+        return;
+    }
+    
+    const selectedCheckboxes = document.querySelectorAll('.category-checkbox:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        pricingContainer.innerHTML = `
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 
+                Select service categories above to set their base fees.
+            </div>
+        `;
+        return;
+    }
+    
+    // Build pricing cards for selected categories
+    let pricingHTML = '';
+    selectedCheckboxes.forEach((checkbox, index) => {
+        const categoryName = checkbox.value;
+        
+        // Find existing data for this category
+        const categoryData = findMatchingCategory(categoryName, providerCategories);
+        
+        // Set default values or use existing data
+        const fee = categoryData && categoryData.base_fee !== undefined 
+            ? categoryData.base_fee 
+            : 0;
             
-            console.log(`Category ${categoryName}: Fee=${fee}, Type=${feeType}`);
-            
-            pricingFields += `
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <h5 class="card-title">${categoryName}</h5>
+        const feeType = categoryData && categoryData.fee_type 
+            ? categoryData.fee_type 
+            : 'per visit';
+        
+        console.log(`Building pricing for ${categoryName}:`, { fee, feeType });
+        
+        pricingHTML += `
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">${categoryName}</h5>
+                    
+                    <div class="row g-3 align-items-center mb-3">
+                        <div class="col-md-6">
+                            <label for="baseFee${index}" class="form-label">Base Fee (RM)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">RM</span>
+                                <input 
+                                    type="number" 
+                                    class="form-control" 
+                                    id="baseFee${index}" 
+                                    name="baseFees[${categoryName}]" 
+                                    value="${fee}" 
+                                    min="0" 
+                                    step="0.01"
+                                    placeholder="0.00"
+                                >
+                            </div>
+                            <small class="text-muted">Enter the base fee for this service category</small>
+                        </div>
                         
-                        <div class="row g-3 align-items-center mb-3">
-                            <div class="col-md-6">
-                                <label for="baseFee${index}" class="form-label">Base Fee (RM)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">RM</span>
-                                    <input 
-                                        type="number" 
-                                        class="form-control" 
-                                        id="baseFee${index}" 
-                                        name="baseFees[${categoryName}]" 
-                                        value="${fee}" 
-                                        min="0" 
-                                        step="0.01"
-                                        placeholder="0.00"
-                                    >
-                                </div>
-                                <small class="text-muted">Enter the base fee for this service category</small>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <label for="feeType${index}" class="form-label">Fee Type</label>
-                                <select class="form-select" id="feeType${index}" name="feeTypes[${categoryName}]">
-                                    <option value="per visit" ${feeType === 'per visit' ? 'selected' : ''}>Per Visit</option>
-                                    <option value="per hour" ${feeType === 'per hour' ? 'selected' : ''}>Per Hour</option>
-                                    <option value="fixed" ${feeType === 'fixed' ? 'selected' : ''}>Fixed Price</option>
-                                </select>
-                                <small class="text-muted">Select how you'd like to charge for this service</small>
-                            </div>
+                        <div class="col-md-6">
+                            <label for="feeType${index}" class="form-label">Fee Type</label>
+                            <select class="form-select" id="feeType${index}" name="feeTypes[${categoryName}]">
+                                <option value="per visit" ${feeType === 'per visit' ? 'selected' : ''}>Per Visit</option>
+                                <option value="per hour" ${feeType === 'per hour' ? 'selected' : ''}>Per Hour</option>
+                                <option value="fixed" ${feeType === 'fixed' ? 'selected' : ''}>Fixed Price</option>
+                            </select>
+                            <small class="text-muted">Select how you'd like to charge for this service</small>
                         </div>
                     </div>
                 </div>
-            `;
-        });
-        
-        pricingContainer.innerHTML = pricingFields;
+            </div>
+        `;
+    });
+    
+    pricingContainer.innerHTML = pricingHTML;
+}
+
+// Update day availability UI
+function updateDayAvailability(day, isAvailable) {
+    const timeSlots = document.getElementById(`${day}TimeSlots`);
+    if (!timeSlots) {
+        console.warn('Time slots element not found for day:', day);
+        return;
     }
+    
+    const inputs = timeSlots.querySelectorAll('select');
+    
+    if (isAvailable) {
+        timeSlots.style.opacity = '1';
+        inputs.forEach(input => input.disabled = false);
+    } else {
+        timeSlots.style.opacity = '0.5';
+        inputs.forEach(input => input.disabled = true);
+    }
+}
+
+// Set up event listeners
+function setupEventListeners() {
+    // Category checkbox change
+    const categoryCheckboxes = document.querySelectorAll('.category-checkbox');
+    categoryCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            // Get provider data
+            const providerData = getProviderData();
+            updatePricingSection(providerData.categories);
+        });
+    });
+    
+    // Availability toggle change
+    const availabilityToggles = document.querySelectorAll('.availability-toggle');
+    availabilityToggles.forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const day = this.value.toLowerCase();
+            updateDayAvailability(day, this.checked);
+        });
+    });
+}
+
+// Auto-dismiss alerts
+function setupAlertDismissal() {
+    setTimeout(function() {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
+}
     </script>
 </body>
 </html>

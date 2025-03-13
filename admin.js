@@ -35,7 +35,7 @@ const isAdmin = (req, res, next) => {
 };
 
 const getDashboard = async (req, res) => {
-    try {
+   try {
         console.log('Starting getDashboard function');
 
         // Get total providers count
@@ -44,7 +44,7 @@ const getDashboard = async (req, res) => {
         // Get total customers count
         const customersCountQuery = await pool.query('SELECT COUNT(*) FROM customers');
 
-        // Get all providers (pending, approved, and rejected)
+        // Get all providers (pending, approved, and rejected) with availability information
         const providersQuery = await pool.query(`
             SELECT 
                 sp.id, 
@@ -52,7 +52,12 @@ const getDashboard = async (req, res) => {
                 sp.phone_number, 
                 sp.is_verified,
                 u.email,
-                ARRAY_AGG(DISTINCT sc.category_name) as categories
+                ARRAY_AGG(DISTINCT sc.category_name) FILTER (WHERE sc.category_name IS NOT NULL) as categories,
+                (
+                    SELECT COUNT(*) 
+                    FROM provider_availability pa 
+                    WHERE pa.provider_id = sp.id AND pa.is_available = true
+                ) as available_days_count
             FROM service_providers sp
             JOIN users u ON sp.user_id = u.id
             LEFT JOIN service_categories sc ON sp.id = sc.provider_id
@@ -95,7 +100,7 @@ const getDashboard = async (req, res) => {
         return res.render('admin/dashboard', {
             totalProviders: 0,
             totalCustomers: 0,
-            pendingProviders: [],
+            providers: [],
             customers: []
         });
     }
@@ -103,7 +108,7 @@ const getDashboard = async (req, res) => {
 
 const getProviderDetails = async (req, res) => {
     try {
-        // Updated query to include pricing and availability information
+        // Updated query to include pricing, availability, and other information with correct ordering
         const query = `
             SELECT 
                 sp.id,
@@ -116,43 +121,45 @@ const getProviderDetails = async (req, res) => {
                     ARRAY_AGG(DISTINCT sc.category_name) FILTER (WHERE sc.category_name IS NOT NULL),
                     ARRAY[]::text[]
                 ) as categories,
-                COALESCE(
-                    (
-                        SELECT ARRAY_AGG(so.service_name)
-                        FROM services_offered so
-                        WHERE so.provider_id = sp.id
-                    ),
-                    ARRAY[]::text[]
+                (
+                    SELECT ARRAY_AGG(so.service_name)
+                    FROM services_offered so
+                    WHERE so.provider_id = sp.id
                 ) as services,
-                COALESCE(
-                    (
-                        SELECT jsonb_agg(
-                            jsonb_build_object(
-                                'category', sc_pricing.category_name,
-                                'base_fee', sc_pricing.base_fee,
-                                'fee_type', sc_pricing.fee_type
-                            )
+                (
+                    SELECT jsonb_agg(
+                        jsonb_build_object(
+                            'category', sc_pricing.category_name,
+                            'base_fee', sc_pricing.base_fee,
+                            'fee_type', sc_pricing.fee_type
                         )
-                        FROM service_categories sc_pricing
-                        WHERE sc_pricing.provider_id = sp.id
-                    ),
-                    '[]'::jsonb
+                    )
+                    FROM service_categories sc_pricing
+                    WHERE sc_pricing.provider_id = sp.id
                 ) as pricing,
-                COALESCE(
-                    (
-                        SELECT jsonb_agg(
-                            jsonb_build_object(
-                                'day_of_week', pa.day_of_week,
-                                'start_time', pa.start_time,
-                                'end_time', pa.end_time,
-                                'slot_duration', pa.slot_duration,
-                                'is_available', pa.is_available
-                            )
+                (
+                    SELECT jsonb_agg(
+                        jsonb_build_object(
+                            'day_of_week', pa.day_of_week,
+                            'start_time', pa.start_time,
+                            'end_time', pa.end_time,
+                            'slot_duration', pa.slot_duration,
+                            'is_available', pa.is_available
                         )
-                        FROM provider_availability pa
-                        WHERE pa.provider_id = sp.id
-                    ),
-                    '[]'::jsonb
+                    )
+                    FROM (
+                        SELECT * FROM provider_availability
+                        WHERE provider_id = sp.id
+                        ORDER BY CASE
+                            WHEN day_of_week = 'Monday' THEN 1
+                            WHEN day_of_week = 'Tuesday' THEN 2
+                            WHEN day_of_week = 'Wednesday' THEN 3
+                            WHEN day_of_week = 'Thursday' THEN 4
+                            WHEN day_of_week = 'Friday' THEN 5
+                            WHEN day_of_week = 'Saturday' THEN 6
+                            WHEN day_of_week = 'Sunday' THEN 7
+                        END
+                    ) pa
                 ) as availability
             FROM service_providers sp
             JOIN users u ON sp.user_id = u.id
@@ -175,14 +182,20 @@ const getProviderDetails = async (req, res) => {
 
         const providerData = provider.rows[0];
         
+        // Add extensive logging to debug availability data
+        console.log('Provider ID:', providerData.id);
+        console.log('Availability data type:', typeof providerData.availability);
+        console.log('Availability is array?', Array.isArray(providerData.availability));
+        console.log('Availability length:', providerData.availability ? providerData.availability.length : 'N/A');
+        console.log('Availability data:', JSON.stringify(providerData.availability, null, 2));
+        
         // Remove the duplicate '/uploads/certifications/' prefix
         if (providerData.certification_url) {
             const cleanPath = providerData.certification_url.replace(/^\/uploads\/certifications\//, '');
             providerData.certification_file = `/uploads/certifications/${cleanPath}`;
         }
 
-        console.log('Provider Availability Data:', providerData.availability);
-
+        // Send the response
         res.json(providerData);
     } catch (err) {
         console.error('Error in getProviderDetails:', err);

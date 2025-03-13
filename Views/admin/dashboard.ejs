@@ -421,60 +421,58 @@
             </div>
 
             <!-- Service Providers Table -->
-            <!-- Service Providers Section -->
-<!-- Update the providers table to include a delete button -->
-<div class="card mt-4">
-    <div class="card-body">
-        <h4 class="card-title">Service Providers</h4>
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Service Category</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <% providers.forEach(function(provider) { %>
-                        <tr data-provider-id="<%= provider.id %>">
-                            <td><%= provider.business_name %></td>
-                            <td><%= provider.email %></td>
-                            <td>
-                                <% if (provider.categories && provider.categories.length > 0) { %>
-                                    <% provider.categories.forEach(function(category) { %>
-                                        <span class="badge bg-info me-1"><%= category %></span>
-                                    <% }); %>
-                                <% } else { %>
-                                    <span class="text-muted">No categories</span>
-                                <% } %>
-                            </td>
-                            <td>
-                                <% if (provider.is_verified === false) { %>
-                                    <span class="badge bg-warning">Pending</span>
-                                <% } else { %>
-                                    <span class="badge bg-success">Approved</span>
-                                <% } %>
-                            </td>
-                            <td>
-                                <div class="d-flex gap-2">
-                                    <button class="btn btn-sm btn-outline-primary" onclick="showProviderDetails('<%= provider.id %>')">
-                                        <i class="bi bi-eye"></i> View
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger delete-btn" onclick="deleteProvider('<%= provider.id %>', '<%= provider.business_name %>')">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    <% }); %>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h4 class="card-title">Service Providers</h4>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Service Category</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% providers.forEach(function(provider) { %>
+                                    <tr data-provider-id="<%= provider.id %>">
+                                        <td><%= provider.business_name %></td>
+                                        <td><%= provider.email %></td>
+                                        <td>
+                                            <% if (provider.categories && provider.categories.length > 0) { %>
+                                                <% provider.categories.forEach(function(category) { %>
+                                                    <span class="badge bg-info me-1"><%= category %></span>
+                                                <% }); %>
+                                            <% } else { %>
+                                                <span class="text-muted">No categories</span>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <% if (provider.is_verified === false) { %>
+                                                <span class="badge bg-warning">Pending</span>
+                                            <% } else { %>
+                                                <span class="badge bg-success">Approved</span>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex gap-2">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="showProviderDetails('<%= provider.id %>')">
+                                                    <i class="bi bi-eye"></i> View
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger delete-btn" onclick="deleteProvider('<%= provider.id %>', '<%= provider.business_name %>')">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
 <!-- Add this modal at the bottom of dashboard.ejs -->
 <div class="modal fade" id="providerDetailsModal">
@@ -665,7 +663,7 @@
 <script>
     let currentProviderId = null;
 
-function showProviderDetails(id) {
+    function showProviderDetails(id) {
     currentProviderId = id;
     console.log('Current Provider ID set:', currentProviderId);
     
@@ -677,6 +675,9 @@ function showProviderDetails(id) {
             return response.json();
         })
         .then(provider => {
+            // Debug log the full provider data
+            console.log('Provider details received:', provider);
+            
             // Set business information
             document.getElementById('businessName').textContent = provider.business_name || 'N/A';
             document.getElementById('businessEmail').textContent = provider.email || 'N/A';
@@ -702,7 +703,7 @@ function showProviderDetails(id) {
                 servicesElement.innerHTML = '<span class="text-muted">No services offered</span>';
             }
 
-            // Handle pricing display with RM currency
+            // Handle pricing display
             const pricingTableBody = document.getElementById('pricingTableBody');
             pricingTableBody.innerHTML = '';
 
@@ -731,6 +732,74 @@ function showProviderDetails(id) {
                 pricingTableBody.innerHTML = `
                     <tr>
                         <td colspan="3" class="text-center">No pricing information available</td>
+                    </tr>
+                `;
+            }
+
+            // Handle availability display
+            const availabilityTableBody = document.getElementById('availabilityTableBody');
+            availabilityTableBody.innerHTML = '';
+
+            if (provider.availability && provider.availability.length > 0) {
+                console.log('Availability data found:', provider.availability);
+                
+                provider.availability.forEach(day => {
+                    const row = document.createElement('tr');
+                    
+                    // Format slot duration to be more readable
+                    let durationText = '';
+                    if (day.slot_duration === 30) {
+                        durationText = '30 minutes';
+                    } else if (day.slot_duration === 60) {
+                        durationText = '1 hour';
+                    } else if (day.slot_duration === 90) {
+                        durationText = '1.5 hours';
+                    } else if (day.slot_duration === 120) {
+                        durationText = '2 hours';
+                    } else if (day.slot_duration === 180) {
+                        durationText = '3 hours';
+                    } else {
+                        durationText = `${day.slot_duration} minutes`;
+                    }
+                    
+                    // Format time strings to be more readable
+                    function formatTime(timeStr) {
+                        if (!timeStr) return 'N/A';
+                        
+                        // Handle different time formats
+                        let hours, minutes;
+                        if (timeStr.includes(':')) {
+                            [hours, minutes] = timeStr.split(':');
+                        } else {
+                            hours = timeStr;
+                            minutes = '00';
+                        }
+                        
+                        hours = parseInt(hours);
+                        const ampm = hours >= 12 ? 'PM' : 'AM';
+                        hours = hours % 12 || 12; // Convert to 12-hour format
+                        
+                        return `${hours}:${minutes.padStart(2, '0')} ${ampm}`;
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${day.day_of_week}</td>
+                        <td>${day.is_available ? formatTime(day.start_time) : 'Not Available'}</td>
+                        <td>${day.is_available ? formatTime(day.end_time) : 'Not Available'}</td>
+                        <td>${day.is_available ? durationText : 'N/A'}</td>
+                        <td>
+                            ${day.is_available 
+                                ? '<span class="badge bg-success">Available</span>' 
+                                : '<span class="badge bg-secondary">Not Available</span>'}
+                        </td>
+                    `;
+                    availabilityTableBody.appendChild(row);
+                });
+            } else {
+                console.log('No availability data found');
+                availabilityTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center">No availability information available</td>
                     </tr>
                 `;
             }
@@ -946,6 +1015,22 @@ function logout() {
         window.location.href = '/auth/logout';
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+        // Enable tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+        
+        // Add click handler for availability status buttons
+        document.querySelectorAll('.availability-status').forEach(button => {
+            button.addEventListener('click', function() {
+                const providerId = this.getAttribute('data-provider-id');
+                showProviderDetails(providerId);
+            });
+        });
+    });
 
 </script>
 
