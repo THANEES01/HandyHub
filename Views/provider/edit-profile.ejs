@@ -278,67 +278,211 @@
                     </div>
                 </div>
 
-                <!-- Service Categories Section -->
-                <div class="mb-4">
-                    <h4 class="form-section-title">Service Categories</h4>
-                    <p class="text-muted mb-3">Select the categories that best describe your services:</p>
-                    
-                    <div class="row" id="categories-container">
-                        <% 
-                        // Define all available categories
-                        const availableCategories = [
-                            "Plumbing", 
-                            "Electrical Repairs", 
-                            "Roof Repairs", 
-                            "Pest Control", 
-                            "Carpentry Service", 
-                            "AC Service", 
-                            "Landscaping", 
-                            "Home Cleaning", 
-                            "Appliance Service"
-                        ];
+                
+                <!-- Service Categories Section with Direct Checking -->
+                    <div class="mb-4">
+                        <h4 class="form-section-title">Service Categories</h4>
+                        <p class="text-muted mb-3">Select the categories that best describe your services:</p>
                         
-                        availableCategories.forEach((category, index) => { 
-                        %>
-                            <div class="col-md-4 mb-2">
-                                <div class="form-check">
-                                    <input 
-                                        class="form-check-input category-checkbox" 
-                                        type="checkbox" 
-                                        name="categories[]" 
-                                        value="<%= category %>" 
-                                        id="category<%= index %>"
-                                    >
-                                    <label class="form-check-label" for="category<%= index %>">
-                                        <%= category %>
-                                    </label>
+                        <div class="row" id="categories-container">
+                            <% 
+                            // Define all available categories
+                            const availableCategories = [
+                                "Plumbing", 
+                                "Electrical Repairs", 
+                                "Roof Repairs", 
+                                "Pest Control", 
+                                "Carpentry Service", 
+                                "AC Service", 
+                                "Landscaping", 
+                                "Home Cleaning", 
+                                "Appliance Service"
+                            ];
+                            
+                            // For direct debug output
+                            if (provider && provider.categories && Array.isArray(provider.categories)) {
+                                console.log("Provider categories for checkbox checking:", 
+                                    provider.categories.map(cat => typeof cat === 'string' ? cat : cat.category_name));
+                            }
+                            
+                            // Helper function to check if a category is selected - with improved matching
+                            function isCategorySelected(categoryName) {
+                                if (!provider || !provider.categories || !Array.isArray(provider.categories)) {
+                                    return false;
+                                }
+                                
+                                const normalizedCategory = categoryName.toLowerCase().trim();
+                                
+                                for (const cat of provider.categories) {
+                                    // Get category name from object or string
+                                    const catName = typeof cat === 'string' ? cat : (cat.category_name || '');
+                                    const dbCatLower = catName.toLowerCase().trim();
+                                    
+                                    // Exact match
+                                    if (dbCatLower === normalizedCategory) {
+                                        console.log(`Found exact match for ${categoryName}: ${catName}`);
+                                        return true;
+                                    }
+                                    
+                                    // UI category contains DB category (e.g., "Appliance Service" contains "appliance")
+                                    if (normalizedCategory.includes(dbCatLower)) {
+                                        console.log(`Found UI-contains-DB match for ${categoryName}: ${catName}`);
+                                        return true; 
+                                    }
+                                    
+                                    // DB category contains UI category's key part (e.g., "plumbingservice" contains "plumbing")
+                                    const keyPart = normalizedCategory.split(' ')[0]; // First word is usually the key part
+                                    if (dbCatLower.includes(keyPart)) {
+                                        console.log(`Found DB-contains-key match for ${categoryName}: ${catName}`);
+                                        return true;
+                                    }
+                                }
+                                
+                                return false;
+                            }
+                            
+                            // Generate checkboxes for each category
+                            availableCategories.forEach((category, index) => { 
+                                const isSelected = isCategorySelected(category);
+                                console.log(`Category checkbox: ${category} => ${isSelected ? 'CHECKED' : 'unchecked'}`);
+                            %>
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input 
+                                            class="form-check-input category-checkbox" 
+                                            type="checkbox" 
+                                            name="categories[]" 
+                                            value="<%= category %>" 
+                                            id="category<%= index %>"
+                                            <%= isSelected ? 'checked' : '' %>
+                                        >
+                                        <label class="form-check-label" for="category<%= index %>">
+                                            <%= category %>
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
-                        <% }); %>
+                            <% }); %>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Pricing Information Section -->
-                <div class="mb-4">
-                    <h4 class="form-section-title">Pricing Information</h4>
-                    <p class="text-muted mb-3">Set your base fees for each service category:</p>
+                    <!-- Pricing Information Section -->
+                    <div class="mb-4">
+    <h4 class="form-section-title">Pricing Information</h4>
+    <p class="text-muted mb-3">Set your base fees for each service category:</p>
+    
+    <div id="pricing-container">
+        <% 
+        // Directly use provider.categories without filtering through availableCategories
+        if (!provider || !provider.categories || !Array.isArray(provider.categories) || provider.categories.length === 0) {
+        %>
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 
+                Select service categories above to set their base fees.
+            </div>
+        <% } else { 
+            // Build pricing cards directly from provider categories
+            provider.categories.forEach((categoryData, index) => {
+                // Extract category name
+                const categoryName = categoryData.category_name || "";
+                
+                // Convert first character to uppercase for display
+                const displayName = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
+                
+                // Set fee and fee type
+                const fee = categoryData.base_fee !== undefined ? categoryData.base_fee : 0;
+                const feeType = categoryData.fee_type || 'per visit';
+                
+                console.log(`Direct pricing for ${displayName}:`, { fee, feeType });
+        %>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title"><%= displayName %></h5>
                     
-                    <div id="pricing-container">
-                        <!-- Dynamic content will be added here by JavaScript -->
+                    <div class="row g-3 align-items-center mb-3">
+                        <div class="col-md-6">
+                            <label for="baseFee<%= index %>" class="form-label">Base Fee (RM)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">RM</span>
+                                <input 
+                                    type="number" 
+                                    class="form-control" 
+                                    id="baseFee<%= index %>" 
+                                    name="baseFees[<%= displayName %>]" 
+                                    value="<%= fee %>" 
+                                    min="0" 
+                                    step="0.01"
+                                    placeholder="0.00"
+                                >
+                            </div>
+                            <small class="text-muted">Enter the base fee for this service category</small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="feeType<%= index %>" class="form-label">Fee Type</label>
+                            <select class="form-select" id="feeType<%= index %>" name="feeTypes[<%= displayName %>]">
+                                <option value="per visit" <%= feeType === 'per visit' ? 'selected' : '' %>>Per Visit</option>
+                                <option value="per hour" <%= feeType === 'per hour' ? 'selected' : '' %>>Per Hour</option>
+                                <option value="fixed" <%= feeType === 'fixed' ? 'selected' : '' %>>Fixed Price</option>
+                            </select>
+                            <small class="text-muted">Select how you'd like to charge for this service</small>
+                        </div>
                     </div>
                 </div>
+            </div>
+        <% }); } %>
+    </div>
+</div>
 
-                <!-- Services Offered Section -->
-                <div class="mb-4">
-                    <h4 class="form-section-title">Services Offered</h4>
-                    <div id="services-container">
-                        <!-- Services will be populated by JavaScript -->
-                    </div>
-                    <button type="button" class="add-field-btn" onclick="addServiceField()">
-                        <i class="bi bi-plus-circle"></i> Add Service
+<!-- Services Offered Section - Direct Generation -->
+<div class="mb-4">
+    <h4 class="form-section-title">Services Offered</h4>
+    <div id="services-container">
+        <% 
+        // Log the services data
+        if (provider && provider.services) {
+            console.log("Services for direct generation:", provider.services);
+        }
+        
+        // Check if services data exists
+        if (provider && provider.services && Array.isArray(provider.services) && provider.services.length > 0) {
+            // Add each service
+            provider.services.forEach(service => {
+                // Extract service name from the object
+                let serviceName = '';
+                if (typeof service === 'string') {
+                    serviceName = service;
+                } else if (service.service_name) {
+                    serviceName = service.service_name;
+                }
+                    
+                if (serviceName) {
+                    console.log(`Adding service field: ${serviceName}`);
+        %>
+                <div class="dynamic-field">
+                    <input type="text" class="form-control" name="services[]" value="<%= serviceName %>" placeholder="Enter a service" required>
+                    <button type="button" class="remove-field-btn" onclick="removeField(this)">
+                        <i class="bi bi-x-circle"></i>
                     </button>
                 </div>
-                
+        <%  }
+            });
+        } else {
+            // Add an empty service field if no services
+            console.log("No services found, adding empty field");
+        %>
+            <div class="dynamic-field">
+                <input type="text" class="form-control" name="services[]" value="" placeholder="Enter a service" required>
+                <button type="button" class="remove-field-btn" onclick="removeField(this)">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>
+        <% } %>
+    </div>
+    <button type="button" class="add-field-btn" onclick="addServiceField()">
+        <i class="bi bi-plus-circle"></i> Add Service
+    </button>
+</div>
+
                 <!-- Availability Section -->
                 <div class="mb-4">
                     <h4 class="form-section-title">Service Availability</h4>
@@ -347,7 +491,17 @@
                     <div class="availability-container">
                         <!-- Days of the week -->
                         <% const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']; %>
-                        <% daysOfWeek.forEach(day => { %>
+                        <% daysOfWeek.forEach(day => { 
+                            // Find availability data for this day
+                            let dayData = { is_available: true, start_time: '09:00', end_time: '17:00' };
+                            
+                            if (provider && provider.availability) {
+                                const foundDay = provider.availability.find(d => d.day_of_week === day);
+                                if (foundDay) {
+                                    dayData = foundDay;
+                                }
+                            }
+                        %>
                             <div class="card mb-3">
                                 <div class="card-body">
                                     <div class="row align-items-center">
@@ -357,22 +511,31 @@
                                                     type="checkbox" 
                                                     id="<%= day.toLowerCase() %>Available" 
                                                     name="availableDays" 
-                                                    value="<%= day %>">
+                                                    value="<%= day %>"
+                                                    <%= dayData.is_available ? 'checked' : '' %>>
                                                 <label class="form-check-label" for="<%= day.toLowerCase() %>Available">
                                                     <strong><%= day %></strong>
                                                 </label>
                                             </div>
                                         </div>
                                         <div class="col-md-9 time-slots">
-                                            <div class="row g-3" id="<%= day.toLowerCase() %>TimeSlots">
+                                            <div class="row g-3" id="<%= day.toLowerCase() %>TimeSlots" style="<%= dayData.is_available ? '' : 'opacity: 0.5;' %>">
                                                 <div class="col-md-5">
                                                     <label class="form-label small mb-1">Start Time</label>
-                                                    <select class="form-select" name="startTime_<%= day %>">
-                                                        <% for(let hour = 6; hour <= 20; hour++) { %>
-                                                            <% const hourStr = hour < 10 ? '0' + hour : '' + hour; %>
-                                                            <% const displayHour = hour > 12 ? hour - 12 : hour; %>
-                                                            <% const ampm = hour >= 12 ? 'PM' : 'AM'; %>
-                                                            <option value="<%= hourStr %>:00">
+                                                    <select class="form-select" name="startTime_<%= day %>" <%= dayData.is_available ? '' : 'disabled' %>>
+                                                        <% 
+                                                        // Get the start hour
+                                                        const startTime = dayData.start_time || '09:00';
+                                                        const startHour = parseInt(startTime.split(':')[0], 10);
+                                                        
+                                                        // Generate options
+                                                        for(let hour = 6; hour <= 20; hour++) { 
+                                                            const hourStr = hour < 10 ? '0' + hour : '' + hour;
+                                                            const displayHour = hour > 12 ? hour - 12 : hour;
+                                                            const ampm = hour >= 12 ? 'PM' : 'AM';
+                                                            const isSelected = hour === startHour;
+                                                        %>
+                                                            <option value="<%= hourStr %>:00" <%= isSelected ? 'selected' : '' %>>
                                                                 <%= displayHour %>:00 <%= ampm %>
                                                             </option>
                                                         <% } %>
@@ -380,12 +543,20 @@
                                                 </div>
                                                 <div class="col-md-5">
                                                     <label class="form-label small mb-1">End Time</label>
-                                                    <select class="form-select" name="endTime_<%= day %>">
-                                                        <% for(let hour = 6; hour <= 20; hour++) { %>
-                                                            <% const hourStr = hour < 10 ? '0' + hour : '' + hour; %>
-                                                            <% const displayHour = hour > 12 ? hour - 12 : hour; %>
-                                                            <% const ampm = hour >= 12 ? 'PM' : 'AM'; %>
-                                                            <option value="<%= hourStr %>:00">
+                                                    <select class="form-select" name="endTime_<%= day %>" <%= dayData.is_available ? '' : 'disabled' %>>
+                                                        <% 
+                                                        // Get the end hour
+                                                        const endTime = dayData.end_time || '17:00';
+                                                        const endHour = parseInt(endTime.split(':')[0], 10);
+                                                        
+                                                        // Generate options
+                                                        for(let hour = 6; hour <= 21; hour++) { 
+                                                            const hourStr = hour < 10 ? '0' + hour : '' + hour;
+                                                            const displayHour = hour > 12 ? hour - 12 : hour;
+                                                            const ampm = hour >= 12 ? 'PM' : 'AM';
+                                                            const isSelected = hour === endHour;
+                                                        %>
+                                                            <option value="<%= hourStr %>:00" <%= isSelected ? 'selected' : '' %>>
                                                                 <%= displayHour %>:00 <%= ampm %>
                                                             </option>
                                                         <% } %>
@@ -402,12 +573,19 @@
                             <div class="card-body">
                                 <div class="mb-3">
                                     <label for="slotDuration" class="form-label">Appointment Duration</label>
+                                    <% 
+                                    // Get slot duration from provider data
+                                    let slotDuration = 60; // Default to 60 minutes
+                                    if (provider && provider.availability && provider.availability.length > 0) {
+                                        slotDuration = provider.availability[0].slot_duration || 60;
+                                    }
+                                    %>
                                     <select class="form-select" id="slotDuration" name="slotDuration">
-                                        <option value="30">30 minutes</option>
-                                        <option value="60" selected>1 hour</option>
-                                        <option value="90">1.5 hours</option>
-                                        <option value="120">2 hours</option>
-                                        <option value="180">3 hours</option>
+                                        <option value="30" <%= slotDuration === 30 ? 'selected' : '' %>>30 minutes</option>
+                                        <option value="60" <%= slotDuration === 60 ? 'selected' : '' %>>1 hour</option>
+                                        <option value="90" <%= slotDuration === 90 ? 'selected' : '' %>>1.5 hours</option>
+                                        <option value="120" <%= slotDuration === 120 ? 'selected' : '' %>>2 hours</option>
+                                        <option value="180" <%= slotDuration === 180 ? 'selected' : '' %>>3 hours</option>
                                     </select>
                                 </div>
                             </div>
@@ -433,10 +611,117 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
 
-    // console.log('Server-side provider data:');
-    // console.log('Categories:', <%- JSON.stringify(provider.categories || []) %>);
-    // console.log('Services:', <%- JSON.stringify(provider.services || []) %>);
-    // console.log('Availability:', <%- JSON.stringify(provider.availability || []) %>);
+        // Add this code to the top of your script section in edit-profile.ejs
+// to immediately debug the issue on page load
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("=== DEBUGGING TIME VALUES ===");
+    
+    // 1. Debug all time select elements
+    const timeSelects = document.querySelectorAll('select[name^="startTime_"], select[name^="endTime_"]');
+    
+    console.log(`Found ${timeSelects.length} time select elements`);
+    
+    timeSelects.forEach(select => {
+        console.log(`${select.name}: Current value = ${select.value}`);
+        console.log(`Options count: ${select.options.length}`);
+        
+        // Log all available options
+        let availableOptions = [];
+        for(let i = 0; i < select.options.length; i++) {
+            availableOptions.push({
+                index: i,
+                value: select.options[i].value,
+                text: select.options[i].text
+            });
+        }
+        console.table(availableOptions);
+    });
+    
+    // 2. Debug provider data
+    try {
+        const providerDataEl = document.getElementById('providerData');
+        if (providerDataEl) {
+            console.log("Provider data element found");
+            
+            try {
+                const availabilityData = JSON.parse(decodeURIComponent(providerDataEl.dataset.availability || '[]'));
+                console.log("Availability data from dataset:", availabilityData);
+                
+                // Check if data matches what we expect
+                if (availabilityData && availabilityData.length > 0) {
+                    console.log("Sample day data:", availabilityData[0]);
+                    console.log("Start time type:", typeof availabilityData[0].start_time);
+                    console.log("Start time value:", availabilityData[0].start_time);
+                }
+            } catch (e) {
+                console.error("Error parsing availability data:", e);
+            }
+        } else {
+            console.error("Provider data element not found!");
+        }
+    } catch (e) {
+        console.error("Error accessing provider data:", e);
+    }
+    
+    // 3. Manual fix - directly set all time selects to the correct values from database
+    setTimeout(function() {
+        console.log("Applying manual time fix...");
+        
+        const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        
+        daysOfWeek.forEach(day => {
+            const startSelect = document.querySelector(`select[name="startTime_${day}"]`);
+            const endSelect = document.querySelector(`select[name="endTime_${day}"]`);
+            
+            if (startSelect) {
+                // Set to 09:00 AM (database value)
+                console.log(`Setting ${day} start time to 09:00 AM`);
+                setSelectValueByTime(startSelect, "09:00");
+            }
+            
+            if (endSelect) {
+                // Set to 17:00 (5:00 PM) (database value)
+                console.log(`Setting ${day} end time to 17:00 (5:00 PM)`);
+                setSelectValueByTime(endSelect, "17:00");
+            }
+        });
+    }, 500); // Short delay to ensure the page is fully loaded
+    
+    // Helper function to set select to a specific time
+    function setSelectValueByTime(selectElement, timeStr) {
+        // First try direct match
+        for (let i = 0; i < selectElement.options.length; i++) {
+            if (selectElement.options[i].value === timeStr) {
+                selectElement.selectedIndex = i;
+                console.log(`Direct match found for ${timeStr} at index ${i}`);
+                return true;
+            }
+        }
+        
+        // Try matching the hour
+        const hourToMatch = parseInt(timeStr.split(':')[0], 10);
+        
+        for (let i = 0; i < selectElement.options.length; i++) {
+            const optionHour = parseInt(selectElement.options[i].value.split(':')[0], 10);
+            
+            if (optionHour === hourToMatch) {
+                selectElement.selectedIndex = i;
+                console.log(`Hour match found for ${hourToMatch} at index ${i}, value ${selectElement.options[i].value}`);
+                return true;
+            }
+        }
+        
+        // Last resort - set direct value
+        selectElement.value = timeStr;
+        console.log(`Direct value set to ${timeStr}`);
+        
+        return false;
+    }
+});
+
+
+        
         document.addEventListener('DOMContentLoaded', function() {
     // Get provider data from hidden input
     const providerData = getProviderData();
@@ -674,7 +959,8 @@ function initializeAvailability(availability) {
             if (dayData.start_time) {
                 const startSelect = document.querySelector(`select[name="startTime_${day}"]`);
                 if (startSelect) {
-                    setTimeSelectValue(startSelect, dayData.start_time);
+                    console.log(`Setting start time for ${day} to ${dayData.start_time}`);
+                    selectTimeOption(startSelect, dayData.start_time);
                 }
             }
             
@@ -682,12 +968,15 @@ function initializeAvailability(availability) {
             if (dayData.end_time) {
                 const endSelect = document.querySelector(`select[name="endTime_${day}"]`);
                 if (endSelect) {
-                    setTimeSelectValue(endSelect, dayData.end_time);
+                    console.log(`Setting end time for ${day} to ${dayData.end_time}`);
+                    selectTimeOption(endSelect, dayData.end_time);
                 }
             }
             
             // Update UI based on availability
             updateDayAvailability(day.toLowerCase(), dayData.is_available === true);
+        } else {
+            console.warn(`No availability data found for ${day}`);
         }
     });
     
@@ -708,39 +997,88 @@ function initializeAvailability(availability) {
     }
 }
 
-// Helper function to set time select value
-function setTimeSelectValue(selectElement, timeValue) {
-    if (!selectElement || !timeValue) return;
-    
-    // Normalize time format (09:00, 9:00, etc.)
-    let formattedTime = timeValue;
-    if (formattedTime.includes(':')) {
-        const [hours, minutes] = formattedTime.split(':');
-        const hoursInt = parseInt(hours, 10);
-        formattedTime = `${hoursInt < 10 ? '0' + hoursInt : hoursInt}:${minutes}`;
+// More reliable function to select time options
+function selectTimeOption(selectElement, timeStr) {
+    if (!selectElement || !timeStr) {
+        console.warn('Invalid inputs to selectTimeOption', { selectElement, timeStr });
+        return;
     }
     
-    console.log('Setting time select to:', formattedTime);
+    // Normalize time format to ensure HH:MM format
+    let hours, minutes;
     
-    // Try to find matching option
-    let optionFound = false;
+    // Handle various time formats
+    if (typeof timeStr === 'string') {
+        if (timeStr.includes(':')) {
+            // Format like "09:00" or "9:00"
+            [hours, minutes] = timeStr.split(':');
+        } else {
+            // Try to handle numeric format
+            hours = timeStr;
+            minutes = '00';
+        }
+    } else if (typeof timeStr === 'object' && timeStr.hours !== undefined) {
+        // Handle time object format
+        hours = timeStr.hours;
+        minutes = timeStr.minutes || '00';
+    } else {
+        console.warn('Unrecognized time format:', timeStr);
+        return;
+    }
+    
+    // Convert to integers
+    const hoursInt = parseInt(hours, 10);
+    const minutesInt = parseInt(minutes, 10);
+    
+    // Format as HH:MM
+    const formattedTime = `${hoursInt < 10 ? '0' + hoursInt : hoursInt}:${minutesInt < 10 ? '0' + minutesInt : minutesInt}`;
+    
+    console.log('Looking for time option:', formattedTime);
+    
+    // Try exact match first
     for (let i = 0; i < selectElement.options.length; i++) {
-        const optionValue = selectElement.options[i].value;
-        
-        // Check for exact match or close matches
-        if (optionValue === formattedTime || 
-            optionValue.replace(':00', '') === formattedTime.replace(':00', '') ||
-            formattedTime.includes(optionValue.replace(':00', ''))) {
-            
+        if (selectElement.options[i].value === formattedTime) {
             selectElement.selectedIndex = i;
-            optionFound = true;
-            console.log('Time option found at index', i);
-            break;
+            console.log('Found exact match at index', i, ':', selectElement.options[i].value);
+            return;
         }
     }
     
-    if (!optionFound) {
-        console.warn('No matching time option found for:', formattedTime);
+    // If no exact match, try matching just the hour
+    for (let i = 0; i < selectElement.options.length; i++) {
+        const optionHour = parseInt(selectElement.options[i].value.split(':')[0], 10);
+        if (optionHour === hoursInt) {
+            selectElement.selectedIndex = i;
+            console.log('Found hour match at index', i, ':', selectElement.options[i].value);
+            return;
+        }
+    }
+    
+    // Log all options for debugging
+    console.log('Available options:');
+    for (let i = 0; i < selectElement.options.length; i++) {
+        console.log(`Option ${i}: ${selectElement.options[i].value}`);
+    }
+    
+    console.warn('No matching option found for time:', formattedTime);
+}
+
+// Update day availability UI
+function updateDayAvailability(day, isAvailable) {
+    const timeSlots = document.getElementById(`${day}TimeSlots`);
+    if (!timeSlots) {
+        console.warn('Time slots element not found for day:', day);
+        return;
+    }
+    
+    const inputs = timeSlots.querySelectorAll('select');
+    
+    if (isAvailable) {
+        timeSlots.style.opacity = '1';
+        inputs.forEach(input => input.disabled = false);
+    } else {
+        timeSlots.style.opacity = '0.5';
+        inputs.forEach(input => input.disabled = true);
     }
 }
 
@@ -825,25 +1163,6 @@ function updatePricingSection(providerCategories) {
     pricingContainer.innerHTML = pricingHTML;
 }
 
-// Update day availability UI
-function updateDayAvailability(day, isAvailable) {
-    const timeSlots = document.getElementById(`${day}TimeSlots`);
-    if (!timeSlots) {
-        console.warn('Time slots element not found for day:', day);
-        return;
-    }
-    
-    const inputs = timeSlots.querySelectorAll('select');
-    
-    if (isAvailable) {
-        timeSlots.style.opacity = '1';
-        inputs.forEach(input => input.disabled = false);
-    } else {
-        timeSlots.style.opacity = '0.5';
-        inputs.forEach(input => input.disabled = true);
-    }
-}
-
 // Set up event listeners
 function setupEventListeners() {
     // Category checkbox change
@@ -876,6 +1195,35 @@ function setupAlertDismissal() {
         });
     }, 5000);
 }
+
+// Debugging helper function - can be called from browser console to troubleshoot
+window.debugAvailability = function() {
+    try {
+        console.log("===== AVAILABILITY DEBUGGING =====");
+        const providerDataEl = document.getElementById('providerData');
+        const availability = JSON.parse(decodeURIComponent(providerDataEl.dataset.availability || '[]'));
+        console.log('Availability data from dataset:', availability);
+        
+        // Check time selectors
+        const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        
+        daysOfWeek.forEach(day => {
+            const startSelect = document.querySelector(`select[name="startTime_${day}"]`);
+            const endSelect = document.querySelector(`select[name="endTime_${day}"]`);
+            const toggle = document.getElementById(`${day.toLowerCase()}Available`);
+            
+            console.log(`${day}:`, {
+                'Start Value': startSelect ? startSelect.value : 'N/A',
+                'End Value': endSelect ? endSelect.value : 'N/A',
+                'Toggle Checked': toggle ? toggle.checked : 'N/A'
+            });
+        });
+        
+        console.log("=================================");
+    } catch (error) {
+        console.error('Error in debugAvailability:', error);
+    }
+};
     </script>
 </body>
 </html>

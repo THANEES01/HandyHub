@@ -303,13 +303,33 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         }));
         
         // Format availability - ensure consistent structure and types
-        const formattedAvailability = availabilityResult.rows.map(day => ({
-            day_of_week: day.day_of_week,
-            start_time: day.start_time,
-            end_time: day.end_time,
-            slot_duration: parseInt(day.slot_duration || 60),
-            is_available: day.is_available === true
-        }));
+        const formattedAvailability = availabilityResult.rows.map(day => {
+            // Format start_time to ensure it's in the correct format (HH:MM)
+            let start_time = day.start_time;
+            if (typeof start_time === 'string' && start_time.includes(':')) {
+                // Ensure hours part is two digits (09:00 not 9:00)
+                const [hours, minutes] = start_time.split(':');
+                const hoursInt = parseInt(hours, 10);
+                start_time = `${hoursInt < 10 ? '0' + hoursInt : hoursInt}:${minutes}`;
+            }
+            
+            // Format end_time to ensure it's in the correct format
+            let end_time = day.end_time;
+            if (typeof end_time === 'string' && end_time.includes(':')) {
+                // Ensure hours part is two digits
+                const [hours, minutes] = end_time.split(':');
+                const hoursInt = parseInt(hours, 10);
+                end_time = `${hoursInt < 10 ? '0' + hoursInt : hoursInt}:${minutes}`;
+            }
+            
+            return {
+                day_of_week: day.day_of_week,
+                start_time: start_time,
+                end_time: end_time,
+                slot_duration: parseInt(day.slot_duration || 60, 10),
+                is_available: day.is_available === true
+            };
+        });
         
         // Log the formatted data for debugging
         console.log('Formatted categories:', formattedCategories);
