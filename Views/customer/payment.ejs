@@ -7,6 +7,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    <!-- Load Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
     <style>
         html, body {
             height: 100%;
@@ -105,35 +107,14 @@
             font-size: 1.1rem;
         }
         
-        .payment-method {
-            margin-bottom: 30px;
-        }
-        
-        .method-option {
-            border: 2px solid #eee;
+        .payment-form {
+            background-color: #f8f9fa;
+            padding: 20px;
             border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-            cursor: pointer;
-            transition: all 0.2s ease;
         }
         
-        .method-option:hover {
-            border-color: var(--light-blue);
-            background-color: #f9f9f9;
-        }
-        
-        .method-option.selected {
-            border-color: var(--primary-blue);
-            background-color: var(--light-blue);
-        }
-        
-        .method-option input[type="radio"] {
-            margin-right: 10px;
-        }
-        
-        .payment-details {
-            margin-top: 20px;
+        #payment-element {
+            margin-bottom: 24px;
         }
         
         .btn-pay {
@@ -147,16 +128,50 @@
             transition: all 0.3s ease;
         }
         
-        .btn-pay:hover {
+        .btn-pay:hover:not(:disabled) {
             background-color: var(--dark-blue);
             transform: translateY(-2px);
             color: white;
         }
         
-        .credit-card-form {
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 10px;
+        .btn-pay:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+        
+        #payment-spinner {
+            display: none;
+            margin-left: 10px;
+        }
+        
+        .payment-loading #payment-spinner {
+            display: inline-block;
+        }
+        
+        .payment-success-message {
+            display: none;
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .payment-error-message {
+            display: none;
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .payment-message {
+            color: #666;
+            font-size: 0.9rem;
+            text-align: center;
             margin-top: 15px;
         }
     </style>
@@ -184,6 +199,17 @@
                 </div>
                 
                 <div class="payment-content">
+                    <!-- Success and error messages -->
+                    <div id="payment-success-message" class="payment-success-message">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        Payment successful! Your booking has been confirmed.
+                    </div>
+                    
+                    <div id="payment-error-message" class="payment-error-message">
+                        <i class="bi bi-exclamation-circle-fill me-2"></i>
+                        <span id="error-message-text">Payment processing failed. Please try again.</span>
+                    </div>
+                    
                     <div class="booking-summary">
                         <h4>Booking Summary</h4>
                         
@@ -198,7 +224,7 @@
                         </div>
                         
                         <% 
-                        // Calculate any additional fees (example)
+                        // Calculate any additional fees
                         const serviceFee = parseFloat(paymentInfo.baseFee) * 0.05;
                         const totalAmount = parseFloat(paymentInfo.baseFee) + serviceFee;
                         %>
@@ -214,79 +240,23 @@
                         </div>
                     </div>
                     
-                    <form action="/customer/process-payment" method="POST">
+                    <form id="payment-form" class="payment-form">
                         <input type="hidden" name="bookingId" value="<%= paymentInfo.bookingId %>">
                         
-                        <div class="payment-method">
-                            <h4>Select Payment Method</h4>
-                            
-                            <div class="method-option" onclick="selectPaymentMethod(this, 'card')">
-                                <label class="d-flex align-items-center">
-                                    <input type="radio" name="paymentMethod" value="card" checked>
-                                    <span class="ms-2">
-                                        <i class="bi bi-credit-card me-2"></i>
-                                        Credit/Debit Card
-                                    </span>
-                                </label>
-                            </div>
-                            
-                            <div class="method-option" onclick="selectPaymentMethod(this, 'bank')">
-                                <label class="d-flex align-items-center">
-                                    <input type="radio" name="paymentMethod" value="bank">
-                                    <span class="ms-2">
-                                        <i class="bi bi-bank me-2"></i>
-                                        Online Banking
-                                    </span>
-                                </label>
-                            </div>
-                            
-                            <div class="method-option" onclick="selectPaymentMethod(this, 'ewallet')">
-                                <label class="d-flex align-items-center">
-                                    <input type="radio" name="paymentMethod" value="ewallet">
-                                    <span class="ms-2">
-                                        <i class="bi bi-wallet2 me-2"></i>
-                                        E-Wallet
-                                    </span>
-                                </label>
-                            </div>
+                        <h4 class="mb-3">Payment Method</h4>
+                        <div id="payment-element">
+                            <!-- Stripe Payment Element will be inserted here -->
                         </div>
                         
-                        <div id="cardDetails" class="credit-card-form">
-                            <div class="row">
-                                <div class="col-12 mb-3">
-                                    <label for="cardNumber" class="form-label">Card Number</label>
-                                    <input type="text" class="form-control" id="cardNumber" name="cardNumber" placeholder="1234 5678 9012 3456">
-                                </div>
-                                
-                                <div class="col-md-6 mb-3">
-                                    <label for="cardExpiry" class="form-label">Expiry Date</label>
-                                    <input type="text" class="form-control" id="cardExpiry" name="cardExpiry" placeholder="MM/YY">
-                                </div>
-                                
-                                <div class="col-md-6 mb-3">
-                                    <label for="cardCvc" class="form-label">CVC</label>
-                                    <input type="text" class="form-control" id="cardCvc" name="cardCvc" placeholder="123">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div id="bankDetails" class="payment-details" style="display: none;">
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle"></i>
-                                You will be redirected to your bank's website to complete the payment.
-                            </div>
-                        </div>
-                        
-                        <div id="ewalletDetails" class="payment-details" style="display: none;">
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle"></i>
-                                You will be redirected to your e-wallet provider to complete the payment.
-                            </div>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-pay mt-4">
+                        <button id="submit-button" class="btn btn-pay">
                             Pay RM <%= totalAmount.toFixed(2) %>
+                            <span id="payment-spinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                         </button>
+                        
+                        <p class="payment-message mt-3">
+                            <i class="bi bi-shield-lock me-1"></i>
+                            Your payment is secure and processed by Stripe. We do not store your payment information.
+                        </p>
                     </form>
                 </div>
             </div>
@@ -300,31 +270,148 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Function to handle payment method selection
-        function selectPaymentMethod(element, method) {
-            // Clear previous selection
-            document.querySelectorAll('.method-option').forEach(option => {
-                option.classList.remove('selected');
-            });
+        // Initialize variables
+        let stripe = null;
+        let elements = null;
+        let paymentElement = null;
+        
+        // Get the booking ID from the form
+        const bookingId = document.querySelector('input[name="bookingId"]').value;
+        
+        // Display error message function
+        function displayError(message) {
+            // Reset loading state
+            document.getElementById('submit-button').disabled = false;
+            document.getElementById('submit-button').classList.remove('payment-loading');
             
-            // Select current option
-            element.classList.add('selected');
+            // Show error message
+            const errorElement = document.getElementById('payment-error-message');
+            document.getElementById('error-message-text').textContent = message;
+            errorElement.style.display = 'block';
             
-            // Update radio button
-            element.querySelector('input[type="radio"]').checked = true;
-            
-            // Show/hide relevant payment details
-            document.getElementById('cardDetails').style.display = method === 'card' ? 'block' : 'none';
-            document.getElementById('bankDetails').style.display = method === 'bank' ? 'block' : 'none';
-            document.getElementById('ewalletDetails').style.display = method === 'ewallet' ? 'block' : 'none';
+            // Scroll to the error message
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
         
-        // Initially select first payment method
-        document.addEventListener('DOMContentLoaded', function() {
-            const firstMethod = document.querySelector('.method-option');
-            if (firstMethod) {
-                firstMethod.classList.add('selected');
+        // Initialize Stripe and create payment intent
+        async function initialize() {
+            try {
+                // 1. Initialize Stripe
+                stripe = Stripe('<%= stripePublicKey %>');
+                
+                // 2. Create a payment intent on the server
+                const response = await fetch('/customer/create-payment-intent', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        bookingId: bookingId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    displayError(data.error);
+                    return;
+                }
+                
+                // 3. Initialize Elements with the PaymentIntent's client secret
+                elements = stripe.elements({
+                    clientSecret: data.clientSecret,
+                    locale: 'en',
+                    appearance: {
+                        theme: 'stripe',
+                        variables: {
+                            colorPrimary: '#0077be',
+                            colorBackground: '#ffffff',
+                            colorText: '#32325d',
+                            colorDanger: '#dc3545',
+                            fontFamily: 'Arial, sans-serif'
+                        }
+                    }
+                });
+                
+                // 4. Create and mount the Payment Element
+                paymentElement = elements.create('payment', {
+                    layout: {
+                        type: 'tabs',
+                        defaultCollapsed: false
+                    }
+                });
+                
+                paymentElement.mount('#payment-element');
+                
+                // 5. Enable the submit button once Elements is ready
+                document.querySelector('#submit-button').disabled = false;
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                displayError('Failed to initialize payment. Please try again later.');
             }
+        }
+        
+        // Handle the form submission
+        async function handleSubmit(e) {
+            e.preventDefault();
+            
+            // Disable the submit button and show loading state
+            const submitButton = document.getElementById('submit-button');
+            submitButton.disabled = true;
+            submitButton.classList.add('payment-loading');
+            
+            // Hide any existing messages
+            document.getElementById('payment-success-message').style.display = 'none';
+            document.getElementById('payment-error-message').style.display = 'none';
+            
+            try {
+                // Confirm the payment with Stripe
+                const { error } = await stripe.confirmPayment({
+                    elements,
+                    confirmParams: {
+                        // Return URL where the customer should be redirected after payment
+                        return_url: window.location.origin + '/customer/process-payment?bookingId=' + bookingId,
+                    },
+                    redirect: 'if_required' // Only redirect if needed (e.g., for 3DS)
+                });
+                
+                if (error) {
+                    // Payment failed
+                    if (error.type === 'card_error' || error.type === 'validation_error') {
+                        displayError(error.message);
+                    } else {
+                        displayError('An unexpected error occurred.');
+                    }
+                    
+                    // Re-enable the submit button
+                    submitButton.disabled = false;
+                    submitButton.classList.remove('payment-loading');
+                } else {
+                    // Payment succeeded - will be handled by redirect or webhook
+                    document.getElementById('payment-success-message').style.display = 'block';
+                    
+                    // Redirect to bookings page after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/customer/bookings';
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Payment error:', error);
+                displayError('An unexpected error occurred. Please try again.');
+                
+                // Re-enable the submit button
+                submitButton.disabled = false;
+                submitButton.classList.remove('payment-loading');
+            }
+        }
+        
+        // Initialize when the document is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            initialize();
+            
+            // Set up the form submission handler
+            document.getElementById('payment-form').addEventListener('submit', handleSubmit);
         });
     </script>
 </body>

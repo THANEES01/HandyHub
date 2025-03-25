@@ -10,6 +10,7 @@ import providerRoutes from './provider.js'; // Import providerRoutes
 import adminRoutes from './admin.js'; // Import adminRoutes
 import customerRoutes from './customer.js';
 import bookingRoutes from './booking.js';
+import paymentRoutes from './payment.js';
 
 dotenv.config();
 
@@ -17,6 +18,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
+
+// Add this in your middleware setup section, before setting up routes
+// This is important for Stripe webhook handling (raw body needed)
+app.use('/customer/webhook', express.raw({ type: 'application/json' }));
 
 // Middleware
 app.use(express.json());
@@ -59,6 +64,7 @@ app.use('/provider', providerRoutes);
 app.use('/admin', adminRoutes);
 app.use('/customer', customerRoutes);
 app.use(bookingRoutes);
+app.use('/customer', paymentRoutes);
 
 // Home route
 app.get('/', (req, res) => {

@@ -259,22 +259,36 @@
                               </div>
                           </div>
                           
+                          <!--Service Schedule-->
                           <div class="form-section">
-                              <h3 class="form-section-title">3. Schedule Service</h3>
-                              
-                              <div class="mb-3">
-                                  <label for="preferredDate" class="form-label">Preferred Date</label>
-                                  <input type="date" class="form-control" id="preferredDate" name="preferredDate" required>
-                              </div>
-                              
-                               <!-- Replace the static time slot dropdown with this -->
-                              <div class="mb-3">
-                                  <label for="timeSlot" class="form-label">Available Time Slots</label>
-                                  <select class="form-select" id="timeSlot" name="timeSlot" required disabled>
-                                      <option value="" disabled selected>Please select a date first</option>
-                                  </select>
-                              </div>
-                          </div>
+                            <h3 class="form-section-title">3. Schedule Service</h3>
+                            
+                            <div class="mb-3">
+                                <label for="preferredDate" class="form-label">Preferred Date</label>
+                                <input type="date" class="form-control" id="preferredDate" name="preferredDate" required>
+                                <small class="text-muted">Select a date to see available time slots</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="timeSlot" class="form-label">Available Time Slots</label>
+                                <select class="form-select" id="timeSlot" name="timeSlot" required disabled>
+                                    <option value="" disabled selected>Please select a date first</option>
+                                </select>
+                                <small class="text-muted provider-schedule-info"></small>
+                            </div>
+                            
+                            <!-- Provider availability information -->
+                            <div class="alert alert-info availability-info mt-3" style="display: none;">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    <div>
+                                        <strong>Provider's Schedule:</strong>
+                                        <span class="provider-hours"></span>
+                                        <div class="small availability-note"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                           
                           <div class="form-section">
                               <h3 class="form-section-title">4. Contact Information</h3>
@@ -310,94 +324,130 @@
       </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Set minimum date for booking to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('preferredDate').min = today;
+        // Set minimum date for booking to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('preferredDate').min = today;
+        
+        // Image preview functionality
+        const imageInput = document.getElementById('problemImages');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        
+        imageInput.addEventListener('change', function() {
+            previewContainer.innerHTML = ''; // Clear previous previews
             
-            // Image preview functionality
-            const imageInput = document.getElementById('problemImages');
-            const previewContainer = document.getElementById('imagePreviewContainer');
-            
-            imageInput.addEventListener('change', function() {
-                previewContainer.innerHTML = ''; // Clear previous previews
-                
-                if (this.files) {
-                    Array.from(this.files).forEach(file => {
-                        if (file.type.match('image.*')) {
-                            const reader = new FileReader();
-                            
-                            reader.onload = function(e) {
-                                const img = document.createElement('img');
-                                img.classList.add('image-preview');
-                                img.src = e.target.result;
-                                previewContainer.appendChild(img);
-                            }
-                            
-                            reader.readAsDataURL(file);
+            if (this.files) {
+                Array.from(this.files).forEach(file => {
+                    if (file.type.match('image.*')) {
+                        const reader = new FileReader();
+                        
+                        reader.onload = function(e) {
+                            const img = document.createElement('img');
+                            img.classList.add('image-preview');
+                            img.src = e.target.result;
+                            previewContainer.appendChild(img);
                         }
+                        
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        });
+        
+        // Enhanced date selection for availability
+        document.getElementById('preferredDate').addEventListener('change', function() {
+            const date = this.value;
+            const providerId = document.querySelector('input[name="providerId"]').value;
+            
+            if (date) {
+                // Show loading state
+                const timeSlotSelect = document.getElementById('timeSlot');
+                timeSlotSelect.innerHTML = '<option value="" disabled selected>Loading available slots...</option>';
+                timeSlotSelect.disabled = true;
+                
+                // Get day of week from selected date
+                const selectedDate = new Date(date);
+                const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
+                
+                // Fetch available time slots for this date and provider
+                fetch(`/api/available-slots?providerId=${providerId}&date=${date}&dayOfWeek=${dayOfWeek}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        timeSlotSelect.innerHTML = ''; // Clear existing options
+                        timeSlotSelect.disabled = false;
+                        
+                        if (data.slots && data.slots.length > 0) {
+                            // Add a default option
+                            const defaultOption = document.createElement('option');
+                            defaultOption.value = "";
+                            defaultOption.textContent = "Select a time slot";
+                            defaultOption.disabled = true;
+                            defaultOption.selected = true;
+                            timeSlotSelect.appendChild(defaultOption);
+                            
+                            // Add each available slot
+                            data.slots.forEach(slot => {
+                                const option = document.createElement('option');
+                                option.value = slot;
+                                option.textContent = slot;
+                                timeSlotSelect.appendChild(option);
+                            });
+                        } else {
+                            const option = document.createElement('option');
+                            option.value = "";
+                            option.textContent = "No available slots for this date";
+                            option.disabled = true;
+                            option.selected = true;
+                            timeSlotSelect.appendChild(option);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching time slots:', error);
+                        timeSlotSelect.innerHTML = '<option value="" disabled selected>Error loading time slots</option>';
                     });
+            } else {
+                const timeSlotSelect = document.getElementById('timeSlot');
+                timeSlotSelect.innerHTML = '<option value="" disabled selected>Please select a date first</option>';
+                timeSlotSelect.disabled = true;
+            }
+        });
+        
+        // Form validation
+        const bookingForm = document.querySelector('form[action="/customer/book-service"]');
+        if (bookingForm) {
+            bookingForm.addEventListener('submit', function(e) {
+                const timeSlot = document.getElementById('timeSlot').value;
+                const date = document.getElementById('preferredDate').value;
+                
+                if (!date) {
+                    e.preventDefault();
+                    alert('Please select a preferred date for the service.');
+                    return false;
+                }
+                
+                if (!timeSlot) {
+                    e.preventDefault();
+                    alert('Please select an available time slot.');
+                    return false;
                 }
             });
-
-                // Add this to the script section in book-service.ejs
-                document.getElementById('preferredDate').addEventListener('change', function() {
-                const date = this.value;
-                const providerId = document.querySelector('input[name="providerId"]').value;
-                
-                if (date) {
-                    // Fetch available time slots for this date and provider
-                    fetch(`/api/available-slots?providerId=${providerId}&date=${date}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            const timeSlotSelect = document.getElementById('timeSlot');
-                            timeSlotSelect.innerHTML = ''; // Clear existing options
-                            timeSlotSelect.disabled = false;
-                            
-                            if (data.slots && data.slots.length > 0) {
-                                data.slots.forEach(slot => {
-                                    const option = document.createElement('option');
-                                    option.value = slot;
-                                    option.textContent = slot;
-                                    timeSlotSelect.appendChild(option);
-                                });
-                            } else {
-                                const option = document.createElement('option');
-                                option.value = "";
-                                option.textContent = "No available slots for this date";
-                                option.disabled = true;
-                                option.selected = true;
-                                timeSlotSelect.appendChild(option);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error fetching time slots:', error);
-                            const timeSlotSelect = document.getElementById('timeSlot');
-                            timeSlotSelect.innerHTML = '<option value="" disabled selected>Error loading time slots</option>';
-                        });
-                } else {
-                    const timeSlotSelect = document.getElementById('timeSlot');
-                    timeSlotSelect.innerHTML = '<option value="" disabled selected>Please select a date first</option>';
-                    timeSlotSelect.disabled = true;
-                }
-            
-            // Pre-fill user information if available
-            // const user = <%- JSON.stringify(user || {}) %>;
-            // if (user) {
-            //     if (document.getElementById('fullName') && user.firstName && user.lastName) {
-            //         document.getElementById('fullName').value = user.firstName + ' ' + user.lastName;
-            //     }
-            //     if (document.getElementById('email') && user.email) {
-            //         document.getElementById('email').value = user.email;
-            //     }
-            //     if (document.getElementById('phoneNumber') && user.phoneNumber) {
-            //         document.getElementById('phoneNumber').value = user.phoneNumber;
-            //     }
-            // }
-
-
-        });
+        }
+        
+        // Pre-fill user information if available
+        if (typeof user !== 'undefined' && user) {
+            if (document.getElementById('fullName') && user.firstName && user.lastName) {
+                document.getElementById('fullName').value = user.firstName + ' ' + user.lastName;
+            }
+            if (document.getElementById('email') && user.email) {
+                document.getElementById('email').value = user.email;
+            }
+            if (document.getElementById('phoneNumber') && user.phoneNumber) {
+                document.getElementById('phoneNumber').value = user.phoneNumber;
+            }
+        }
+});
     </script>
 </body>
 </html>

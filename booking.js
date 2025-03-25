@@ -397,24 +397,27 @@ router.post('/customer/process-payment', isCustomerAuth, async (req, res) => {
 // API endpoint to get available time slots
 router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
     try {
-        const { providerId, date } = req.query;
+        const { providerId, date, dayOfWeek } = req.query;
         
         if (!providerId || !date) {
             return res.status(400).json({ error: 'Provider ID and date are required' });
         }
         
-        // Parse the date to get the day of week
+        // Parse the date to get the day of week if not provided
         const selectedDate = new Date(date);
-        const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
+        const dayName = dayOfWeek || ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
         
         // Get provider's availability for this day
         const availabilityResult = await pool.query(
             'SELECT * FROM provider_availability WHERE provider_id = $1 AND day_of_week = $2 AND is_available = true',
-            [providerId, dayOfWeek]
+            [providerId, dayName]
         );
         
         if (availabilityResult.rows.length === 0) {
-            return res.json({ slots: [] }); // No availability for this day
+            return res.json({ 
+                slots: [],
+                message: `No availability for ${dayName}`
+            });
         }
         
         const availability = availabilityResult.rows[0];
@@ -430,7 +433,7 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
         // Generate available time slots based on availability and booked slots
         const startTime = new Date(`${date}T${availability.start_time}`);
         const endTime = new Date(`${date}T${availability.end_time}`);
-        const slotDuration = availability.slot_duration; // in minutes
+        const slotDuration = parseInt(availability.slot_duration) || 60; // in minutes
         
         const availableSlots = [];
         let currentTime = new Date(startTime);
@@ -452,7 +455,11 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
             currentTime.setMinutes(currentTime.getMinutes() + slotDuration);
         }
         
-        res.json({ slots: availableSlots });
+        res.json({ 
+            slots: availableSlots,
+            dayOfWeek: dayName,
+            slotDuration: slotDuration
+        });
         
     } catch (error) {
         console.error('Error getting available slots:', error);
