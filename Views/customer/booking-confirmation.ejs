@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Confirmation - HandyHub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            overflow-x: hidden;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding-top: 10px; /* Adjust based on your navbar height */
+        }
+        
+        .content-wrapper {
+            flex: 1 0 auto;
+            width: 100%;
+            padding-top: 50px; /* Add padding to account for fixed navbar height */
+        }
+        
+        .footer-wrapper {
+            flex-shrink: 0;
+            width: 100vw;
+            margin-top: auto;
+            left: 0;
+            right: 0;
+            max-width: none;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        
+        .confirmation-container {
+            max-width: 800px;
+            margin: 10px auto; /* Add more margin/padding at top */
+            padding-top: 20px;
+        }
+        
+        .confirmation-header {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 30px;
+            border-radius: 15px 15px 0 0;
+            margin-bottom: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .confirmation-header .success-icon {
+            position: absolute;
+            right: -20px;
+            bottom: -20px;
+            font-size: 8rem;
+            opacity: 0.1;
+            transform: rotate(15deg);
+        }
+        
+        .confirmation-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .booking-details {
+            margin-top: 30px;
+        }
+        
+        .details-section {
+            margin-bottom: 25px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .details-section:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        
+        .details-heading {
+            font-size: 1.25rem;
+            color: var(--dark-blue);
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .detail-item {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        
+        .detail-label {
+            width: 180px;
+            font-weight: 500;
+            color: var(--dark-blue);
+        }
+        
+        .detail-value {
+            flex-grow: 1;
+        }
+        
+        .action-buttons {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .action-buttons .btn {
+            flex: 1;
+            padding: 12px 15px;
+        }
+        
+        .btn-view-booking {
+            background-color: var(--primary-blue);
+            color: white;
+        }
+        
+        .btn-view-booking:hover {
+            background-color: var(--dark-blue);
+            color: white;
+        }
+        
+        .payment-status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .status-paid {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .booking-id {
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            color: #6c757d;
+        }
+        
+        .confirmation-message {
+            background-color: #e8f4fd;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        
+        .confirmation-message p {
+            margin-bottom: 0;
+        }
+        
+        .calendar-add {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .calendar-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            text-decoration: none;
+            color: #495057;
+            border: 1px solid #ced4da;
+            background-color: #f8f9fa;
+            transition: all 0.2s;
+        }
+        
+        .calendar-btn:hover {
+            background-color: #e9ecef;
+            color: #212529;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <%- include('../partials/navbar') %>
+
+    <div class="content-wrapper">
+        <div class="container mt-5 mb-5">
+            <div class="confirmation-container">
+                <div class="confirmation-header">
+                    <h2><i class="bi bi-check-circle-fill me-2"></i> Booking Confirmed</h2>
+                    <p class="mb-0">Your service booking has been successfully confirmed.</p>
+                    <div class="success-icon">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                </div>
+                
+                <div class="confirmation-content">
+                    <% if (locals.success) { %>
+                        <div class="alert alert-success">
+                            <%= success %>
+                        </div>
+                    <% } %>
+                    
+                    <% if (locals.booking) { %>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="booking-id">
+                            <strong>Booking #:</strong> <%= booking.id %>
+                        </div>
+                        <div class="payment-status status-paid">
+                            <i class="bi bi-check-circle-fill me-1"></i> Payment Completed
+                        </div>
+                    </div>
+                    <% } %>
+                    
+                    <div class="confirmation-message">
+                        <p>Thank you for your booking with HandyHub! Your payment has been processed successfully, and your service request has been confirmed.</p>
+                        <p class="mb-0">Our service provider will review your request and contact you shortly to confirm the details.</p>
+                    </div>
+                    
+                    <% if (locals.booking) { %>
+                    <div class="booking-details">
+                        <div class="details-section">
+                            <h3 class="details-heading">Service Details</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">Service Type:</div>
+                                <div class="detail-value"><%= booking.service_type %></div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Provider:</div>
+                                <div class="detail-value"><%= booking.provider_name %></div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Issue Description:</div>
+                                <div class="detail-value"><%= booking.issue_description %></div>
+                            </div>
+                        </div>
+                        
+                        <div class="details-section">
+                            <h3 class="details-heading">Schedule</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">Date:</div>
+                                <div class="detail-value"><%= new Date(booking.preferred_date).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) %></div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Time:</div>
+                                <div class="detail-value"><%= booking.time_slot %></div>
+                            </div>
+                            
+                            <div class="calendar-add">
+                                <a href="#" class="calendar-btn" id="googleCalendarBtn">
+                                    <i class="bi bi-calendar-plus"></i> Add to Google Calendar
+                                </a>
+                                <a href="#" class="calendar-btn" id="outlookCalendarBtn">
+                                    <i class="bi bi-calendar-plus"></i> Add to Outlook
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="details-section">
+                            <h3 class="details-heading">Service Location</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">Address:</div>
+                                <div class="detail-value"><%= booking.service_address %></div>
+                            </div>
+                            <% if (booking.access_instructions) { %>
+                            <div class="detail-item">
+                                <div class="detail-label">Access Instructions:</div>
+                                <div class="detail-value"><%= booking.access_instructions %></div>
+                            </div>
+                            <% } %>
+                        </div>
+                        
+                        <div class="details-section">
+                            <h3 class="details-heading">Payment Information</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">Base Fee:</div>
+                                <div class="detail-value">RM <%= parseFloat(booking.base_fee || 0).toFixed(2) %></div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Service Fee (5%):</div>
+                                <div class="detail-value">RM <%= (parseFloat(booking.base_fee || 0) * 0.05).toFixed(2) %></div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Total Paid:</div>
+                                <div class="detail-value"><strong>RM <%= (parseFloat(booking.base_fee || 0) * 1.05).toFixed(2) %></strong></div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Payment Method:</div>
+                                <div class="detail-value"><%= booking.payment_method || 'Online Payment' %></div>
+                            </div>
+                        </div>
+                    </div>
+                    <% } else { %>
+                    <div class="text-center mt-5">
+                        <p>You can track the status of your booking in your Bookings list.</p>
+                    </div>
+                    <% } %>
+                    
+                    <div class="action-buttons">
+                        <a href="/customer/bookings" class="btn btn-view-booking">
+                            <i class="bi bi-list-ul me-2"></i> View All Bookings
+                        </a>
+                        <a href="/customer/dashboard" class="btn btn-outline-secondary">
+                            <i class="bi bi-house me-2"></i> Go to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-wrapper">
+        <!-- Footer -->
+        <%- include('../partials/footer') %>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <% if (locals.booking) { %>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Function to generate calendar links
+            function generateCalendarLinks() {
+                // Get booking details
+                const serviceType = '<%= booking.service_type %>';
+                const providerName = '<%= booking.provider_name %>';
+                const address = '<%= booking.service_address %>';
+                const dateStr = '<%= booking.preferred_date %>';
+                const timeSlot = '<%= booking.time_slot %>';
+                
+                // Parse the date and time
+                const [startTimeStr, endTimeStr] = timeSlot.split(' - ');
+                
+                // Extract only the time part (remove AM/PM)
+                const startTimeParts = startTimeStr.split(' ');
+                const endTimeParts = endTimeStr.split(' ');
+                
+                // Create time strings for calendar
+                const startTime = startTimeParts[0].replace(':', '') + (startTimeParts[1] === 'PM' && !startTimeParts[0].startsWith('12') ? '00' : '00');
+                const endTime = endTimeParts[0].replace(':', '') + (endTimeParts[1] === 'PM' && !endTimeParts[0].startsWith('12') ? '00' : '00');
+                
+                // Format date for calendar (YYYYMMDD)
+                const bookingDate = new Date(dateStr);
+                const calendarDate = bookingDate.toISOString().split('T')[0].replace(/-/g, '');
+                
+                // Create event title and description
+                const eventTitle = `HandyHub: ${serviceType} Service`;
+                const eventDescription = `Service appointment with ${providerName}.\n\nAddress: ${address}`;
+                
+                // Generate Google Calendar link
+                const googleLink = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${calendarDate}T${startTime}/${calendarDate}T${endTime}&details=${encodeURIComponent(eventDescription)}&location=${encodeURIComponent(address)}`;
+                
+                // Generate Outlook Calendar link
+                const outlookLink = `https://outlook.office.com/calendar/action/compose?subject=${encodeURIComponent(eventTitle)}&startdt=${calendarDate}T${startTime}&enddt=${calendarDate}T${endTime}&body=${encodeURIComponent(eventDescription)}&location=${encodeURIComponent(address)}`;
+                
+                // Set the links to the buttons
+                document.getElementById('googleCalendarBtn').href = googleLink;
+                document.getElementById('outlookCalendarBtn').href = outlookLink;
+            }
+            
+            // Call the function to generate the links
+            generateCalendarLinks();
+        });
+    </script>
+    <% } %>
+</body>
+</html>

@@ -262,17 +262,17 @@ router.get('/customer/bookings', isCustomerAuth, async (req, res) => {
     try {
         const customerId = req.session.user.id;
         
-        // Get all bookings for this customer
+        // Get all bookings for this customer - UPDATED QUERY
         const bookingsResult = await pool.query(`
-            SELECT sb.id, sb.service_type, sb.booking_date, sb.status, 
+            SELECT sb.id, sb.service_type, sb.preferred_date, sb.status, 
                    sb.created_at, sp.business_name as provider_name
             FROM service_bookings sb
             JOIN service_providers sp ON sb.provider_id = sp.id
             WHERE sb.customer_id = $1
-            ORDER BY sb.booking_date DESC
+            ORDER BY sb.preferred_date DESC
         `, [customerId]);
         
-        res.render('customer/my-bookings', {
+        res.render('customer/booking-confirmation', {
             title: 'My Bookings',
             user: req.session.user,
             bookings: bookingsResult.rows,
@@ -327,11 +327,13 @@ router.get('/customer/payment/:bookingId', isCustomerAuth, async (req, res) => {
             };
         }
         
-        // Render payment page with payment info
+        // MODIFY THIS PART - Add the stripePublicKey variable
         res.render('customer/payment', {
             title: 'Complete Payment',
             user: req.session.user,
             paymentInfo: req.session.paymentInfo,
+            stripePublicKey:'pk_test_51R6MosL59baH2MzbAr4fPTWSuAy3kSy1yLiBsZKPDQ5RObTm02IMqS4wJx9M1F8EMUZD99j6MfiM4k0xGt3jD0DT009djlkwqP', 
+            // Replace with your actual key from Stripe dashboard
             error: req.session.error
         });
         
@@ -349,7 +351,7 @@ router.get('/customer/payment/:bookingId', isCustomerAuth, async (req, res) => {
 router.post('/customer/process-payment', isCustomerAuth, async (req, res) => {
     try {
         const { 
-            bookingId, 
+            bookingId, // This is the ID passed from the form
             paymentMethod,
             cardNumber,
             cardExpiry,
@@ -357,26 +359,26 @@ router.post('/customer/process-payment', isCustomerAuth, async (req, res) => {
         } = req.body;
         
         // Validate payment info
-        if (!bookingId || !paymentMethod) {
+        if (!bookingId) {
             req.session.error = 'Payment information is incomplete';
             return res.redirect(`/customer/payment/${bookingId}`);
         }
         
-        // For credit/debit card payments, validate card details
-        if (paymentMethod === 'card' && (!cardNumber || !cardExpiry || !cardCvc)) {
-            req.session.error = 'Please provide all card details';
-            return res.redirect(`/customer/payment/${bookingId}`);
-        }
+        // Generate a payment reference
+        const paymentReference = 'payment_' + Date.now();
         
-        // In a real application, you would process the payment with a payment gateway here
-        // For this example, we'll just update the booking status
-        
-        // Update booking status to 'Confirmed' (payment completed)
-        await pool.query(`
+        // Update booking status to 'Confirmed' with payment information
+        const updateResult = await pool.query(`
             UPDATE service_bookings
-            SET status = 'Confirmed', updated_at = NOW()
-            WHERE id = $1 AND customer_id = $2
-        `, [bookingId, req.session.user.id]);
+            SET status = 'Confirmed', 
+                payment_status = 'Paid',
+                payment_method = $1,
+                payment_reference = $2,
+                updated_at = NOW()
+            WHERE id = $3 AND customer_id = $4
+        `, [paymentMethod || 'card', paymentReference, bookingId, req.session.user.id]);
+        
+        console.log('Rows updated:', updateResult.rowCount);
         
         // Clear payment info from session
         delete req.session.paymentInfo;
@@ -384,13 +386,139 @@ router.post('/customer/process-payment', isCustomerAuth, async (req, res) => {
         // Set success message
         req.session.success = 'Payment successful! Your booking has been confirmed.';
         
-        // Redirect to bookings page
-        res.redirect('/customer/bookings');
+        // Redirect to the confirmation page
+        return res.redirect('/customer/booking-confirmation');
         
     } catch (error) {
         console.error('Payment processing error:', error);
         req.session.error = 'Failed to process payment. Please try again.';
         return res.redirect(`/customer/payment/${req.body.bookingId}`);
+    }
+});
+
+router.get('/customer/booking-confirmation/:bookingId?', isCustomerAuth, async (req, res) => {
+    try {
+        const bookingId = req.params.bookingId || req.query.bookingId;
+        
+        // If no bookingId provided, just show a generic confirmation
+        if (!bookingId) {
+            return res.render('customer/booking-confirmation', {
+                title: 'Booking Confirmation',
+                user: req.session.user,
+                success: req.session.success,
+                error: req.session.error
+            });
+        }
+        
+        // Get detailed booking information with provider name and pricing
+        const bookingResult = await pool.query(`
+            SELECT sb.*, sp.business_name as provider_name, 
+                   sc.base_fee, sc.fee_type
+            FROM service_bookings sb
+            JOIN service_providers sp ON sb.provider_id = sp.id
+            LEFT JOIN service_categories sc ON sp.id = sc.provider_id AND LOWER(sc.category_name) = LOWER(sb.service_type)
+            WHERE sb.id = $1 AND sb.customer_id = $2
+            LIMIT 1
+        `, [bookingId, req.session.user.id]);
+        
+        if (bookingResult.rows.length === 0) {
+            req.session.error = 'Booking not found';
+            return res.redirect('/customer/bookings');
+        }
+        
+        // Render the confirmation page with detailed booking information
+        res.render('customer/booking-confirmation', {
+            title: 'Booking Confirmation',
+            user: req.session.user,
+            booking: bookingResult.rows[0],
+            success: req.session.success,
+            error: req.session.error
+        });
+        
+        // Clear session messages
+        delete req.session.success;
+        delete req.session.error;
+        
+    } catch (error) {
+        console.error('Error loading booking confirmation:', error);
+        req.session.error = 'Failed to load booking confirmation';
+        res.redirect('/customer/bookings');
+    }
+});
+
+// Add this test route to your booking.js file
+router.get('/test-payment-update/:bookingId', isCustomerAuth, async (req, res) => {
+    try {
+        const bookingId = req.params.bookingId;
+        
+        // Direct update query
+        const result = await pool.query(`
+            UPDATE service_bookings
+            SET payment_status = 'Paid',
+                payment_method = 'Test Method',
+                payment_reference = 'Test_Reference_${Date.now()}'
+            WHERE id = $1
+            RETURNING *
+        `, [bookingId]);
+        
+        // Log the complete result
+        console.log('Test update result:', JSON.stringify(result.rows[0], null, 2));
+        
+        // Send the result to the browser
+        res.send({
+            success: result.rowCount > 0,
+            message: result.rowCount > 0 ? 'Update successful' : 'No rows updated',
+            data: result.rows[0]
+        });
+        
+    } catch (error) {
+        console.error('Test update error:', error);
+        res.status(500).send({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// View customer's bookings
+router.get('/customer/bookings', isCustomerAuth, async (req, res) => {
+    try {
+        const customerId = req.session.user.id;
+        
+        // Get all bookings for this customer
+        const bookingsResult = await pool.query(`
+            SELECT sb.id, sb.service_type, sb.preferred_date, sb.time_slot, sb.status, 
+                   sb.payment_status, sb.service_address, sb.created_at, 
+                   sp.business_name as provider_name
+            FROM service_bookings sb
+            JOIN service_providers sp ON sb.provider_id = sp.id
+            WHERE sb.customer_id = $1
+            ORDER BY 
+                CASE 
+                    WHEN sb.status = 'Confirmed' THEN 1
+                    WHEN sb.status = 'Pending' THEN 2
+                    WHEN sb.status = 'Completed' THEN 3
+                    WHEN sb.status = 'Cancelled' THEN 4
+                    ELSE 5
+                END,
+                sb.preferred_date DESC
+        `, [customerId]);
+        
+        res.render('customer/view-bookings', {
+            title: 'My Bookings',
+            user: req.session.user,
+            bookings: bookingsResult.rows,
+            success: req.session.success,
+            error: req.session.error
+        });
+        
+        // Clear session messages
+        delete req.session.success;
+        delete req.session.error;
+    } catch (error) {
+        console.error('Error fetching bookings:', error);
+        req.session.error = 'Failed to load your bookings';
+        res.redirect('/customer/dashboard');
     }
 });
 

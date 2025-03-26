@@ -371,9 +371,16 @@
                     elements,
                     confirmParams: {
                         // Return URL where the customer should be redirected after payment
+                        // UPDATED to always include bookingId
                         return_url: window.location.origin + '/customer/process-payment?bookingId=' + bookingId,
+                        payment_method_data: {
+                            billing_details: {
+                                name: '<%= paymentInfo.customerName %>',
+                                email: '<%= paymentInfo.customerEmail %>'
+                            }
+                        }
                     },
-                    redirect: 'if_required' // Only redirect if needed (e.g., for 3DS)
+                    redirect: 'always' // Always redirect to ensure our server handles the payment update
                 });
                 
                 if (error) {
@@ -387,15 +394,8 @@
                     // Re-enable the submit button
                     submitButton.disabled = false;
                     submitButton.classList.remove('payment-loading');
-                } else {
-                    // Payment succeeded - will be handled by redirect or webhook
-                    document.getElementById('payment-success-message').style.display = 'block';
-                    
-                    // Redirect to bookings page after a short delay
-                    setTimeout(() => {
-                        window.location.href = '/customer/bookings';
-                    }, 2000);
                 }
+                // No else needed since we're always redirecting on success
             } catch (error) {
                 console.error('Payment error:', error);
                 displayError('An unexpected error occurred. Please try again.');

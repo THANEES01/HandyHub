@@ -7,7 +7,7 @@ import Stripe from 'stripe';
 dotenv.config();
 
 // Initialize Stripe with your secret key from .env file
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_yourTestSecretKey');
 
 const router = express.Router();
 
@@ -58,12 +58,15 @@ router.get('/payment/:bookingId', isCustomerAuth, async (req, res) => {
             };
         }
 
-        // Pass Stripe publishable key to the template
+        // Pass Stripe publishable key directly to the template 
+        // Replace with your actual publishable key from Stripe dashboard
+        const stripePublicKey = process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_yourPublishableKey';
+        
         res.render('customer/payment', {
             title: 'Complete Payment',
             user: req.session.user,
             paymentInfo: req.session.paymentInfo,
-            stripePublicKey: process.env.STRIPE_PUBLISHABLE_KEY,
+            stripePublicKey: stripePublicKey,
             error: req.session.error
         });
         
@@ -131,130 +134,174 @@ router.post('/create-payment-intent', isCustomerAuth, async (req, res) => {
 // Handle successful payment
 router.post('/process-payment', isCustomerAuth, async (req, res) => {
     try {
-        const { bookingId, paymentIntentId, paymentMethod } = req.body;
+        const { payment_intent, payment_intent_client_secret, redirect_status, bookingId } = req.query;
         
-        // Verify the payment with Stripe
-        if (paymentIntentId) {
-            const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-            
-            // Check if payment was successful
-            if (paymentIntent.status !== 'succeeded') {
-                req.session.error = 'Payment has not been completed';
-                return res.redirect(`/customer/payment/${bookingId}`);
-            }
-            
-            // Get the payment method type that was used
-            const paymentMethodType = paymentIntent.payment_method_type || paymentMethod || 'unknown';
-            
-            // Update booking status to 'Confirmed' (payment completed)
-            await pool.query(`
+        console.log('Stripe redirect received:');
+        console.log('Payment Intent:', payment_intent);
+        console.log('Status:', redirect_status);
+        console.log('Booking ID:', bookingId);
+        
+        // If payment was successful
+        if (redirect_status === 'succeeded' && payment_intent) {
+            // Process the successful payment
+            const updateResult = await pool.query(`
                 UPDATE service_bookings
                 SET status = 'Confirmed', 
                     payment_status = 'Paid',
-                    payment_method = $1,
-                    payment_reference = $2,
+                    payment_method = 'Stripe',
+                    payment_reference = $1,
                     updated_at = NOW()
-                WHERE id = $3 AND customer_id = $4
-            `, [paymentMethodType, paymentIntentId, bookingId, req.session.user.id]);
+                WHERE id = $2 AND customer_id = $3
+                RETURNING *
+            `, [payment_intent, bookingId, req.session.user.id]);
             
-            // Save payment record
-            await pool.query(`
-                INSERT INTO payments (
-                    booking_id, customer_id, amount, payment_method, 
-                    payment_reference, status, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
-            `, [
-                bookingId, 
-                req.session.user.id, 
-                parseFloat(req.session.paymentInfo.baseFee) * 1.05, // Base fee + 5% service fee
-                paymentMethodType,
-                paymentIntentId,
-                'Completed'
-            ]);
+            console.log('Database update result:', updateResult.rowCount > 0 ? 'Success' : 'Failed');
+            if (updateResult.rows.length > 0) {
+                console.log('Updated booking:', updateResult.rows[0].id);
+            }
             
-            // Clear payment info from session
+            // Record the payment in payments table
+            if (req.session.paymentInfo) {
+                try {
+                    await pool.query(`
+                        INSERT INTO payments (
+                            booking_id, customer_id, amount, payment_method, 
+                            payment_reference, status, created_at
+                        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                    `, [
+                        bookingId, 
+                        req.session.user.id, 
+                        parseFloat(req.session.paymentInfo.baseFee) * 1.05,
+                        'Stripe',
+                        payment_intent,
+                        'Completed'
+                    ]);
+                    console.log('Payment record created');
+                } catch (paymentError) {
+                    console.error('Error recording payment:', paymentError);
+                }
+            }
+            
+            // Clear payment info and set success message
             delete req.session.paymentInfo;
-            
-            // Set success message
             req.session.success = 'Payment successful! Your booking has been confirmed.';
-            
-            // Redirect to bookings page
-            return res.redirect('/customer/bookings');
         } else {
-            throw new Error('Payment intent ID not provided');
+            req.session.error = 'Payment was not completed. Please try again.';
+            console.log('Payment not successful. Status:', redirect_status);
         }
         
+        // Redirect to booking confirmation or bookings page
+        return res.redirect('/customer/booking-confirmation');
+        
     } catch (error) {
-        console.error('Payment processing error:', error);
-        req.session.error = 'Failed to process payment. Please try again.';
-        return res.redirect(`/customer/payment/${req.body.bookingId}`);
+        console.error('Error processing payment redirect:', error);
+        req.session.error = 'Error processing payment. Please contact support.';
+        return res.redirect('/customer/bookings');
     }
 });
 
-// Handle payment webhook from Stripe (for asynchronous payment methods)
-router.post('/webhook', express.raw({type: 'application/json'}), async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    
-    let event;
-    
+// Handle redirect from Stripe for completed payments
+router.get('/process-payment', isCustomerAuth, async (req, res) => {
     try {
-        // Verify webhook signature
-        event = stripe.webhooks.constructEvent(
-            req.body,
-            sig,
-            process.env.STRIPE_WEBHOOK_SECRET
-        );
-    } catch (err) {
-        console.error(`Webhook signature verification failed:`, err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-    
-    // Handle the event
-    if (event.type === 'payment_intent.succeeded') {
-        const paymentIntent = event.data.object;
+        const { payment_intent, payment_intent_client_secret, redirect_status, bookingId } = req.query;
         
-        // Extract metadata
-        const bookingId = paymentIntent.metadata.booking_id;
-        const customerId = paymentIntent.metadata.customer_id;
+        console.log('Stripe redirect received:');
+        console.log('Payment Intent:', payment_intent);
+        console.log('Status:', redirect_status);
+        console.log('Booking ID:', bookingId);
         
-        try {
-            // Get payment method type
-            const paymentMethodType = paymentIntent.payment_method_type || 'stripe';
-            
-            // Update booking status
-            await pool.query(`
+        // If payment was successful
+        if (redirect_status === 'succeeded' && payment_intent) {
+            // Process the successful payment
+            const updateResult = await pool.query(`
                 UPDATE service_bookings
                 SET status = 'Confirmed', 
                     payment_status = 'Paid',
-                    payment_method = $1,
-                    payment_reference = $2,
+                    payment_method = 'Stripe',
+                    payment_reference = $1,
                     updated_at = NOW()
-                WHERE id = $3
-            `, [paymentMethodType, paymentIntent.id, bookingId]);
+                WHERE id = $2 AND customer_id = $3
+                RETURNING *
+            `, [payment_intent, bookingId, req.session.user.id]);
             
-            // Save payment record
-            await pool.query(`
-                INSERT INTO payments (
-                    booking_id, customer_id, amount, payment_method, 
-                    payment_reference, status, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
-            `, [
-                bookingId, 
-                customerId, 
-                paymentIntent.amount / 100, // Convert cents to RM
-                paymentMethodType,
-                paymentIntent.id,
-                'Completed'
-            ]);
+            console.log('Database update result:', updateResult.rowCount > 0 ? 'Success' : 'Failed');
+            if (updateResult.rows.length > 0) {
+                console.log('Updated booking:', updateResult.rows[0].id);
+            }
             
-            console.log(`Payment for booking #${bookingId} completed via webhook`);
-        } catch (error) {
-            console.error('Error processing webhook payment:', error);
+            // Record the payment in payments table
+            if (req.session.paymentInfo) {
+                try {
+                    await pool.query(`
+                        INSERT INTO payments (
+                            booking_id, customer_id, amount, payment_method, 
+                            payment_reference, status, created_at
+                        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                    `, [
+                        bookingId, 
+                        req.session.user.id, 
+                        parseFloat(req.session.paymentInfo.baseFee) * 1.05,
+                        'Stripe',
+                        payment_intent,
+                        'Completed'
+                    ]);
+                    console.log('Payment record created');
+                } catch (paymentError) {
+                    console.error('Error recording payment:', paymentError);
+                }
+            }
+            
+            // Clear payment info and set success message
+            delete req.session.paymentInfo;
+            req.session.success = 'Payment successful! Your booking has been confirmed.';
+            
+            // Redirect to the booking confirmation page with the booking ID
+            return res.redirect(`/customer/booking-confirmation/${bookingId}`);
+        } else {
+            req.session.error = 'Payment was not completed. Please try again.';
+            console.log('Payment not successful. Status:', redirect_status);
+            return res.redirect('/customer/bookings');
         }
+        
+    } catch (error) {
+        console.error('Error processing payment redirect:', error);
+        req.session.error = 'Error processing payment. Please contact support.';
+        return res.redirect('/customer/bookings');
     }
-    
-    // Return a response to acknowledge receipt of the event
-    res.json({received: true});
+});
+
+router.get('/test-update-payment/:bookingId', isCustomerAuth, async (req, res) => {
+    try {
+        const bookingId = req.params.bookingId;
+        
+        // Try a direct update
+        const result = await pool.query(`
+            UPDATE service_bookings
+            SET payment_status = 'Paid',
+                payment_method = 'Test Direct',
+                payment_reference = 'Test_Ref_${Date.now()}',
+                status = 'Confirmed',
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING id, payment_status, payment_method, payment_reference, status
+        `, [bookingId]);
+        
+        // Send the result as JSON
+        res.json({
+            success: result.rowCount > 0,
+            message: result.rowCount > 0 ? 'Update successful' : 'No records updated',
+            booking: result.rows[0] || null,
+            sql: `UPDATE service_bookings SET payment_status = 'Paid', payment_method = 'Test Direct', payment_reference = 'Test_Ref_${Date.now()}', status = 'Confirmed', updated_at = NOW() WHERE id = ${bookingId}`
+        });
+        
+    } catch (error) {
+        console.error('Test update error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            stack: error.stack
+        });
+    }
 });
 
 export default router;
