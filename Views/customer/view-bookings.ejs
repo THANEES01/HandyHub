@@ -76,8 +76,9 @@
             background-color: #f8f9fa;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: center;  
         }
+
         
         .booking-title {
             font-size: 1.1rem;
@@ -154,6 +155,8 @@
             border-radius: 20px;
             font-size: 0.8rem;
             font-weight: 500;
+            position: relative;
+            z-index: 2;
         }
         
         .status-confirmed {
@@ -328,17 +331,6 @@
                     <div class="bookings-list">
                         <% bookings.forEach(booking => { %>
                             <div class="booking-card position-relative">
-                                <% 
-                                // Check if this booking is in the next 48 hours
-                                const bookingDate = new Date(booking.preferred_date);
-                                const now = new Date();
-                                const diffTime = bookingDate.getTime() - now.getTime();
-                                const diffHours = diffTime / (1000 * 3600);
-                                
-                                if (diffHours > 0 && diffHours <= 48) { 
-                                %>
-                                    <div class="upcoming-badge">Upcoming</div>
-                                <% } %>
                                 
                                 <div class="booking-header">
                                     <div>

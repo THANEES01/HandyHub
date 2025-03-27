@@ -271,9 +271,15 @@
                             <h3>Book This Service Provider</h3>
                             <p>Contact this provider directly or request a service through our platform.</p>
                             
-                            <a href="/customer/book-service/<%= provider.id %>" class="btn btn-book-service w-100 mb-3">
-                                Book Now
-                            </a>
+                            <% if (selectedCategory) { %>
+                                <a href="/customer/book-service/<%= provider.id %>?category=<%= selectedCategory.category_name %>" class="btn btn-book-service w-100 mb-3">
+                                    Book Now
+                                </a>
+                            <% } else { %>
+                                <a href="/customer/book-service/<%= provider.id %>" class="btn btn-book-service w-100 mb-3">
+                                    Book Now
+                                </a>
+                            <% } %>
                             
                             <a href="#" class="btn btn-outline-primary w-100">
                                 <i class="bi bi-chat-dots"></i> Message Provider
@@ -373,52 +379,47 @@
         // Set minimum date for booking to today
         document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('bookingDate')) {
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('bookingDate').min = today;
-            }
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('bookingDate').min = today;
+    }
 
-            // Extract category from URL and update category info
-            const urlParams = new URLSearchParams(window.location.search);
-            const selectedCategory = urlParams.get('category');
-            const categories = <%- JSON.stringify(categories || []) %>;
+    // Load the categories from the server-side data
+    const categories = <%- JSON.stringify(categories || []) %>;
+    const selectedCategory = <%- JSON.stringify(selectedCategory || null) %>;
 
-            if (categories && categories.length > 0) {
-                let categoryToShow = null;
-
-                if (selectedCategory) {
-                    for (let i = 0; i < categories.length; i++) {
-                        if (categories[i].category_name.toLowerCase() === selectedCategory.toLowerCase()) {
-                            categoryToShow = categories[i];
-                            break;
-                        }
-                    }
-                }
-
-                if (!categoryToShow) {
-                    categoryToShow = categories[0];
-                }
-
-                const categoryInfo = `
-                    <div class="provider-info">
-                        <i class="bi bi-cash-coin"></i>
-                        <span>
-                            <strong>Base Fee:</strong> RM ${parseFloat(categoryToShow.base_fee).toFixed(2).replace(/\.00$/, '')}
-                            <span class="badge bg-info text-dark">${categoryToShow.fee_type}</span>
-                        </span>
-                    </div>
-                `;
-                document.getElementById('category-info').innerHTML = categoryInfo;
-            } else {
-                document.getElementById('category-info').innerHTML = `
-                    <div class="provider-info">
-                        <i class="bi bi-cash-coin"></i>
-                        <span>
-                            <strong>Base Fee:</strong> RM NaN
-                        </span>
-                    </div>
-                `;
-            }
-        });
+    if (selectedCategory) {
+        const categoryInfo = `
+            <div class="provider-info">
+                <i class="bi bi-cash-coin"></i>
+                <span>
+                    <strong>Base Fee:</strong> RM ${parseFloat(selectedCategory.base_fee).toFixed(2).replace(/\.00$/, '')}
+                    <span class="badge bg-info text-dark">${selectedCategory.fee_type}</span>
+                </span>
+            </div>
+        `;
+        document.getElementById('category-info').innerHTML = categoryInfo;
+    } else if (categories && categories.length > 0) {
+        const categoryInfo = `
+            <div class="provider-info">
+                <i class="bi bi-cash-coin"></i>
+                <span>
+                    <strong>Base Fee:</strong> RM ${parseFloat(categories[0].base_fee).toFixed(2).replace(/\.00$/, '')}
+                    <span class="badge bg-info text-dark">${categories[0].fee_type}</span>
+                </span>
+            </div>
+        `;
+        document.getElementById('category-info').innerHTML = categoryInfo;
+    } else {
+        document.getElementById('category-info').innerHTML = `
+            <div class="provider-info">
+                <i class="bi bi-cash-coin"></i>
+                <span>
+                    <strong>Base Fee:</strong> Not available
+                </span>
+            </div>
+        `;
+    }
+});
     </script>
 </body>
 </html>

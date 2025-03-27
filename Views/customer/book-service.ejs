@@ -201,13 +201,13 @@
                               <% } %>
                           </div>
                       </div>
-                      
+
                       <form action="/customer/book-service" method="POST" enctype="multipart/form-data">
                           <input type="hidden" name="providerId" value="<%= provider.id %>">
                           
-                          <!-- Hidden service type input using the selected category or first category -->
-                          <input type="hidden" id="serviceType" name="serviceType" value="<%= selectedCategory || (categories && categories.length > 0 ? categories[0].category_name : '') %>">
-                          
+                         <!-- Store the selected category as a hidden field -->
+    
+                         
                           <div class="form-section">
                               <h3 class="form-section-title">1. Describe Your Issue</h3>
                               
@@ -326,6 +326,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
+
         document.addEventListener('DOMContentLoaded', function() {
         // Set minimum date for booking to today
         const today = new Date().toISOString().split('T')[0];

@@ -30,11 +30,9 @@ router.get('/payment/:bookingId', isCustomerAuth, async (req, res) => {
         if (!req.session.paymentInfo || req.session.paymentInfo.bookingId != bookingId) {
             // Get booking info from database if not in session
             const bookingResult = await pool.query(`
-                SELECT sb.*, sp.business_name as provider_name, 
-                       sc.base_fee, sc.fee_type
+                SELECT sb.*, sp.business_name as provider_name
                 FROM service_bookings sb
                 JOIN service_providers sp ON sb.provider_id = sp.id
-                LEFT JOIN service_categories sc ON sp.id = sc.provider_id AND LOWER(sc.category_name) = LOWER(sb.service_type)
                 WHERE sb.id = $1 AND sb.customer_id = $2
                 LIMIT 1
             `, [bookingId, req.session.user.id]);
@@ -46,20 +44,38 @@ router.get('/payment/:bookingId', isCustomerAuth, async (req, res) => {
             
             const booking = bookingResult.rows[0];
             
+            // If the booking record has base_fee, use it; otherwise, retrieve it
+            let baseFee = booking.base_fee;
+            let feeType = booking.fee_type;
+            
+            // If base_fee isn't stored in the booking, look it up in service_categories
+            if (!baseFee) {
+                const serviceInfo = await pool.query(`
+                    SELECT base_fee, fee_type
+                    FROM service_categories
+                    WHERE provider_id = $1 AND LOWER(category_name) = LOWER($2)
+                    LIMIT 1
+                `, [booking.provider_id, booking.service_type]);
+                
+                baseFee = serviceInfo.rows.length > 0 ? serviceInfo.rows[0].base_fee : 0;
+                feeType = serviceInfo.rows.length > 0 ? serviceInfo.rows[0].fee_type : 'per visit';
+                
+                console.log(`Retrieved fee: ${baseFee} for service type: ${booking.service_type}`);
+            }
+            
             // Create payment info
             req.session.paymentInfo = {
                 bookingId: booking.id,
                 providerId: booking.provider_id,
                 serviceType: booking.service_type,
-                baseFee: booking.base_fee || 0,
-                feeType: booking.fee_type || 'flat',
+                baseFee: baseFee || 0,
+                feeType: feeType || 'per visit',
                 customerName: booking.customer_name,
                 customerEmail: booking.customer_email
             };
         }
-
-        // Pass Stripe publishable key directly to the template 
-        // Replace with your actual publishable key from Stripe dashboard
+        
+        // Continue with rendering the payment page
         const stripePublicKey = process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_yourPublishableKey';
         
         res.render('customer/payment', {
@@ -70,9 +86,7 @@ router.get('/payment/:bookingId', isCustomerAuth, async (req, res) => {
             error: req.session.error
         });
         
-        // Clear error message
         delete req.session.error;
-        
     } catch (error) {
         console.error('Error loading payment page:', error);
         req.session.error = 'Failed to load payment page';

@@ -97,6 +97,8 @@ router.get('/customer/book-service/:providerId', isCustomerAuth, async (req, res
         const providerId = req.params.providerId;
         const categoryName = req.query.category; // Get the category from query parameter
         
+        console.log(`Loading booking form for provider ${providerId}, category: ${categoryName}`);
+        
         // Get provider details
         const providerResult = await pool.query(`
             SELECT sp.id, sp.business_name, sp.phone_number, u.email,
@@ -122,6 +124,9 @@ router.get('/customer/book-service/:providerId', isCustomerAuth, async (req, res
                 WHERE provider_id = $1 AND category_name = $2
                 LIMIT 1
             `, [providerId, categoryName]);
+            
+            // Log for debugging
+            console.log(`Selected category ${categoryName} pricing:`, categoriesResult.rows);
         } else {
             // Otherwise get all categories offered by this provider
             categoriesResult = await pool.query(`
@@ -132,20 +137,20 @@ router.get('/customer/book-service/:providerId', isCustomerAuth, async (req, res
             `, [providerId]);
         }
         
-        // Get all services offered by this provider
+        // Get services
         const servicesResult = await pool.query(`
-            SELECT service_name
-            FROM services_offered
+            SELECT service_name 
+            FROM services_offered 
             WHERE provider_id = $1
-            ORDER BY service_name ASC
         `, [providerId]);
         
+        // Render the template with the selected category
         res.render('customer/book-service', { 
             title: `Book Service - ${provider.business_name}`,
             user: req.session.user,
             provider: provider,
             categories: categoriesResult.rows,
-            selectedCategory: categoryName,
+            selectedCategory: categoryName, // Pass to the template
             services: servicesResult.rows,
             error: req.session.error
         });
@@ -164,7 +169,9 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
     try {
         const { 
             providerId, 
-            serviceType, 
+            serviceType,
+            baseFee,     // Get from hidden field
+            feeType,     // Get from hidden field
             issueDescription,
             streetAddress,
             city,
@@ -188,6 +195,9 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             return res.redirect(`/customer/book-service/${providerId}`);
         }
         
+        // Log the received values
+        console.log(`Booking received: ServiceType=${serviceType}, BaseFee=${baseFee}, FeeType=${feeType}`);
+        
         // Process uploaded files
         let imageFiles = [];
         if (req.files && req.files.length > 0) {
@@ -197,13 +207,14 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
         // Format full address
         const fullAddress = `${streetAddress}, ${city}, ${state} ${zipCode}`;
         
-        // Insert the booking into the database
+        // Insert the booking into the database with fee information
         const bookingResult = await pool.query(`
             INSERT INTO service_bookings 
             (customer_id, provider_id, service_type, issue_description, service_address, 
              access_instructions, preferred_date, time_slot, customer_name, 
-             customer_phone, customer_email, status, created_at, images)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), $13)
+             customer_phone, customer_email, status, created_at, images, 
+             base_fee, fee_type)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), $13, $14, $15)
             RETURNING id
         `, [
             customerId, 
@@ -218,32 +229,27 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             phoneNumber, 
             email, 
             'Pending',
-            JSON.stringify(imageFiles)
+            JSON.stringify(imageFiles),
+            parseFloat(baseFee) || 0, // Convert to number with fallback
+            feeType || 'per visit'    // With fallback
         ]);
         
         // If booking was successful, redirect to payment page
         if (bookingResult.rows.length > 0) {
             const bookingId = bookingResult.rows[0].id;
             
-            // Get service price information for the payment
-            const serviceInfo = await pool.query(`
-                SELECT sc.base_fee, sc.fee_type
-                FROM service_categories sc
-                JOIN service_providers sp ON sc.provider_id = sp.id
-                WHERE sp.id = $1 AND LOWER(sc.category_name) = LOWER($2)
-                LIMIT 1
-            `, [providerId, serviceType]);
-            
-            // Store essential payment info in session
+             // Store in session for payment
             req.session.paymentInfo = {
-                bookingId: bookingId,
+                bookingId: bookingResult.rows[0].id,
                 providerId: providerId,
                 serviceType: serviceType,
-                baseFee: serviceInfo.rows.length > 0 ? serviceInfo.rows[0].base_fee : 0,
-                feeType: serviceInfo.rows.length > 0 ? serviceInfo.rows[0].fee_type : 'flat',
+                baseFee: parseFloat(baseFee) || 0,
+                feeType: feeType || 'per visit',
                 customerName: fullName,
                 customerEmail: email
             };
+            
+            console.log('Payment info stored in session:', req.session.paymentInfo);
             
             // Redirect to payment page
             return res.redirect(`/customer/payment/${bookingId}`);
@@ -594,6 +600,30 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
         res.status(500).json({ error: 'Failed to get available time slots' });
     }
 });
+
+router.get('/customer/test-bookings', async (req, res) => {
+    try {
+      const customerId = req.session?.user?.id || 1; // Fallback for testing
+      
+      const bookingsResult = await pool.query(`
+        SELECT sb.id, sb.service_type, sb.preferred_date, sb.time_slot, sb.status, 
+               sb.payment_status, sb.service_address, sb.created_at, 
+               sp.business_name as provider_name
+        FROM service_bookings sb
+        JOIN service_providers sp ON sb.provider_id = sp.id
+        WHERE sb.customer_id = $1
+      `, [customerId]);
+      
+      res.render('customer/view-bookings', {
+        title: 'Test Bookings View',
+        user: req.session.user,
+        bookings: bookingsResult.rows,
+      });
+    } catch (error) {
+      console.error('Error in test route:', error);
+      res.send('Error: ' + error.message);
+    }
+  });
 
 // Helper function to format time as "HH:MM AM/PM"
 function formatTime(date) {
