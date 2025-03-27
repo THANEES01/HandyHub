@@ -28,66 +28,41 @@ router.get('/', isAuthenticated, (req, res) => {
 
 router.get('/dashboard', isAuthenticated, async (req, res) => {
     try {
-        // These would typically come from your database
-        const user = req.session.user || { name: 'Customer' };
-        const totalBookings = 5;  // Example data
-        const activeServices = 2;
-        const totalSpent = 3500;
-        const completedBookings = 3;
-
-        const recentBookings = [
-            { 
-                serviceName: 'Plumbing Repair', 
-                bookingDate: '2023-06-15', 
-                status: 'Pending' 
-            },
-            { 
-                serviceName: 'AC Servicing', 
-                bookingDate: '2023-06-10', 
-                status: 'Completed' 
-            }
-        ];
-
-        const activeServicesList = [
-            { 
-                name: 'Home Cleaning', 
-                providerName: 'CleanPro Services', 
-                startDate: '2023-06-20' 
-            }
-        ];
-
-        // Get all unique categories from the service_categories table
+        const customerId = req.session.user.id;
+        
+        // Get booking statistics
+        const statsResult = await pool.query(`
+            SELECT 
+                COUNT(*) as total_bookings,
+                COUNT(CASE WHEN status = 'Confirmed' OR status = 'In Progress' THEN 1 END) as active_services,
+                COUNT(CASE WHEN status = 'Completed' THEN 1 END) as completed_bookings,
+                COALESCE(SUM(CASE WHEN payment_status = 'Paid' THEN base_fee ELSE 0 END), 0) as total_spent
+            FROM service_bookings
+            WHERE customer_id = $1
+        `, [customerId]);
+        
+        // Get all service categories
         const categoriesResult = await pool.query(`
             SELECT DISTINCT category_name 
             FROM service_categories 
-            ORDER BY category_name ASC
+            ORDER BY category_name
         `);
-
-        res.render('customer/customer-dashboard', { 
+        
+        // Render dashboard with statistics and categories
+        res.render('customer/dashboard', {
             title: 'Customer Dashboard',
-            user,
-            totalBookings,
-            activeServices,
-            totalSpent,
-            completedBookings,
-            recentBookings,
-            activeServicesList,
-            categories: categoriesResult.rows  // Add this line to pass categories to the template
+            user: req.session.user,
+            totalBookings: statsResult.rows[0].total_bookings || 0,
+            activeServices: statsResult.rows[0].active_services || 0,
+            completedBookings: statsResult.rows[0].completed_bookings || 0,
+            totalSpent: statsResult.rows[0].total_spent || 0,
+            categories: categoriesResult.rows
         });
     } catch (error) {
-        console.error('Dashboard error:', error);
-        
-        // Render the dashboard even if there's an error fetching categories
-        res.render('customer/customer-dashboard', { 
-            title: 'Customer Dashboard',
-            user: req.session.user || { name: 'Customer' },
-            totalBookings: 0,
-            activeServices: 0,
-            totalSpent: 0,
-            completedBookings: 0,
-            recentBookings: [],
-            activeServicesList: [],
-            categories: []  // Empty categories array as fallback
+        console.error('Error loading dashboard:', error);
+        res.status(500).render('error', { 
+            message: 'Failed to load dashboard',
+            error: error
         });
     }
 });

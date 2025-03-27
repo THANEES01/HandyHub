@@ -26,8 +26,13 @@ router.get('/payment/:bookingId', isCustomerAuth, async (req, res) => {
     try {
         const bookingId = req.params.bookingId;
         
+        console.log(`Loading payment page for booking ID: ${bookingId}`);
+        console.log('Session payment info:', req.session.paymentInfo);
+        
         // Check if payment info exists in session
         if (!req.session.paymentInfo || req.session.paymentInfo.bookingId != bookingId) {
+            console.log('Payment info not in session, retrieving from database');
+            
             // Get booking info from database if not in session
             const bookingResult = await pool.query(`
                 SELECT sb.*, sp.business_name as provider_name
@@ -43,6 +48,7 @@ router.get('/payment/:bookingId', isCustomerAuth, async (req, res) => {
             }
             
             const booking = bookingResult.rows[0];
+            console.log('Retrieved booking:', booking);
             
             // If the booking record has base_fee, use it; otherwise, retrieve it
             let baseFee = booking.base_fee;
@@ -73,10 +79,17 @@ router.get('/payment/:bookingId', isCustomerAuth, async (req, res) => {
                 customerName: booking.customer_name,
                 customerEmail: booking.customer_email
             };
+            
+            console.log('Created payment info in session:', req.session.paymentInfo);
         }
         
         // Continue with rendering the payment page
-        const stripePublicKey = process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_yourPublishableKey';
+        const stripePublicKey = process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_51R6MosL59baH2MzbAr4fPTWSuAy3kSy1yLiBsZKPDQ5RObTm02IMqS4wJx9M1F8EMUZD99j6MfiM4k0xGt3jD0DT009djlkwqP';
+        
+        console.log('Rendering payment page with info:', {
+            paymentInfo: req.session.paymentInfo,
+            stripePublicKey: stripePublicKey
+        });
         
         res.render('customer/payment', {
             title: 'Complete Payment',
@@ -89,7 +102,7 @@ router.get('/payment/:bookingId', isCustomerAuth, async (req, res) => {
         delete req.session.error;
     } catch (error) {
         console.error('Error loading payment page:', error);
-        req.session.error = 'Failed to load payment page';
+        req.session.error = 'Failed to load payment page: ' + error.message;
         res.redirect('/customer/bookings');
     }
 });

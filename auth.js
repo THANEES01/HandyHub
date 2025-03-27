@@ -409,8 +409,6 @@ const adminLogin = async (req, res) => {
     }
  };
 
-
-
 // ====== Routes ======
 // Customer authentication routes
 router.get('/customer-login', isGuest, showCustomerLogin);

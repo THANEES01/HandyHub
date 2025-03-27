@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -205,11 +206,52 @@
                       <form action="/customer/book-service" method="POST" enctype="multipart/form-data">
                           <input type="hidden" name="providerId" value="<%= provider.id %>">
                           
-                         <!-- Store the selected category as a hidden field -->
-    
+                          <!-- Service Type Selection Section -->
+                          <div class="form-section">
+                              <h3 class="form-section-title">1. Service Details</h3>
+                              
+                              <% if (selectedCategory && categories.length > 0) { %>
+                                  <% const category = categories.find(cat => cat.category_name === selectedCategory); %>
+                                  <% if (category) { %>
+                                      <div class="alert alert-info">
+                                          <strong>Selected Service:</strong> <%= category.category_name %> - 
+                                          <span class="badge bg-primary">RM <%= parseFloat(category.base_fee).toFixed(2) %> <%= category.fee_type %></span>
+                                      </div>
+                                      <input type="hidden" name="serviceType" value="<%= category.category_name %>">
+                                      <input type="hidden" name="baseFee" value="<%= category.base_fee %>">
+                                      <input type="hidden" name="feeType" value="<%= category.fee_type %>">
+                                  <% } else { %>
+                                      <div class="alert alert-warning">
+                                          <strong>Selected Service:</strong> <%= selectedCategory %> (pricing information not available)
+                                      </div>
+                                      <input type="hidden" name="serviceType" value="<%= selectedCategory %>">
+                                  <% } %>
+                              <% } else if (categories && categories.length > 0) { %>
+                                  <div class="mb-3">
+                                      <label for="serviceType" class="form-label">Select Service Type</label>
+                                      <select class="form-select" id="serviceType" name="serviceType" required>
+                                          <option value="" disabled selected>Select service type</option>
+                                          <% categories.forEach(category => { %>
+                                              <option value="<%= category.category_name %>" 
+                                                      data-fee="<%= category.base_fee %>" 
+                                                      data-fee-type="<%= category.fee_type %>">
+                                                  <%= category.category_name %> - RM <%= parseFloat(category.base_fee).toFixed(2) %> (<%= category.fee_type %>)
+                                              </option>
+                                          <% }); %>
+                                      </select>
+                                  </div>
+                                  <!-- Hidden fields that will be updated by JavaScript when user selects a service -->
+                                  <input type="hidden" name="baseFee" value="<%= categories[0].base_fee %>">
+                                  <input type="hidden" name="feeType" value="<%= categories[0].fee_type %>">
+                              <% } else { %>
+                                  <div class="alert alert-warning">
+                                      <strong>No service categories available.</strong> Please contact support.
+                                  </div>
+                              <% } %>
+                          </div>
                          
                           <div class="form-section">
-                              <h3 class="form-section-title">1. Describe Your Issue</h3>
+                              <h3 class="form-section-title">2. Describe Your Issue</h3>
                               
                               <div class="mb-3">
                                   <label for="issueDescription" class="form-label">Describe the Issue</label>
@@ -229,7 +271,7 @@
                           </div>
                           
                           <div class="form-section">
-                              <h3 class="form-section-title">2. Service Location</h3>
+                              <h3 class="form-section-title">3. Service Location</h3>
                               
                               <div class="row">
                                   <div class="col-12 mb-3">
@@ -261,7 +303,7 @@
                           
                           <!--Service Schedule-->
                           <div class="form-section">
-                            <h3 class="form-section-title">3. Schedule Service</h3>
+                            <h3 class="form-section-title">4. Schedule Service</h3>
                             
                             <div class="mb-3">
                                 <label for="preferredDate" class="form-label">Preferred Date</label>
@@ -291,7 +333,7 @@
                         </div>
                           
                           <div class="form-section">
-                              <h3 class="form-section-title">4. Contact Information</h3>
+                              <h3 class="form-section-title">5. Contact Information</h3>
                               
                               <div class="row">
                                   <div class="col-md-6 mb-3">
@@ -326,7 +368,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-
         document.addEventListener('DOMContentLoaded', function() {
         // Set minimum date for booking to today
         const today = new Date().toISOString().split('T')[0];
@@ -356,6 +397,22 @@
                 });
             }
         });
+        
+        // Service type selection functionality
+        const serviceTypeSelect = document.getElementById('serviceType');
+        if (serviceTypeSelect) {
+            serviceTypeSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const baseFee = selectedOption.getAttribute('data-fee');
+                const feeType = selectedOption.getAttribute('data-fee-type');
+                
+                // Update hidden fields
+                document.querySelector('input[name="baseFee"]').value = baseFee;
+                document.querySelector('input[name="feeType"]').value = feeType;
+                
+                console.log(`Updated service selection: ${this.value}, Fee: ${baseFee}, Type: ${feeType}`);
+            });
+        }
         
         // Enhanced date selection for availability
         document.getElementById('preferredDate').addEventListener('change', function() {
@@ -448,7 +505,7 @@
                 document.getElementById('phoneNumber').value = user.phoneNumber;
             }
         }
-});
+    });
     </script>
 </body>
 </html>

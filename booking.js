@@ -195,8 +195,31 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             return res.redirect(`/customer/book-service/${providerId}`);
         }
         
-        // Log the received values
+        // Log the received values for debugging
         console.log(`Booking received: ServiceType=${serviceType}, BaseFee=${baseFee}, FeeType=${feeType}`);
+        
+        // If baseFee is not provided, retrieve it from the database
+        let finalBaseFee = baseFee;
+        let finalFeeType = feeType;
+        
+        if (!finalBaseFee || !finalFeeType) {
+            try {
+                const categoryResult = await pool.query(`
+                    SELECT base_fee, fee_type 
+                    FROM service_categories 
+                    WHERE provider_id = $1 AND category_name = $2
+                    LIMIT 1
+                `, [providerId, serviceType]);
+                
+                if (categoryResult.rows.length > 0) {
+                    finalBaseFee = categoryResult.rows[0].base_fee;
+                    finalFeeType = categoryResult.rows[0].fee_type;
+                    console.log(`Retrieved from DB: Fee=${finalBaseFee}, Type=${finalFeeType}`);
+                }
+            } catch (error) {
+                console.error('Error retrieving fee information:', error);
+            }
+        }
         
         // Process uploaded files
         let imageFiles = [];
@@ -230,21 +253,21 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             email, 
             'Pending',
             JSON.stringify(imageFiles),
-            parseFloat(baseFee) || 0, // Convert to number with fallback
-            feeType || 'per visit'    // With fallback
+            parseFloat(finalBaseFee) || 0, // Convert to number with fallback
+            finalFeeType || 'per visit'    // With fallback
         ]);
         
         // If booking was successful, redirect to payment page
         if (bookingResult.rows.length > 0) {
             const bookingId = bookingResult.rows[0].id;
             
-             // Store in session for payment
+            // Store in session for payment
             req.session.paymentInfo = {
-                bookingId: bookingResult.rows[0].id,
+                bookingId: bookingId,
                 providerId: providerId,
                 serviceType: serviceType,
-                baseFee: parseFloat(baseFee) || 0,
-                feeType: feeType || 'per visit',
+                baseFee: parseFloat(finalBaseFee) || 0,
+                feeType: finalFeeType || 'per visit',
                 customerName: fullName,
                 customerEmail: email
             };

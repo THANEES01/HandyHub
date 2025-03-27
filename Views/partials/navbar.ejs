@@ -16,13 +16,19 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="/about">About</a>
+                    <a class="nav-link" href="/">About</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/services">Services</a>
+                    <% if (locals.user && user) { %>
+                        <!-- If user is logged in, link to dashboard services section -->
+                        <a class="nav-link" href="/customer/dashboard#services">Services</a>
+                    <% } else { %>
+                        <!-- If user is not logged in, link to home page services section -->
+                        <a class="nav-link" href="/#services">Services</a>
+                    <% } %>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/contact">Contact</a>
+                    <a class="nav-link" href="#contact">Contact</a>
                 </li>
                 
                 <!-- User Dropdown - Show when logged in -->
@@ -34,7 +40,7 @@
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                             <li><a class="dropdown-item" href="/customer/dashboard"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
                             <li><a class="dropdown-item" href="/customer/profile"><i class="bi bi-person me-2"></i>My Profile</a></li>
-                            <li><a class="dropdown-item" href="/customer/test-bookings"><i class="bi bi-calendar-check me-2"></i>My Bookings</a></li>
+                            <li><a class="dropdown-item" href="/customer/bookings"><i class="bi bi-calendar-check me-2"></i>My Bookings</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="/auth/logout"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
                         </ul>
@@ -130,3 +136,48 @@
         margin-left: 5px;
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // For the contact link smooth scrolling
+    const contactLink = document.querySelector('.nav-link[href="#contact"]');
+    if (contactLink) {
+        contactLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Find the contact section
+            const contactSection = document.getElementById('contact');
+            
+            // If we're on a page with the contact section
+            if (contactSection) {
+                // Smooth scroll to the contact section
+                contactSection.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                // If not on a page with contact section, go to home page with #contact anchor
+                window.location.href = '/#contact';
+            }
+        });
+    }
+    
+    // For services link to properly navigate to the services section
+    const servicesLink = document.querySelector('.nav-link[href*="#services"]');
+    if (servicesLink) {
+        servicesLink.addEventListener('click', function(e) {
+            const href = this.getAttribute('href');
+            
+            // If we're already on the page containing the services section
+            if (window.location.pathname === '/' && href === '/#services' || 
+                window.location.pathname === '/customer/dashboard' && href === '/customer/dashboard#services') {
+                e.preventDefault();
+                
+                // Find the services section and scroll to it
+                const servicesSection = document.getElementById('services');
+                if (servicesSection) {
+                    servicesSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+            // Otherwise let the browser navigate to the URL with the anchor
+        });
+    }
+});
+</script>
