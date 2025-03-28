@@ -293,15 +293,15 @@ router.get('/customer/bookings', isCustomerAuth, async (req, res) => {
         
         // Get all bookings for this customer - UPDATED QUERY
         const bookingsResult = await pool.query(`
-            SELECT sb.id, sb.service_type, sb.preferred_date, sb.status, 
-                   sb.created_at, sp.business_name as provider_name
+            SELECT sb.id, sb.service_type, sb.preferred_date, sb.time_slot, sb.status, 
+                   sb.payment_status, sb.created_at, sp.business_name as provider_name
             FROM service_bookings sb
             JOIN service_providers sp ON sb.provider_id = sp.id
             WHERE sb.customer_id = $1
             ORDER BY sb.preferred_date DESC
         `, [customerId]);
         
-        res.render('customer/booking-confirmation', {
+        res.render('customer/view-bookings', {
             title: 'My Bookings',
             user: req.session.user,
             bookings: bookingsResult.rows,

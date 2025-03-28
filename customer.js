@@ -49,7 +49,7 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
         `);
         
         // Render dashboard with statistics and categories
-        res.render('customer/dashboard', {
+        res.render('customer/customer-dashboard', {
             title: 'Customer Dashboard',
             user: req.session.user,
             totalBookings: statsResult.rows[0].total_bookings || 0,

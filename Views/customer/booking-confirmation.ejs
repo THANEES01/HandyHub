@@ -142,6 +142,11 @@
             background-color: #d4edda;
             color: #155724;
         }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
         
         .booking-id {
             font-size: 1.1rem;
@@ -185,6 +190,39 @@
             color: #212529;
             text-decoration: none;
         }
+
+        /*  */
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+            color: white;
+        }
+
+        /* Make the Make Payment button stand out more */
+        .action-buttons .btn-success {
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Add a subtle animation to draw attention */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+        }
+
+        .action-buttons .btn-success {
+            animation: pulse 2s infinite;
+        }
+
     </style>
 </head>
 <body>
@@ -210,19 +248,34 @@
                     <% } %>
                     
                     <% if (locals.booking) { %>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="booking-id">
-                            <strong>Booking #:</strong> <%= booking.id %>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="booking-id">
+                                <strong>Booking #:</strong> <%= booking.id %>
+                            </div>
+                            <% if (booking.payment_status === 'Paid') { %>
+                                <div class="payment-status status-paid">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Payment Completed
+                                </div>
+                            <% } else { %>
+                                <div class="payment-status status-pending">
+                                    <i class="bi bi-clock-history me-1"></i> Payment Pending
+                                </div>
+                            <% } %>
                         </div>
-                        <div class="payment-status status-paid">
-                            <i class="bi bi-check-circle-fill me-1"></i> Payment Completed
-                        </div>
-                    </div>
-                    <% } %>
+                        <% } %>
                     
+                    <!-- Replace the confirmation message section with this code -->
                     <div class="confirmation-message">
-                        <p>Thank you for your booking with HandyHub! Your payment has been processed successfully, and your service request has been confirmed.</p>
-                        <p class="mb-0">Our service provider will review your request and contact you shortly to confirm the details.</p>
+                        <% if (locals.booking && booking.payment_status === 'Paid') { %>
+                            <p>Thank you for your booking with HandyHub! Your payment has been processed successfully, and your service request has been confirmed.</p>
+                            <p class="mb-0">Our service provider will review your request and contact you shortly to confirm the details.</p>
+                        <% } else if (locals.booking) { %>
+                            <p>Thank you for your booking with HandyHub! Your service request has been received and is waiting for payment confirmation.</p>
+                            <p class="mb-0">Please complete the payment process to confirm your booking with the service provider.</p>
+                        <% } else { %>
+                            <p>Thank you for your booking with HandyHub! Your service request has been received.</p>
+                            <p class="mb-0">Our service provider will review your request and contact you shortly to confirm the details.</p>
+                        <% } %>
                     </div>
                     
                     <% if (locals.booking) { %>
@@ -305,12 +358,21 @@
                     <% } %>
                     
                     <div class="action-buttons">
-                        <a href="/customer/test-bookings" class="btn btn-view-booking">
+                        <a href="/customer/bookings" class="btn btn-view-booking">
                             <i class="bi bi-list-ul me-2"></i> View All Bookings
                         </a>
-                        <a href="/" class="btn btn-outline-secondary">
-                            <i class="bi bi-house me-2"></i> Go to Dashboard
-                        </a>
+                        
+                        <% if (locals.booking && booking.payment_status !== 'Paid') { %>
+                            <!-- Show Make Payment button when payment is pending -->
+                            <a href="/customer/payment/<%= booking.id %>" class="btn btn-success">
+                                <i class="bi bi-credit-card me-2"></i> Make Payment
+                            </a>
+                        <% } else { %>
+                            <!-- Show Go to Dashboard button when payment is completed -->
+                            <a href="/customer/dashboard" class="btn btn-outline-secondary">
+                                <i class="bi bi-house me-2"></i> Go to Dashboard
+                            </a>
+                        <% } %>
                     </div>
                 </div>
             </div>

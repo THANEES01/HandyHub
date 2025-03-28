@@ -295,6 +295,42 @@
             border-color: var(--primary-blue);
             color: white;
         }
+        
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            border-radius: 0.2rem;
+        }
+
+        /* Make both buttons align nicely */
+        .booking-footer .btn {
+            margin-left: 5px;
+        }
+
+        /* Add a slight pulsing effect to the Pay Now button to draw attention */
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); }
+            70% { box-shadow: 0 0 0 5px rgba(40, 167, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+        }
+
+        .btn-success {
+            animation: pulse-green 2s infinite;
+        }
+
     </style>
 </head>
 <body>
@@ -338,8 +374,24 @@
                                         <span class="booking-id">Booking #<%= booking.id %></span>
                                     </div>
                                     <div>
-                                        <span class="booking-status status-<%= booking.status.toLowerCase() %>">
-                                            <%= booking.status %>
+                                        <% 
+                                        // Determine the appropriate status class and text
+                                        let headerStatusClass = 'status-pending';
+                                        let statusText = booking.status;
+                                        
+                                        if (booking.status === 'Confirmed') {
+                                            headerStatusClass = 'status-confirmed';
+                                            statusText = 'Confirmed';
+                                        } else if (booking.status === 'Cancelled') {
+                                            headerStatusClass = 'status-canceled';
+                                        } else if (booking.status === 'Completed') {
+                                            headerStatusClass = 'status-completed';
+                                        } else if (booking.status === 'Pending') {
+                                            statusText = 'Pending';
+                                        }
+                                        %>
+                                        <span class="booking-status <%= headerStatusClass %>">
+                                            <%= statusText %>
                                         </span>
                                     </div>
                                 </div>
@@ -377,21 +429,7 @@
                                                 </div>
                                                 <div class="detail-content">
                                                     <h4>Time Slot</h4>
-                                                    <p><%= booking.time_slot %></p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="col-md-6">
-                                            <div class="booking-detail">
-                                                <div class="detail-icon">
-                                                    <i class="bi bi-geo-alt"></i>
-                                                </div>
-                                                <div class="detail-content">
-                                                    <h4>Service Location</h4>
-                                                    <p class="text-truncate" title="<%= booking.service_address %>">
-                                                        <%= booking.service_address %>
-                                                    </p>
+                                                    <p><%= booking.time_slot || "Not specified" %></p>
                                                 </div>
                                             </div>
                                         </div>
@@ -401,29 +439,40 @@
                                 <div class="booking-footer">
                                     <div>
                                         <% 
-                                        let statusClass = 'text-muted';
-                                        let statusIcon = 'bi-clock';
+                                        let footerStatusClass = 'text-muted';
+                                        let footerStatusIcon = 'bi-clock';
+                                        let paymentStatusText = 'Payment Pending';
                                         
-                                        if (booking.payment_status === 'Paid') {
-                                            statusClass = 'text-success';
-                                            statusIcon = 'bi-check-circle-fill';
+                                        // If status is Confirmed, treat it as Paid regardless of payment_status
+                                        if (booking.status === 'Confirmed' || booking.payment_status === 'Paid') {
+                                            footerStatusClass = 'text-success';
+                                            footerStatusIcon = 'bi-check-circle-fill';
+                                            paymentStatusText = 'Paid';
                                         } else if (booking.status === 'Cancelled') {
-                                            statusClass = 'text-danger';
-                                            statusIcon = 'bi-x-circle-fill';
+                                            footerStatusClass = 'text-danger';
+                                            footerStatusIcon = 'bi-x-circle-fill';
+                                            paymentStatusText = 'Cancelled';
                                         }
                                         %>
-                                        <span class="<%= statusClass %> me-2">
-                                            <i class="bi <%= statusIcon %>"></i>
-                                            <%= booking.payment_status || 'Payment Pending' %>
+                                        <span class="<%= footerStatusClass %> me-2">
+                                            <i class="bi <%= footerStatusIcon %>"></i>
+                                            <%= paymentStatusText %>
                                         </span>
                                     </div>
-                                    <a href="/customer/booking-confirmation/<%= booking.id %>" class="btn btn-view-details">
-                                        <i class="bi bi-eye me-1"></i> View Details
-                                    </a>
+                                    <div>
+                                        <% if (booking.status !== 'Confirmed' && booking.payment_status !== 'Paid' && booking.status !== 'Cancelled') { %>
+                                            <a href="/customer/payment/<%= booking.id %>" class="btn btn-sm btn-success me-2">
+                                                <i class="bi bi-credit-card me-1"></i> Pay Now
+                                            </a>
+                                        <% } %>
+                                        <a href="/customer/booking-confirmation/<%= booking.id %>" class="btn btn-view-details">
+                                            <i class="bi bi-eye me-1"></i> View Details
+                                        </a>
+                                    </div>
                                 </div>
-                            </div>
+                            </div> <!-- End of booking card -->
                         <% }); %>
-                    </div>
+                    </div> <!-- End of bookings-list -->
                     
                     <!-- Pagination -->
                     <div class="pagination-container">
@@ -452,9 +501,9 @@
                         </a>
                     </div>
                 <% } %>
-            </div>
-        </div>
-    </div>
+            </div> <!-- End of bookings-container -->
+        </div> <!-- End of container -->
+    </div> <!-- End of content-wrapper -->
 
     <div class="footer-wrapper">
         <!-- Footer -->
@@ -500,9 +549,16 @@
                             const statusElement = card.querySelector('.booking-status');
                             if (!statusElement) return;
                             
-                            const status = statusElement.textContent.trim().toLowerCase();
+                            const bookingStatus = statusElement.textContent.trim().toLowerCase();
                             
-                            if (filter === 'all' || status === filter) {
+                            // Check if card should be displayed based on selected filter
+                            if (filter === 'all') {
+                                card.style.display = 'block';
+                            } else if (filter === 'pending' && bookingStatus.includes('pending')) {
+                                card.style.display = 'block';
+                            } else if (filter === 'confirmed' && bookingStatus.includes('confirmed')) {
+                                card.style.display = 'block';
+                            } else if (filter === 'completed' && bookingStatus.includes('completed')) {
                                 card.style.display = 'block';
                             } else {
                                 card.style.display = 'none';
