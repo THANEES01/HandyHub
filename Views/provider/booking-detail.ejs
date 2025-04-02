@@ -1,0 +1,326 @@
+<!-- views/provider/booking-detail.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking #<%= booking.id %> - HandyHub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #0077be;
+            --secondary-blue: #00a2e8;
+            --dark-blue: #003366;
+            --light-blue: #e6f2ff;
+            --sidebar-width: 250px;
+        }
+        
+        body {
+            min-height: 100vh;
+            background-color: #f8f9fa;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--dark-blue);
+            min-height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            padding-top: 20px;
+        }
+
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+        }
+
+        .data-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-group {
+            margin-bottom: 20px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--dark-blue);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .status-badge {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .status-Confirmed {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .status-Pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-Completed {
+            background-color: #cfe2ff;
+            color: #084298;
+        }
+
+        .sidebar-brand {
+            color: white;
+            font-size: 1.5rem;
+            padding: 20px;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 20px;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            padding: 12px 20px;
+            margin: 4px 0;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-link i {
+            margin-right: 10px;
+        }
+
+        .img-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .issue-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: var(--primary-blue);
+            font-weight: 500;
+            padding: 8px 0;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            color: var(--dark-blue);
+        }
+
+        .section-title {
+            color: var(--dark-blue);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .action-buttons {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .btn-lg {
+            padding: 12px 24px;
+            font-size: 1rem;
+        }
+
+        .btn i {
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <a href="/provider/dashboard" class="sidebar-brand">
+            <i class="bi bi-tools"></i> HandyHub Provider
+        </a>
+        <nav class="nav flex-column">
+            <a class="nav-link" href="/provider/dashboard">
+                <i class="bi bi-person"></i> Profile
+            </a>
+            <a class="nav-link active" href="/provider/bookings">
+                <i class="bi bi-calendar-check"></i> Bookings
+            </a>
+            <a class="nav-link" href="/provider/reviews">
+                <i class="bi bi-star"></i> Reviews & Ratings
+            </a>
+            <a class="nav-link" href="/provider/earnings">
+                <i class="bi bi-wallet2"></i> Earnings
+            </a>
+            <a class="nav-link text-danger" href="/auth/logout">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header Section -->
+        <div class="mb-4">
+            <a href="/provider/bookings" class="back-button">
+                <i class="bi bi-arrow-left"></i>
+                Back to Bookings
+            </a>
+            <h1 class="h3 mt-3">Booking Details #<%= booking.id %></h1>
+        </div>
+
+        <div class="row">
+            <!-- Service Information -->
+            <div class="col-md-8">
+                <div class="data-card">
+                    <div class="card-header">
+                        <h2 class="section-title mb-0">Service Information</h2>
+                        <span class="status-badge status-<%= booking.status %>">
+                            <%= booking.status %>
+                        </span>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <div class="info-label">Service Type</div>
+                                <div class="info-value"><%= booking.service_type %></div>
+                            </div>
+                            <div class="info-group">
+                                <div class="info-label">Time Slot</div>
+                                <div class="info-value"><%= booking.time_slot %></div>
+                            </div>
+                            <div class="info-group">
+                                <div class="info-label">Issue Description</div>
+                                <div class="info-value"><%= booking.issue_description %></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <div class="info-label">Customer Name</div>
+                                <div class="info-value"><%= booking.customer_name %></div>
+                            </div>
+                            <div class="info-group">
+                                <div class="info-label">Customer Phone</div>
+                                <div class="info-value"><%= booking.customer_phone %></div>
+                            </div>
+                            <div class="info-group">
+                                <div class="info-label">Customer Email</div>
+                                <div class="info-value"><%= booking.customer_email %></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-group mt-3">
+                        <div class="info-label">Service Address</div>
+                        <div class="info-value"><%= booking.service_address %></div>
+                    </div>
+
+                    <div class="action-buttons mt-4 pt-3 border-top">
+                        <h3 class="section-title h5 mb-3">Actions</h3>
+                        
+                        <% if (booking.status === 'New' || booking.status === 'Pending') { %>
+                            <form action="/provider/booking/<%= booking.id %>/accept" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-success btn-lg me-2">
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                    Accept Booking
+                                </button>
+                            </form>
+                        <% } %>
+                        
+                        <% if (booking.status === 'Accepted') { %>
+                            <form action="/provider/booking/<%= booking.id %>/start" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-primary btn-lg me-2">
+                                    <i class="bi bi-play-fill me-2"></i>
+                                    Start Service
+                                </button>
+                            </form>
+                        <% } %>
+                        
+                        <% if (booking.status === 'In Progress') { %>
+                            <form action="/provider/booking/<%= booking.id %>/complete" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-success btn-lg me-2">
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                    Complete Service
+                                </button>
+                            </form>
+                        <% } %>
+                    
+                        <% if (booking.status === 'Confirmed') { %>
+                            <form action="/provider/booking/<%= booking.id %>/start" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-primary btn-lg me-2">
+                                    <i class="bi bi-play-fill me-2"></i>
+                                    Start Service
+                                </button>
+                            </form>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Issue Images -->
+            <div class="col-md-4">
+                <div class="data-card">
+                    <h2 class="section-title">Issue Images</h2>
+                    <% if (booking.images) { %>
+                        <div class="img-container">
+                            <% booking.images.split(',').forEach(image => { %>
+                                <img src="/<%= image.trim() %>" 
+                                     alt="Issue Image" 
+                                     class="issue-image"
+                                     onerror="this.src='https://via.placeholder.com/300x200?text=Image+Not+Found'"/>
+                            <% }); %>
+                        </div>
+                    <% } else { %>
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-image fs-1"></i>
+                            <p class="mt-2">No images provided</p>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

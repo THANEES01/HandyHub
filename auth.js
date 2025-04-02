@@ -72,8 +72,18 @@ const isAuth = (req, res, next) => {
 const isGuest = (req, res, next) => {
     if (!req.session?.user) {
         return next();
-      }
-      res.redirect('/');
+    }
+    
+    // Redirect based on user type if already logged in
+    if (req.session.user.userType === 'provider') {
+        return res.redirect('/provider/dashboard');
+    } else if (req.session.user.userType === 'customer') {
+        return res.redirect('/customer/dashboard');
+    } else if (req.session.user.userType === 'admin') {
+        return res.redirect('/admin/dashboard');
+    }
+    
+    res.redirect('/');
 };
 
 const isCustomer = (req, res, next) => {
@@ -84,13 +94,35 @@ const isCustomer = (req, res, next) => {
     res.redirect('/auth/customer-login');
 };
 
+const isProvider = (req, res, next) => {
+    if (req.session.user && req.session.user.userType === 'provider') {
+        return next();
+    }
+    req.session.error = 'Please login as a service provider';
+    res.redirect('/auth/provider-login');
+};
+
 // ====== Controllers ======
 const showCustomerLogin = (req, res) => {
-    res.render('auth/customer-login');
+    // Get messages from session
+    const error = req.session.error;
+    const success = req.session.success;
+    
+    // Clear messages from session
+    delete req.session.error;
+    delete req.session.success;
+    
+    res.render('auth/customer-login', {
+        error: error,
+        success: success
+    });
 };
 
 const showCustomerRegister = (req, res) => {
-    res.render('auth/customer-register');
+    res.render('auth/customer-register', {
+        error: req.session.error,
+        success: req.session.success
+    });
 };
 
 // Customer Registration
@@ -145,35 +177,59 @@ const customerLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        const result = await pool.query(`
-            SELECT u.*, c.first_name, c.last_name 
-            FROM users u
-            JOIN customers c ON u.id = c.user_id
-            WHERE u.email = $1 AND u.user_type = $2
-        `, [email, 'customer']);
+        // First find the user by email
+        const userResult = await pool.query(
+            'SELECT * FROM users WHERE email = $1 AND user_type = $2',
+            [email, 'customer']
+        );
 
-        const user = result.rows[0];
-
-        if (!user) {
+        if (userResult.rows.length === 0) {
             req.session.error = 'Invalid email or password';
             return res.redirect('/auth/customer-login');
         }
 
+        const user = userResult.rows[0];
+
+        // Verify password
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) {
             req.session.error = 'Invalid email or password';
             return res.redirect('/auth/customer-login');
         }
 
+        // Get customer details
+        const customerResult = await pool.query(
+            'SELECT * FROM customers WHERE user_id = $1',
+            [user.id]
+        );
+
+        if (customerResult.rows.length === 0) {
+            req.session.error = 'Customer account not found';
+            return res.redirect('/auth/customer-login');
+        }
+
+        const customer = customerResult.rows[0];
+
+        // Set session data
         req.session.user = {
             id: user.id,
             email: user.email,
-            firstName: user.first_name,
-            lastName: user.last_name,
-            userType: 'customer'
+            firstName: customer.first_name,
+            lastName: customer.last_name,
+            userType: 'customer',
+            customerId: customer.id
         };
 
-        res.redirect('/customer/dashboard');
+        // Save session and redirect
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                req.session.error = 'Login failed. Please try again.';
+                return res.redirect('/auth/customer-login');
+            }
+            console.log("Customer session saved successfully, redirecting to dashboard");
+            res.redirect('/customer/dashboard');
+        });
 
     } catch (err) {
         console.error('Login error:', err);
@@ -182,11 +238,22 @@ const customerLogin = async (req, res) => {
     }
 };
 
-
 const logout = (req, res) => {
+    // Store user type before destroying session
+    const userType = req.session.user?.userType;
+    
     req.session.destroy((err) => {
         if (err) console.error('Logout error:', err);
-        res.redirect('/auth/customer-login');
+        
+        // Redirect based on previous user type
+        if (userType === 'provider') {
+            res.redirect('/auth/provider-login');
+        } else if (userType === 'admin') {
+            res.redirect('/auth/admin-login');
+        } else {
+            // Default to customer login
+            res.redirect('/auth/customer-login');
+        }
     });
 };
 
@@ -211,7 +278,8 @@ const showProviderLogin = (req, res) => {
 // Show provider registration page
 const showProviderRegister = (req, res) => {
     res.render('auth/provider-register', {
-        error: req.session.error
+        error: req.session.error,
+        success: req.session.success
     });
 };
 
@@ -232,9 +300,20 @@ const providerRegister = async (req, res) => {
 
         await client.query('BEGIN');
 
+        // Check if email already exists as a provider
+        const existingUser = await client.query(
+            'SELECT id FROM users WHERE email = $1 AND user_type = $2',
+            [email, 'provider']
+        );
+
+        if (existingUser.rows.length) {
+            req.session.error = 'Email already registered as a provider';
+            return res.redirect('/auth/provider-register');
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create user WITHOUT checking for existing email
+        // Create user
         const newUser = await client.query(
             'INSERT INTO users (email, password, user_type) VALUES ($1, $2, $3) RETURNING id',
             [email, hashedPassword, 'provider']
@@ -271,8 +350,8 @@ const providerRegister = async (req, res) => {
                 const slotDuration = parseInt(req.body.slotDuration);
                 
                 await client.query(
-                    'INSERT INTO provider_availability (provider_id, day_of_week, start_time, end_time, slot_duration) VALUES ($1, $2, $3, $4, $5)',
-                    [newProvider.rows[0].id, day, startTime, endTime, slotDuration]
+                    'INSERT INTO provider_availability (provider_id, day_of_week, start_time, end_time, slot_duration, is_available) VALUES ($1, $2, $3, $4, $5, $6)',
+                    [newProvider.rows[0].id, day, startTime, endTime, slotDuration, true]
                 );
             }
         }
@@ -312,58 +391,63 @@ const providerLogin = async (req, res) => {
         console.log("Provider login attempt:", req.body.email);
         const { email, password } = req.body;
         
-        // Modify query to get ALL providers with this email
-        const result = await pool.query(`
-            SELECT u.*, sp.id as provider_id, sp.business_name, sp.phone_number, sp.is_verified
-            FROM users u 
-            JOIN service_providers sp ON u.id = sp.user_id 
-            WHERE u.email = $1 AND u.user_type = $2
-        `, [email, 'provider']);
+        // First find the user by email
+        const userResult = await pool.query(
+            'SELECT * FROM users WHERE email = $1 AND user_type = $2',
+            [email, 'provider']
+        );
 
-        console.log("Query result:", result.rows.length > 0 ? "User(s) found" : "No user found");
+        console.log("User query result:", userResult.rows.length > 0 ? "User found" : "No user found");
 
-        if (result.rows.length === 0) {
+        if (userResult.rows.length === 0) {
             req.session.error = 'Invalid email or password';
             return res.redirect('/auth/provider-login');
         }
 
-        // Try to find a matching password
-        let validUser = null;
-        for (const user of result.rows) {
-            const validPassword = await bcrypt.compare(password, user.password);
-            if (validPassword) {
-                validUser = user;
-                break;
-            }
-        }
+        const user = userResult.rows[0];
 
-        if (!validUser) {
+        // Verify password
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
             req.session.error = 'Invalid email or password';
             return res.redirect('/auth/provider-login');
         }
 
-        // Set user session data
+        // Get provider details
+        const providerResult = await pool.query(
+            'SELECT * FROM service_providers WHERE user_id = $1',
+            [user.id]
+        );
+
+        if (providerResult.rows.length === 0) {
+            req.session.error = 'Provider account not found';
+            return res.redirect('/auth/provider-login');
+        }
+
+        const provider = providerResult.rows[0];
+
+        // Set session data
         req.session.user = {
-            id: validUser.id,
-            email: validUser.email,
-            businessName: validUser.business_name,
-            phoneNumber: validUser.phone_number,
+            id: user.id,
+            email: user.email,
+            businessName: provider.business_name,
+            phoneNumber: provider.phone_number,
             userType: 'provider',
-            providerId: validUser.provider_id,
-            isVerified: validUser.is_verified
+            providerId: provider.id,
+            isVerified: provider.is_verified
         };
 
-        console.log("Session data set:", req.session.user);
+        console.log("Provider session data set:", req.session.user);
 
-        // Check if session is saving correctly
+        // Save session explicitly and redirect
         req.session.save((err) => {
             if (err) {
                 console.error('Session save error:', err);
                 req.session.error = 'Login failed. Please try again.';
                 return res.redirect('/auth/provider-login');
             }
-            console.log("Session saved successfully, redirecting to dashboard");
-            res.redirect('/provider/dashboard');
+            console.log("Provider session saved successfully, redirecting to dashboard");
+            return res.redirect('/provider/dashboard');
         });
 
     } catch (err) {
@@ -397,35 +481,63 @@ const adminLogin = async (req, res) => {
                 userType: 'admin',
                 adminId: admin.admin_id
             };
-            return res.redirect('/admin/dashboard');
+            
+            // Save session explicitly and redirect
+            req.session.save((err) => {
+                if (err) {
+                    console.error('Session save error:', err);
+                    req.session.error = 'Login failed. Please try again.';
+                    return res.redirect('/auth/admin-login');
+                }
+                return res.redirect('/admin/dashboard');
+            });
+        } else {
+            req.session.error = 'Invalid credentials';
+            res.redirect('/auth/admin-login');
         }
- 
-        req.session.error = 'Invalid credentials';
-        res.redirect('/auth/admin-login');
     } catch (err) {
         console.error(err);
         req.session.error = 'Login failed';
         res.redirect('/auth/admin-login');
     }
- };
+};
+
+// Debug route to check session
+router.get('/check-session', (req, res) => {
+    res.json({
+        session: req.session,
+        sessionID: req.sessionID,
+        user: req.session.user || 'No user in session'
+    });
+});
 
 // ====== Routes ======
 // Customer authentication routes
 router.get('/customer-login', isGuest, showCustomerLogin);
-router.post('/customer-login', isGuest, customerLogin);
+router.post('/customer-login', customerLogin);
 router.get('/customer-register', isGuest, showCustomerRegister);
-router.post('/customer-register', isGuest, customerRegister);
+router.post('/customer-register', customerRegister);
 router.get('/logout', logout);
 
 // Provider authentication routes
 router.get('/provider-login', isGuest, showProviderLogin);
-router.post('/provider-login', isGuest, providerLogin);
+router.post('/provider-login', providerLogin);
 router.get('/provider-register', isGuest, showProviderRegister);
 router.post('/provider-register', upload.single('certification'), providerRegister);
-// router.post('/provider-login', providerLogin);
 
 // Admin routes
-router.get('/admin-login', isGuest, (req, res) => res.render('auth/admin-login'));
-router.post('/admin-login', isGuest, adminLogin);
+router.get('/admin-login', isGuest, (req, res) => {
+    const error = req.session.error;
+    const success = req.session.success;
+    
+    delete req.session.error;
+    delete req.session.success;
+    
+    res.render('auth/admin-login', {
+        error: error,
+        success: success
+    });
+});
+router.post('/admin-login', adminLogin);
 
 export default router;
