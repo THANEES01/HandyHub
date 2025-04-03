@@ -12,12 +12,15 @@
             --secondary-blue: #00a2e8;
             --dark-blue: #003366;
             --light-blue: #e6f2ff;
+            --success-green: #28a745;
             --sidebar-width: 250px;
+            --border-radius: 8px;
         }
         
         body {
             min-height: 100vh;
             background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
         }
 
         /* Sidebar Styling */
@@ -64,8 +67,8 @@
 
         .data-section {
             background: white;
-            border-radius: 15px;
-            padding: 30px;
+            border-radius: var(--border-radius);
+            padding: 25px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             margin-bottom: 30px;
         }
@@ -81,8 +84,9 @@
 
         .status-badge {
             padding: 5px 12px;
-            border-radius: 15px;
+            border-radius: 20px;
             font-size: 0.9rem;
+            font-weight: 500;
         }
 
         .status-new {
@@ -93,11 +97,6 @@
         .status-accepted {
             background-color: #d4edda;
             color: #155724;
-        }
-
-        .status-ongoing {
-            background-color: #fff3cd;
-            color: #856404;
         }
 
         .status-completed {
@@ -113,7 +112,7 @@
         .filter-section {
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 12px;
             margin-bottom: 20px;
             padding-bottom: 20px;
             border-bottom: 1px solid #eee;
@@ -121,12 +120,14 @@
 
         .filter-btn {
             padding: 8px 16px;
-            border-radius: 20px;
+            border-radius: 30px;
             background-color: #f8f9fa;
             border: 1px solid #dee2e6;
             color: #495057;
             transition: all 0.3s ease;
             text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
         }
 
         .filter-btn:hover {
@@ -140,12 +141,50 @@
             border-color: var(--primary-blue);
         }
 
-        .btn-action {
-            padding: 6px 12px;
-            border-radius: 5px;
-            font-size: 0.875rem;
-            margin-right: 5px;
-            display: inline-block;
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .btn-view {
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+
+        .btn-view:hover {
+            background-color: #005ea8;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .btn-accept {
+            background-color: var(--success-green);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+        
+        .btn-accept:hover {
+            background-color: #218838;
+            color: white;
+            transform: translateY(-1px);
         }
 
         .table-container {
@@ -155,13 +194,14 @@
         .status-count {
             background-color: #f8f9fa;
             border-radius: 50%;
-            width: 25px;
-            height: 25px;
+            width: 24px;
+            height: 24px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             font-size: 0.8rem;
             margin-left: 5px;
+            font-weight: 600;
         }
 
         .booking-table {
@@ -175,6 +215,12 @@
             padding: 12px 15px;
             font-weight: 600;
             border-bottom: 2px solid #dee2e6;
+            text-align: left;
+            color: #495057;
+        }
+
+        .booking-table th.actions-header {
+            text-align: center;
         }
 
         .booking-table td {
@@ -213,6 +259,74 @@
             color: #6c757d;
             font-size: 1.1rem;
             margin-bottom: 20px;
+        }
+
+        /* Stats Card Styling */
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .stats-card-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+
+        .stats-card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #343a40;
+        }
+
+        .stats-card-icon {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 1.8rem;
+            opacity: 0.15;
+        }
+
+        .stats-card.primary {
+            border-left: 4px solid var(--primary-blue);
+        }
+
+        .stats-card.success {
+            border-left: 4px solid var(--success-green);
+        }
+
+        .stats-card.info {
+            border-left: 4px solid var(--secondary-blue);
+        }
+
+        .btn-icon {
+            margin-right: 5px;
+        }
+
+        @media (max-width: 992px) {
+            .stats-cards {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+
+        .status-completed {
+            background-color: #c4e4c4; /* Changed to blue */
+            color: rgb(43, 70, 18);
         }
     </style>
 </head>
@@ -267,62 +381,36 @@
         <!-- Bookings Section -->
         <div class="data-section">
             <!-- Stats Cards -->
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="card border-left-primary h-100 py-2">
-                        <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Confirmed Bookings</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        <%= bookings.length %>
-                                    </div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="bi bi-calendar-check fs-2 text-gray-300"></i>
-                                </div>
-                            </div>
-                        </div>
+            <div class="stats-cards">
+                <div class="stats-card primary">
+                    <div class="stats-card-title">Total Confirmed Bookings</div>
+                    <div class="stats-card-value"><%= bookings.length %></div>
+                    <div class="stats-card-icon">
+                        <i class="bi bi-calendar-check"></i>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card border-left-success h-100 py-2">
-                        <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">This Week</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        <%= bookings.filter(b => {
-                                            const bookingDate = new Date(b.preferred_date);
-                                            const today = new Date();
-                                            const oneWeekAgo = new Date(today);
-                                            oneWeekAgo.setDate(today.getDate() - 7);
-                                            return bookingDate >= oneWeekAgo;
-                                        }).length %>
-                                    </div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="bi bi-calendar-week fs-2 text-gray-300"></i>
-                                </div>
-                            </div>
-                        </div>
+                <div class="stats-card success">
+                    <div class="stats-card-title">This Week</div>
+                    <div class="stats-card-value">
+                        <%= bookings.filter(b => {
+                            const bookingDate = new Date(b.preferred_date);
+                            const today = new Date();
+                            const oneWeekAgo = new Date(today);
+                            oneWeekAgo.setDate(today.getDate() - 7);
+                            return bookingDate >= oneWeekAgo;
+                        }).length %>
+                    </div>
+                    <div class="stats-card-icon">
+                        <i class="bi bi-calendar-week"></i>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card border-left-info h-100 py-2">
-                        <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Upcoming</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                        <%= bookings.filter(b => new Date(b.preferred_date) > new Date()).length %>
-                                    </div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="bi bi-calendar-plus fs-2 text-gray-300"></i>
-                                </div>
-                            </div>
-                        </div>
+                <div class="stats-card info">
+                    <div class="stats-card-title">Upcoming</div>
+                    <div class="stats-card-value">
+                        <%= bookings.filter(b => new Date(b.preferred_date) > new Date()).length %>
+                    </div>
+                    <div class="stats-card-icon">
+                        <i class="bi bi-calendar-plus"></i>
                     </div>
                 </div>
             </div>
@@ -363,7 +451,7 @@
                                 <th>Time Slot</th>
                                 <th>Address</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th class="actions-header">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -381,25 +469,26 @@
                                         </td>
                                         <td>
                                             <span class="status-badge <%= booking.status === 'New' ? 'status-new' : 
-                                                                          booking.status === 'Accepted' ? 'status-accepted' : 
-                                                                          booking.status === 'In Progress' ? 'status-ongoing' :
-                                                                          booking.status === 'Completed' ? 'status-completed' :
-                                                                          booking.status === 'Cancelled' ? 'status-cancelled' : '' %>">
+                                                                      booking.status === 'Accepted' ? 'status-accepted' : 
+                                                                      booking.status === 'Completed' ? 'status-completed' :
+                                                                      booking.status === 'Cancelled' ? 'status-cancelled' : '' %>">
                                                 <%= booking.status %>
                                             </span>
                                         </td>
                                         <td>
-                                            <a href="/provider/booking/<%= booking.id %>" class="btn btn-sm btn-primary btn-action">
-                                                <i class="bi bi-eye"></i> View
-                                            </a>
-                                            
-                                            <% if (booking.status === 'New') { %>
-                                                <form action="/provider/booking/<%= booking.id %>/accept" method="POST" style="display: inline;">
-                                                    <button type="submit" class="btn btn-sm btn-success btn-action">
-                                                        <i class="bi bi-check2"></i> Accept
-                                                    </button>
-                                                </form>
-                                            <% } %>
+                                            <div class="action-buttons">
+                                                <a href="/provider/booking/<%= booking.id %>" class="btn-view">
+                                                    <i class="bi bi-eye btn-icon"></i> View
+                                                </a>
+                                                
+                                                <% if (booking.status === 'New') { %>
+                                                    <form action="/provider/booking/<%= booking.id %>/accept" method="POST" style="display: inline;">
+                                                        <button type="submit" class="btn-accept">
+                                                            <i class="bi bi-check-circle btn-icon"></i> Accept
+                                                        </button>
+                                                    </form>
+                                                <% } %>
+                                            </div>
                                         </td>
                                     </tr>
                                 <% }); %>
@@ -440,16 +529,6 @@
                     bsAlert.close();
                 });
             }, 5000);
-        });
-
-         // Add click event listeners to view buttons
-        document.addEventListener('DOMContentLoaded', function() {
-            const viewButtons = document.querySelectorAll('.btn-action');
-            viewButtons.forEach(button => {
-                button.addEventListener('click', function(e) {
-                    console.log('View button clicked, navigating to:', this.href);
-                });
-            });
         });
     </script>
 </body>

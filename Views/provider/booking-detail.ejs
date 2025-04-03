@@ -9,16 +9,25 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
-            --primary-blue: #0077be;
+            --primary-blue: #0055a4;
             --secondary-blue: #00a2e8;
             --dark-blue: #003366;
             --light-blue: #e6f2ff;
             --sidebar-width: 250px;
+            --success-green: #10b981;
+            --danger-red: #dc3545;
+            --border-color: #e5e7eb;
+            --bg-light: #f8f9fa;
+            --text-dark: #333;
+            --text-light: #6c757d;
+            --border-radius: 8px;
+            --completed-blue: #3b82f6;
         }
         
         body {
             min-height: 100vh;
             background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
         }
 
         .sidebar {
@@ -29,86 +38,79 @@
             left: 0;
             top: 0;
             padding-top: 20px;
+            z-index: 100;
         }
 
         .main-content {
             margin-left: var(--sidebar-width);
-            padding: 30px;
+            padding: 20px 30px;
         }
 
         .data-card {
             background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
-            margin-bottom: 25px;
-            border: 1px solid rgba(0,0,0,0.05);
-            height: 100%;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
         }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
         }
 
         .info-group {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .info-label {
             font-weight: 600;
-            color: var(--dark-blue);
-            font-size: 0.9rem;
+            color: var(--text-light);
+            font-size: 0.85rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
         .info-value {
-            color: #333;
-            font-size: 1.1rem;
+            color: var(--text-dark);
+            font-size: 0.95rem;
         }
 
         .status-badge {
-            padding: 8px 15px;
+            padding: 6px 12px;
             border-radius: 20px;
             font-weight: 500;
-            font-size: 0.9rem;
-        }
-
-        .status-Confirmed {
-            background-color: #d1e7dd;
-            color: #0f5132;
-        }
-
-        .status-Pending {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        
-        .status-New {
-            background-color: #cfe2ff;
-            color: #084298;
-        }
-
-        .status-Accepted {
-            background-color: #d1e7dd;
-            color: #0f5132;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .status-Completed {
-            background-color: #cfe2ff;
-            color: #084298;
+            background-color: var(--completed-blue);
+            color: white;
+        }
+
+        .status-Cancelled {
+            background-color: var(--danger-red);
+            color: white;
         }
 
         .sidebar-brand {
             color: white;
-            font-size: 1.5rem;
-            padding: 20px;
+            font-size: 1.4rem;
+            padding: 15px 20px;
             text-decoration: none;
             display: block;
             margin-bottom: 20px;
@@ -116,7 +118,7 @@
 
         .nav-link {
             color: rgba(255, 255, 255, 0.8);
-            padding: 12px 20px;
+            padding: 10px 20px;
             margin: 4px 0;
             transition: all 0.3s ease;
         }
@@ -131,19 +133,17 @@
         }
 
         .img-container {
-            background: #f8f9fa;
-            border-radius: 10px;
+            background: var(--bg-light);
+            border-radius: var(--border-radius);
             padding: 15px;
             text-align: center;
-            margin-top: 20px;
         }
 
         .issue-image {
             max-width: 100%;
             height: auto;
-            border-radius: 8px;
+            border-radius: 4px;
             margin-bottom: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .back-button {
@@ -152,57 +152,205 @@
             gap: 8px;
             text-decoration: none;
             color: var(--primary-blue);
-            font-weight: 500;
-            padding: 8px 0;
-            transition: all 0.3s ease;
+            padding: 8px 16px;
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            margin-bottom: 15px;
         }
 
         .back-button:hover {
-            color: var(--dark-blue);
+            background-color: var(--light-blue);
         }
 
         .section-title {
             color: var(--dark-blue);
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 600;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .btn-action-custom {
-            padding: 14px 28px;
-            font-size: 1rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            border-radius: var(--border-radius);
             transition: all 0.3s ease;
             font-weight: 500;
-            margin-top: 15px;
             display: inline-flex;
             align-items: center;
             gap: 8px;
-        }
-
-        .btn-action-custom:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 10px rgba(0,0,0,0.15);
+            margin-right: 10px;
         }
 
         .btn-accept {
-            background-color: #28a745;
-            border-color: #28a745;
+            background-color: var(--success-green);
+            border-color: var(--success-green);
             color: white;
         }
 
         .btn-complete {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+
+        .btn-cancel {
+            background-color: var(--danger-red);
+            border-color: var(--danger-red);
             color: white;
         }
 
         .booking-action-wrapper {
             display: flex;
-            justify-content: flex-start;
-            margin-top: 30px;
             margin-bottom: 20px;
+        }
+
+        .page-header {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark-blue);
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .booking-id {
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: normal;
+        }
+
+        .page-subtitle {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            margin-top: 5px;
+        }
+
+        .address-box {
+            background-color: var(--bg-light);
+            padding: 10px;
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+        }
+
+        .service-type-badge {
+            background-color: var(--primary-blue);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+        }
+
+        .service-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .service-header-text {
+            flex: 1;
+        }
+
+        .service-title {
+            font-weight: 600;
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .service-time {
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+
+        .completion-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background-color: var(--completed-blue);
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .cancellation-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background-color: var(--danger-red);
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .payment-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background-color: var(--success-green);
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+            }
+            
+            .sidebar-brand {
+                padding: 15px 0;
+                text-align: center;
+                font-size: 0;
+            }
+            
+            .sidebar-brand i {
+                font-size: 1.5rem;
+                margin: 0;
+            }
+            
+            .nav-link {
+                padding: 10px 0;
+                text-align: center;
+            }
+            
+            .nav-link i {
+                margin: 0;
+            }
+            
+            .nav-link span {
+                display: none;
+            }
+            
+            .main-content {
+                margin-left: 60px;
+                padding: 15px;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -214,157 +362,306 @@
         </a>
         <nav class="nav flex-column">
             <a class="nav-link" href="/provider/dashboard">
-                <i class="bi bi-person"></i> Profile
+                <i class="bi bi-house-door"></i><span> Dashboard</span>
             </a>
             <a class="nav-link active" href="/provider/bookings">
-                <i class="bi bi-calendar-check"></i> Bookings
+                <i class="bi bi-calendar-check"></i><span> Bookings</span>
             </a>
             <a class="nav-link" href="/provider/reviews">
-                <i class="bi bi-star"></i> Reviews & Ratings
+                <i class="bi bi-star"></i><span> Reviews</span>
             </a>
             <a class="nav-link" href="/provider/earnings">
-                <i class="bi bi-wallet2"></i> Earnings
+                <i class="bi bi-wallet2"></i><span> Earnings</span>
             </a>
             <a class="nav-link text-danger" href="/auth/logout">
-                <i class="bi bi-box-arrow-right"></i> Logout
+                <i class="bi bi-box-arrow-right"></i><span> Logout</span>
             </a>
         </nav>
     </div>
 
     <!-- Main Content -->
     <div class="main-content">
-        <!-- Header Section -->
-        <div class="mb-4">
-            <a href="/provider/bookings" class="back-button">
-                <i class="bi bi-arrow-left"></i>
-                Back to Bookings
-            </a>
-            <h1 class="h3 mt-3">Booking Details #<%= booking.id %></h1>
-        </div>
+        <!-- Back Button -->
+        <a href="/provider/bookings" class="back-button">
+            <i class="bi bi-arrow-left"></i> Back to Bookings
+        </a>
 
-        <!-- Action Buttons Outside Box -->
-        <div class="booking-action-wrapper">
-            <% if (booking.status === 'New' || booking.status === 'Pending') { %>
-                <form action="/provider/booking/<%= booking.id %>/accept" method="POST" style="display: inline;">
-                    <button type="submit" class="btn btn-action-custom btn-accept">
-                        <i class="bi bi-check-circle-fill"></i>
-                        Accept Booking
-                    </button>
-                </form>
-            <% } %>
-            
-            <% if (booking.status === 'Accepted') { %>
-                <form action="/provider/booking/<%= booking.id %>/complete" method="POST" style="display: inline;">
-                    <button type="submit" class="btn btn-action-custom btn-complete">
-                        <i class="bi bi-check-circle-fill"></i>
-                        Complete Service
-                    </button>
-                </form>
-            <% } %>
-        
-            <% if (booking.status === 'Confirmed') { %>
-                <form action="/provider/booking/<%= booking.id %>/accept" method="POST" style="display: inline;">
-                    <button type="submit" class="btn btn-action-custom btn-accept">
-                        <i class="bi bi-check-circle-fill"></i>
-                        Accept Service
-                    </button>
-                </form>
-            <% } %>
-        </div>
-
-        <div class="row">
-            <!-- Service Information -->
-            <div class="col-md-8">
-                <div class="data-card">
-                    <div class="card-header">
-                        <h2 class="section-title mb-0">Service Information</h2>
-                        <span class="status-badge status-<%= booking.status %>">
-                            <%= booking.status %>
+        <!-- Header -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    Service Details <span class="booking-id">#<%= booking.id %></span>
+                    <% if (booking.status === 'Completed') { %>
+                        <span class="completion-status">
+                            <i class="bi bi-check-circle-fill"></i> Completed
                         </span>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <div class="info-label">Service Type</div>
-                                <div class="info-value"><%= booking.service_type %></div>
-                            </div>
-                            <div class="info-group">
-                                <div class="info-label">Time Slot</div>
-                                <div class="info-value"><%= booking.time_slot %></div>
-                            </div>
-                            <div class="info-group">
-                                <div class="info-label">Issue Description</div>
-                                <div class="info-value"><%= booking.issue_description %></div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <div class="info-label">Customer Name</div>
-                                <div class="info-value"><%= booking.customer_name %></div>
-                            </div>
-                            <div class="info-group">
-                                <div class="info-label">Customer Phone</div>
-                                <div class="info-value"><%= booking.customer_phone %></div>
-                            </div>
-                            <div class="info-group">
-                                <div class="info-label">Customer Email</div>
-                                <div class="info-value"><%= booking.customer_email %></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="info-group mt-3">
-                        <div class="info-label">Service Address</div>
-                        <div class="info-value"><%= booking.service_address %></div>
-                    </div>
-                </div>
+                    <% } else if (booking.status === 'Cancelled') { %>
+                        <span class="cancellation-status">
+                            <i class="bi bi-x-circle-fill"></i> Cancelled
+                        </span>
+                    <% } %>
+                </h1>
+                <p class="page-subtitle">Service request for <%= booking.service_type %> on <%= new Date(booking.preferred_date).toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'}) %></p>
             </div>
 
-            <!-- Uploaded Photos -->
-            <div class="col-md-4">
+            <!-- Action Buttons - Only show for New/Pending/Accepted statuses -->
+            <% if (booking.status !== 'Completed' && booking.status !== 'Cancelled') { %>
+                <div class="booking-action-wrapper">
+                    <% if (booking.status === 'New' || booking.status === 'Pending' || booking.status === 'Confirmed') { %>
+                        <form action="/provider/booking/<%= booking.id %>/accept" method="POST">
+                            <button type="submit" class="btn btn-action-custom btn-accept">
+                                <i class="bi bi-check-circle"></i> Accept Booking
+                            </button>
+                        </form>
+                    <% } %>
+                    
+                    <% if (booking.status === 'Accepted') { %>
+                        <form action="/provider/booking/<%= booking.id %>/complete" method="POST">
+                            <button type="submit" class="btn btn-action-custom btn-complete">
+                                <i class="bi bi-check2-all"></i> Complete Service
+                            </button>
+                        </form>
+                    <% } %>
+                    
+                    <!-- Cancel Button - Available for New/Pending/Accepted statuses -->
+                    <a href="/provider/booking/<%= booking.id %>/cancel" class="btn btn-action-custom btn-cancel">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </a>
+                </div>
+            <% } %>
+        </div>
+
+        <!-- Display success or error messages -->
+        <% if (locals.success) { %>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <%= success %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <% } %>
+
+        <% if (locals.error) { %>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <%= error %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <% } %>
+
+        <!-- Main Content Cards -->
+        <div class="row">
+            <div class="col-md-8">
+                <!-- Service Information Card -->
                 <div class="data-card">
-                    <h2 class="section-title">Customer Uploaded Photos</h2>
-                    <% if (booking.images) { %>
-                        <div class="img-container">
-                            <% 
-                            let imageArray = [];
-                            try {
-                                // Handle different possible formats of the images data
-                                if (typeof booking.images === 'string') {
-                                    if (booking.images.startsWith('[') && booking.images.endsWith(']')) {
-                                        // If it's a JSON string, parse it
-                                        imageArray = JSON.parse(booking.images);
-                                    } else {
-                                        // If it's a comma-separated string
-                                        imageArray = booking.images.split(',').map(img => img.trim()).filter(img => img);
-                                    }
-                                } else if (Array.isArray(booking.images)) {
-                                    // If it's already an array
-                                    imageArray = booking.images;
-                                }
-                            } catch(e) {
-                                console.error('Error parsing images:', e);
-                            }
-                            %>
-                            
-                            <% if (imageArray && imageArray.length > 0) { %>
-                                <% imageArray.forEach(function(image) { %>
-                                    <img src="<%= image %>" 
-                                         alt="Service Photo" 
-                                         class="issue-image"
-                                         onerror="this.src='https://via.placeholder.com/300x200?text=Image+Not+Found'"/>
-                                <% }); %>
+                    <!-- Service Header -->
+                    <div class="service-header">
+                        <div class="service-type-badge">
+                            <% if (booking.service_type.toLowerCase().includes('plumbing')) { %>
+                                <i class="bi bi-wrench"></i>
+                            <% } else if (booking.service_type.toLowerCase().includes('electric')) { %>
+                                <i class="bi bi-lightning"></i>
+                            <% } else if (booking.service_type.toLowerCase().includes('appliance')) { %>
+                                <i class="bi bi-tv"></i>
                             <% } else { %>
-                                <div class="text-center text-muted py-4">
-                                    <i class="bi bi-image fs-1"></i>
-                                    <p class="mt-2">No photos available</p>
-                                </div>
+                                <i class="bi bi-tools"></i>
                             <% } %>
                         </div>
+                        <div class="service-header-text">
+                            <h2 class="service-title"><%= booking.service_type %></h2>
+                            <p class="service-time"><%= booking.time_slot %></p>
+                        </div>
+                    </div>
+
+                    <div class="card-header">
+                        <h3 class="section-title">Service Information</h3>
+                    </div>
+                    
+                    <div class="info-grid">
+                        <div class="info-group">
+                            <div class="info-label">Issue Description</div>
+                            <div class="info-value"><%= booking.issue_description %></div>
+                        </div>
+                        
+                        <div class="info-group">
+                            <div class="info-label">Customer Name</div>
+                            <div class="info-value"><%= booking.customer_name %></div>
+                        </div>
+                        
+                        <div class="info-group">
+                            <div class="info-label">Phone Number</div>
+                            <div class="info-value"><%= booking.customer_phone %></div>
+                        </div>
+                        
+                        <div class="info-group">
+                            <div class="info-label">Email Address</div>
+                            <div class="info-value"><%= booking.customer_email %></div>
+                        </div>
+                    </div>
+
+                    <div class="info-group">
+                        <div class="info-label">Service Address</div>
+                        <div class="address-box">
+                            <%= booking.service_address %>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Completion Details Card - Only show for Completed status -->
+                <% if (booking.status === 'Completed') { %>
+                    <div class="data-card">
+                        <div class="card-header">
+                            <h3 class="section-title">Completion Details</h3>
+                        </div>
+                        
+                        <div class="info-grid">
+                            <div class="info-group">
+                                <div class="info-label">Completed On</div>
+                                <div class="info-value">
+                                    <% if (booking.completed_at) { %>
+                                        <%= new Date(booking.completed_at).toLocaleString('en-US', {
+                                            weekday: 'long',
+                                            month: 'long',
+                                            day: 'numeric',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        }) %>
+                                    <% } else { %>
+                                        <%= new Date(booking.updated_at).toLocaleString('en-US', {
+                                            weekday: 'long',
+                                            month: 'long',
+                                            day: 'numeric',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        }) %>
+                                    <% } %>
+                                </div>
+                            </div>
+                            
+                            <div class="info-group">
+                                <div class="info-label">Payment Status</div>
+                                <div class="info-value">
+                                    <div class="payment-status">
+                                        <i class="bi bi-check-circle"></i> Paid
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-group">
+                            <div class="info-label">Service Fee</div>
+                            <div class="info-value">
+                                <% if (booking.base_fee) { %>
+                                    RM <%= parseFloat(booking.base_fee).toFixed(2) %>
+                                    <% if (booking.fee_type) { %>
+                                        (<%= booking.fee_type %>)
+                                    <% } %>
+                                <% } else { %>
+                                    Not specified
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                <% } %>
+
+                <!-- Cancellation Details Card - Only show for Cancelled status -->
+                <% if (booking.status === 'Cancelled') { %>
+                    <div class="data-card" style="border-left: 4px solid var(--danger-red);">
+                        <div class="card-header">
+                            <h3 class="section-title">Cancellation Details</h3>
+                            <span class="status-badge status-Cancelled">
+                                <i class="bi bi-x-circle"></i> Cancelled
+                            </span>
+                        </div>
+                        
+                        <div class="info-group">
+                            <div class="info-label">Cancelled On</div>
+                            <div class="info-value">
+                                <% if (booking.cancelled_at) { %>
+                                    <%= new Date(booking.cancelled_at).toLocaleString('en-US', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    }) %>
+                                <% } else { %>
+                                    <%= new Date(booking.updated_at).toLocaleString('en-US', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    }) %>
+                                <% } %>
+                            </div>
+                        </div>
+                        
+                        <div class="info-group">
+                            <div class="info-label">Cancelled By</div>
+                            <div class="info-value">
+                                <%= booking.cancelled_by === 'provider' ? 'You (Service Provider)' : 'Customer' %>
+                            </div>
+                        </div>
+                        
+                        <div class="info-group">
+                            <div class="info-label">Reason</div>
+                            <div class="info-value">
+                                <%= booking.cancellation_reason || 'No reason provided' %>
+                            </div>
+                        </div>
+                    </div>
+                <% } %>
+            </div>
+
+            <!-- Customer Uploaded Photos -->
+            <div class="col-md-4">
+                <div class="data-card">
+                    <div class="card-header">
+                        <h3 class="section-title">Customer Uploaded Photos</h3>
+                    </div>
+                    
+                    <% if (booking.images) { %>
+                        <% 
+                        let imageArray = [];
+                        try {
+                            // Handle different possible formats of the images data
+                            if (typeof booking.images === 'string') {
+                                if (booking.images.startsWith('[') && booking.images.endsWith(']')) {
+                                    // If it's a JSON string, parse it
+                                    imageArray = JSON.parse(booking.images);
+                                } else {
+                                    // If it's a comma-separated string
+                                    imageArray = booking.images.split(',').map(img => img.trim()).filter(img => img);
+                                }
+                            } else if (Array.isArray(booking.images)) {
+                                // If it's already an array
+                                imageArray = booking.images;
+                            }
+                        } catch(e) {
+                            console.error('Error parsing images:', e);
+                        }
+                        %>
+                        
+                        <% if (imageArray && imageArray.length > 0) { %>
+                            <div class="img-container">
+                                <% imageArray.forEach(function(image) { %>
+                                    <img src="<%= image %>" 
+                                        alt="Service Photo" 
+                                        class="issue-image"
+                                        onerror="this.src='https://via.placeholder.com/300x200?text=Image+Not+Found'"/>
+                                <% }); %>
+                            </div>
+                        <% } else { %>
+                            <div class="text-center text-muted py-3">
+                                <i class="bi bi-image fs-4"></i>
+                                <p class="mt-2">No photos available</p>
+                            </div>
+                        <% } %>
                     <% } else { %>
-                        <div class="text-center text-muted py-4">
-                            <i class="bi bi-image fs-1"></i>
+                        <div class="text-center text-muted py-3">
+                            <i class="bi bi-image fs-4"></i>
                             <p class="mt-2">No photos provided</p>
                         </div>
                     <% } %>
@@ -374,5 +671,17 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-dismiss alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                const alerts = document.querySelectorAll('.alert');
+                alerts.forEach(function(alert) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                });
+            }, 5000);
+        });
+    </script>
 </body>
 </html>

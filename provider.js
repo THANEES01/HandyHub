@@ -240,7 +240,7 @@ const acceptBooking = async (req, res) => {
         
         // Verify booking belongs to this provider
         const checkResult = await pool.query(
-            'SELECT id FROM service_bookings WHERE id = $1 AND provider_id = $2',
+            'SELECT id, status FROM service_bookings WHERE id = $1 AND provider_id = $2',
             [bookingId, providerId]
         );
         
@@ -419,7 +419,12 @@ router.get('/bookings', isProvider, async (req, res) => {
         let query = `
             SELECT sb.id, sb.customer_id, c.first_name || ' ' || c.last_name AS customer_name, 
                    sb.service_type, sb.issue_description, sb.service_address,
-                   sb.time_slot, sb.status, sb.preferred_date, sb.customer_email, sb.customer_phone,
+                   sb.time_slot, 
+                   CASE 
+                     WHEN sb.status = 'Confirmed' THEN 'New' 
+                     ELSE sb.status 
+                   END AS status,
+                   sb.preferred_date, sb.customer_email, sb.customer_phone,
                    sb.images, sb.access_instructions, sb.created_at
             FROM service_bookings sb
             JOIN customers c ON sb.customer_id = c.id
@@ -430,13 +435,18 @@ router.get('/bookings', isProvider, async (req, res) => {
         
         // Add status filter if provided
         if (statusFilter) {
-            query += ` AND sb.status = $2`;
-            queryParams.push(statusFilter);
+            if (statusFilter === 'New') {
+                // When filtering by 'New', include both 'New' and 'Confirmed' statuses
+                query += ` AND (sb.status = 'New' OR sb.status = 'Confirmed')`;
+            } else {
+                query += ` AND sb.status = $2`;
+                queryParams.push(statusFilter);
+            }
         }
         
-        // Add order by clause - prioritize New, then Accepted, then others
+        // Add order by clause - prioritize New/Confirmed, then Accepted, then others
         query += ` ORDER BY CASE 
-                     WHEN sb.status = 'New' THEN 1
+                     WHEN sb.status = 'New' OR sb.status = 'Confirmed' THEN 1
                      WHEN sb.status = 'Accepted' THEN 2
                      WHEN sb.status = 'Completed' THEN 3
                      WHEN sb.status = 'Cancelled' THEN 4
@@ -466,6 +476,7 @@ router.get('/bookings', isProvider, async (req, res) => {
         res.redirect('/provider/dashboard');
     }
 });
+
 // Route for viewing booking details - Add this BEFORE other routes
 router.get('/booking/:bookingId', isProvider, async (req, res) => {
     try {
@@ -580,12 +591,28 @@ const getBookingDetails = async (req, res) => {
 
         // Format image paths if they exist
         let booking = bookingResult.rows[0];
+        
+        // Convert 'Confirmed' status to 'New' for display purposes
+        if (booking.status === 'Confirmed') {
+            booking.status = 'New';
+        }
+        
         if (booking.images) {
-            // Ensure images is an array and remove any empty strings
-            booking.images = booking.images
-                .split(',')
-                .map(img => img.trim())
-                .filter(img => img);
+            try {
+                // Try to parse as JSON first
+                if (typeof booking.images === 'string' && booking.images.startsWith('[')) {
+                    booking.images = JSON.parse(booking.images);
+                } else {
+                    // Fall back to splitting by comma if not JSON
+                    booking.images = booking.images
+                        .split(',')
+                        .map(img => img.trim())
+                        .filter(img => img);
+                }
+            } catch (err) {
+                console.error('Error parsing images JSON:', err);
+                booking.images = [];
+            }
         }
 
         // Check for time slot and format if needed
@@ -689,7 +716,7 @@ const completeBooking = async (req, res) => {
         );
         
         req.session.success = 'Service marked as Completed';
-        res.redirect('/provider/booking/' + bookingId);
+        res.redirect('/provider/bookings');
         
     } catch (error) {
         console.error('Error completing service:', error);
@@ -697,6 +724,225 @@ const completeBooking = async (req, res) => {
         res.redirect('/provider/bookings');
     }
 };
+
+// Route for earnings page
+router.get('/earnings', isProvider, async (req, res) => {
+    try {
+        const providerId = req.session.user.providerId;
+        const { period, startDate, endDate, highlight } = req.query;
+        
+        // Get current date information for filtering
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+        const currentMonthName = now.toLocaleString('default', { month: 'long' });
+        
+        // Set up date filters based on query params
+        let dateFilter = '';
+        let queryParams = [providerId];
+        let filterStartDate, filterEndDate;
+        
+        if (period === 'month') {
+            // Filter for current month
+            filterStartDate = new Date(currentYear, currentMonth, 1);
+            filterEndDate = new Date(currentYear, currentMonth + 1, 0);
+            
+            dateFilter = ' AND (sb.completed_at >= $2 OR sb.updated_at >= $2) AND (sb.completed_at <= $3 OR sb.updated_at <= $3)';
+            queryParams.push(filterStartDate, filterEndDate);
+        } else if (period === 'week') {
+            // Filter for current week
+            const dayOfWeek = now.getDay();
+            const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust for Sunday
+            
+            filterStartDate = new Date(now.setDate(diff));
+            filterStartDate.setHours(0, 0, 0, 0);
+            
+            filterEndDate = new Date(filterStartDate);
+            filterEndDate.setDate(filterStartDate.getDate() + 6);
+            filterEndDate.setHours(23, 59, 59, 999);
+            
+            dateFilter = ' AND (sb.completed_at >= $2 OR sb.updated_at >= $2) AND (sb.completed_at <= $3 OR sb.updated_at <= $3)';
+            queryParams.push(filterStartDate, filterEndDate);
+        } else if (startDate && endDate) {
+            // Custom date range
+            filterStartDate = new Date(startDate);
+            filterStartDate.setHours(0, 0, 0, 0);
+            
+            filterEndDate = new Date(endDate);
+            filterEndDate.setHours(23, 59, 59, 999);
+            
+            dateFilter = ' AND (sb.completed_at >= $2 OR sb.updated_at >= $2) AND (sb.completed_at <= $3 OR sb.updated_at <= $3)';
+            queryParams.push(filterStartDate, filterEndDate);
+        }
+        
+        // Get all completed bookings for this provider
+        const bookingsQuery = `
+            SELECT 
+                sb.id, 
+                sb.service_type, 
+                sb.preferred_date,
+                sb.completed_at,
+                sb.updated_at,
+                sb.base_fee,
+                sb.fee_type,
+                c.first_name || ' ' || c.last_name AS customer_name
+            FROM service_bookings sb
+            JOIN customers c ON sb.customer_id = c.id
+            WHERE sb.provider_id = $1 
+            AND sb.status = 'Completed'
+            ${dateFilter}
+            ORDER BY COALESCE(sb.completed_at, sb.updated_at) DESC
+        `;
+        
+        const bookingsResult = await pool.query(bookingsQuery, queryParams);
+        const completedBookings = bookingsResult.rows;
+        
+        // Calculate total earnings (all time)
+        const totalEarningsQuery = `
+            SELECT SUM(base_fee) as total
+            FROM service_bookings
+            WHERE provider_id = $1 AND status = 'Completed'
+        `;
+        
+        const totalEarningsResult = await pool.query(totalEarningsQuery, [providerId]);
+        const totalEarnings = parseFloat(totalEarningsResult.rows[0]?.total || 0);
+        
+        // Calculate monthly earnings
+        const monthStartDate = new Date(currentYear, currentMonth, 1);
+        const monthEndDate = new Date(currentYear, currentMonth + 1, 0);
+        
+        const monthlyEarningsQuery = `
+            SELECT SUM(base_fee) as total
+            FROM service_bookings
+            WHERE provider_id = $1 
+            AND status = 'Completed'
+            AND (completed_at >= $2 OR updated_at >= $2)
+            AND (completed_at <= $3 OR updated_at <= $3)
+        `;
+        
+        const monthlyEarningsResult = await pool.query(
+            monthlyEarningsQuery,
+            [providerId, monthStartDate, monthEndDate]
+        );
+        
+        const monthlyEarnings = parseFloat(monthlyEarningsResult.rows[0]?.total || 0);
+        
+        // Calculate filtered earnings total
+        const filteredEarnings = completedBookings.reduce(
+            (total, booking) => total + parseFloat(booking.base_fee || 0), 
+            0
+        );
+        
+        res.render('provider/earnings', {
+            title: 'Earnings',
+            completedBookings,
+            totalEarnings,
+            monthlyEarnings,
+            filteredEarnings,
+            currentMonthName,
+            currentYear,
+            period,
+            startDate: startDate || '',
+            endDate: endDate || '',
+            highlightBookingId: highlight ? parseInt(highlight) : null,
+            currentPage: 'earnings',
+            error: req.session.error,
+            success: req.session.success
+        });
+        
+        // Clear session messages
+        delete req.session.error;
+        delete req.session.success;
+        
+    } catch (error) {
+        console.error('Error fetching earnings:', error);
+        req.session.error = 'Failed to load earnings. Please try again.';
+        res.redirect('/provider/dashboard');
+    }
+});
+
+const cancelBooking = async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const providerId = req.session.user.providerId;
+        const { cancellationReason } = req.body;
+        
+        // Verify booking belongs to this provider and has a valid status for cancellation
+        // Only New, Pending, or Accepted bookings can be cancelled
+        const checkResult = await pool.query(
+            'SELECT id, status FROM service_bookings WHERE id = $1 AND provider_id = $2 AND status IN ($3, $4, $5)',
+            [bookingId, providerId, 'New', 'Pending', 'Accepted']
+        );
+        
+        if (checkResult.rows.length === 0) {
+            req.session.error = 'Booking not found, not authorized, or cannot be cancelled (already completed or cancelled)';
+            return res.redirect('/provider/bookings');
+        }
+        
+        // Update booking status to Cancelled
+        await pool.query(
+            'UPDATE service_bookings SET status = $1, updated_at = NOW(), cancellation_reason = $2, cancelled_at = NOW(), cancelled_by = $3 WHERE id = $4',
+            ['Cancelled', cancellationReason || 'Cancelled by service provider', 'provider', bookingId]
+        );
+        
+        // Add status history record
+        await pool.query(
+            'INSERT INTO booking_status_history (booking_id, status, notes, created_by) VALUES ($1, $2, $3, $4)',
+            [bookingId, 'Cancelled', `Booking cancelled. Reason: ${cancellationReason || 'Not specified'}`, req.session.user.id]
+        );
+        
+        // Notify customer via email (you can implement this part later)
+        // sendCancellationEmail(booking.customer_email, booking.id, cancellationReason);
+        
+        req.session.success = 'Booking has been cancelled successfully';
+        res.redirect('/provider/bookings');
+        
+    } catch (error) {
+        console.error('Error cancelling booking:', error);
+        req.session.error = 'Failed to cancel booking. Please try again.';
+        res.redirect('/provider/bookings');
+    }
+};
+
+// Route for cancelling a booking (confirmation page)
+router.get('/booking/:bookingId/cancel', isProvider, async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const providerId = req.session.user.providerId;
+        
+        // Get booking details
+        const bookingResult = await pool.query(`
+            SELECT 
+                sb.*,
+                c.first_name || ' ' || c.last_name AS customer_name
+            FROM service_bookings sb
+            JOIN customers c ON sb.customer_id = c.id
+            WHERE sb.id = $1 AND sb.provider_id = $2 AND sb.status IN ('New', 'Pending', 'Accepted')
+        `, [bookingId, providerId]);
+        
+        if (bookingResult.rows.length === 0) {
+            req.session.error = 'Booking not found, not authorized, or cannot be cancelled';
+            return res.redirect('/provider/bookings');
+        }
+        
+        res.render('provider/cancel-booking', {
+            title: 'Cancel Booking',
+            booking: bookingResult.rows[0],
+            currentPage: 'bookings',
+            error: req.session.error,
+            success: req.session.success
+        });
+        
+        // Clear session messages
+        delete req.session.error;
+        delete req.session.success;
+        
+    } catch (error) {
+        console.error('Error loading cancellation page:', error);
+        req.session.error = 'Failed to load cancellation page. Please try again.';
+        res.redirect('/provider/bookings');
+    }
+});
 
 // Route for viewing booking details
 router.get('/booking/:bookingId', isProvider, getBookingDetails);
@@ -709,6 +955,9 @@ router.post('/booking/:bookingId/start', isProvider, startBooking);
 
 // Route for completing service
 router.post('/booking/:bookingId/complete', isProvider, completeBooking);
+
+// Route for cancelling service
+router.post('/booking/:bookingId/cancel', isProvider, cancelBooking);
 
 // Routes
 router.get('/', isProvider, (req, res) => res.redirect('/provider/dashboard'));

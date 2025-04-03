@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Cancelled - HandyHub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            overflow-x: hidden;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding-top: 10px;
+        }
+        
+        .content-wrapper {
+            flex: 1 0 auto;
+            width: 100%;
+            padding-top: 50px;
+        }
+        
+        .footer-wrapper {
+            flex-shrink: 0;
+            width: 100vw;
+            margin-top: auto;
+            left: 0;
+            right: 0;
+            max-width: none;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        
+        .cancellation-container {
+            max-width: 800px;
+            margin: 10px auto;
+            padding-top: 20px;
+        }
+        
+        .cancellation-header {
+            background-color: #dc3545;
+            color: white;
+            padding: 30px;
+            border-radius: 15px 15px 0 0;
+            margin-bottom: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .cancellation-header .cancel-icon {
+            position: absolute;
+            right: -20px;
+            bottom: -20px;
+            font-size: 8rem;
+            opacity: 0.1;
+            transform: rotate(15deg);
+        }
+        
+        .cancellation-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .booking-details {
+            margin-top: 30px;
+        }
+        
+        .details-section {
+            margin-bottom: 25px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .details-section:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        
+        .details-heading {
+            font-size: 1.25rem;
+            color: var(--dark-blue);
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .detail-item {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        
+        .detail-label {
+            width: 180px;
+            font-weight: 500;
+            color: var(--dark-blue);
+        }
+        
+        .detail-value {
+            flex-grow: 1;
+        }
+        
+        .action-buttons {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .action-buttons .btn {
+            flex: 1;
+            padding: 12px 15px;
+        }
+        
+        .btn-view-booking {
+            background-color: var(--primary-blue);
+            color: white;
+        }
+        
+        .btn-view-booking:hover {
+            background-color: var(--dark-blue);
+            color: white;
+        }
+        
+        .btn-book-again {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-book-again:hover {
+            background-color: #218838;
+            color: white;
+        }
+        
+        .booking-id {
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            color: #6c757d;
+        }
+        
+        .cancellation-reason {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        
+        .cancellation-reason h4 {
+            color: #721c24;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .cancellation-reason p {
+            margin-bottom: 0;
+            color: #721c24;
+        }
+        
+        .image-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .image-item {
+            width: 150px;
+            height: 150px;
+            overflow: hidden;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            position: relative;
+        }
+        
+        .image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .missing-image {
+            opacity: 0.5;
+            filter: grayscale(1);
+            border: 2px dashed #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <%- include('../partials/navbar') %>
+
+    <div class="content-wrapper">
+        <div class="container mt-5 mb-5">
+            <div class="cancellation-container">
+                <div class="cancellation-header">
+                    <h2><i class="bi bi-x-circle-fill me-2"></i> Booking Cancelled</h2>
+                    <p class="mb-0">This service booking has been cancelled.</p>
+                    <div class="cancel-icon">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </div>
+                </div>
+                
+                <div class="cancellation-content">
+                    <% if (locals.success) { %>
+                        <div class="alert alert-success">
+                            <%= success %>
+                        </div>
+                    <% } %>
+                    
+                    <% if (locals.error) { %>
+                        <div class="alert alert-danger">
+                            <%= error %>
+                        </div>
+                    <% } %>
+                    
+                    <% if (locals.booking) { %>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="booking-id">
+                                <strong>Booking #:</strong> <%= booking.id %>
+                            </div>
+                            <div class="payment-status status-canceled">
+                                <i class="bi bi-x-circle-fill me-1"></i> Cancelled
+                            </div>
+                        </div>
+                        
+                        <div class="cancellation-reason">
+                            <h4><i class="bi bi-info-circle-fill me-2"></i> Cancellation Details</h4>
+                            <p><strong>Cancelled on:</strong> <%= new Date(booking.cancelled_at).toLocaleString('en-US', {year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'}) %></p>
+                            <p><strong>Cancelled by:</strong> <%= booking.cancelled_by === 'provider' ? 'Service Provider' : 'Customer' %></p>
+                            <p><strong>Reason:</strong> <%= booking.cancellation_reason || 'No reason provided' %></p>
+                        </div>
+                    <% } %>
+                    
+                    <% if (locals.booking) { %>
+                    <div class="booking-details">
+                        <div class="details-section">
+                            <h3 class="details-heading">Service Details</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">Service Type:</div>
+                                <div class="detail-value"><%= booking.service_type %></div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Provider:</div>
+                                <div class="detail-value"><%= booking.provider_name %></div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Issue Description:</div>
+                                <div class="detail-value"><%= booking.issue_description %></div>
+                            </div>
+                        </div>
+                        
+                        <div class="details-section">
+                            <h3 class="details-heading">Schedule</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">Date:</div>
+                                <div class="detail-value"><%= new Date(booking.preferred_date).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) %></div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Time:</div>
+                                <div class="detail-value"><%= booking.time_slot %></div>
+                            </div>
+                        </div>
+                        
+                        <div class="details-section">
+                            <h3 class="details-heading">Service Location</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">Address:</div>
+                                <div class="detail-value"><%= booking.service_address %></div>
+                            </div>
+                            <% if (booking.access_instructions) { %>
+                            <div class="detail-item">
+                                <div class="detail-label">Access Instructions:</div>
+                                <div class="detail-value"><%= booking.access_instructions %></div>
+                            </div>
+                            <% } %>
+                        </div>
+                        
+                        <div class="details-section">
+                            <h3 class="details-heading">Problem Images</h3>
+                            <% if (booking.images) { %>
+                                <% 
+                                let imageArray = [];
+                                try {
+                                    if (typeof booking.images === 'string') {
+                                        imageArray = JSON.parse(booking.images);
+                                    } else if (Array.isArray(booking.images)) {
+                                        imageArray = booking.images;
+                                    } else if (booking.images && typeof booking.images === 'object') {
+                                        imageArray = Object.values(booking.images);
+                                    }
+                                } catch(e) {
+                                    console.error('Error parsing images:', e);
+                                }
+                                %>
+                                
+                                <% if (imageArray && imageArray.length > 0) { %>
+                                    <div class="image-gallery">
+                                        <% imageArray.forEach(function(imagePath) { %>
+                                            <% 
+                                            let imgPath = typeof imagePath === 'string' ? imagePath : '';
+                                            if (imgPath && !imgPath.startsWith('http') && !imgPath.startsWith('/')) {
+                                                imgPath = '/' + imgPath;
+                                            }
+                                            %>
+                                            <div class="image-item">
+                                                <img src="<%= imgPath %>" alt="Problem Image" class="problem-image img-thumbnail" onerror="this.onerror=null; this.src='/img/image-placeholder.png'; this.classList.add('missing-image');">
+                                            </div>
+                                        <% }); %>
+                                    </div>
+                                <% } else { %>
+                                    <p>No images uploaded.</p>
+                                <% } %>
+                            <% } else { %>
+                                <p>No images uploaded.</p>
+                            <% } %>
+                        </div>
+                    </div>
+                    <% } %>
+                    
+                    <div class="action-buttons">
+                        <a href="/customer/bookings" class="btn btn-view-booking">
+                            <i class="bi bi-list-ul me-2"></i> View All Bookings
+                        </a>
+                        
+                        <% if (locals.booking) { %>
+                            <a href="/customer/categories" class="btn btn-book-again">
+                                <i class="bi bi-plus-circle me-2"></i> Book Another Service
+                            </a>
+                        <% } else { %>
+                            <a href="/customer/dashboard" class="btn btn-outline-secondary">
+                                <i class="bi bi-house me-2"></i> Go to Dashboard
+                            </a>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-wrapper">
+        <!-- Footer -->
+        <%- include('../partials/footer') %>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

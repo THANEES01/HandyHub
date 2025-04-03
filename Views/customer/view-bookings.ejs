@@ -359,120 +359,137 @@
                             <button class="filter-btn" data-filter="confirmed">Confirmed</button>
                             <button class="filter-btn" data-filter="pending">Pending</button>
                             <button class="filter-btn" data-filter="completed">Completed</button>
+                            <button class="filter-btn" data-filter="cancelled">Cancelled</button>
                         </div>
                     </div>
                 </div>
                 
-                <% if (locals.bookings && bookings.length > 0) { %>
-                    <div class="bookings-list">
-                        <% bookings.forEach(booking => { %>
-                            <div class="booking-card position-relative">
-                                
-                                <div class="booking-header">
-                                    <div>
-                                        <h3 class="booking-title"><%= booking.service_type %></h3>
-                                        <span class="booking-id">Booking #<%= booking.id %></span>
-                                    </div>
-                                    <div>
-                                        <% 
-                                        // Determine the appropriate status class and text
-                                        let headerStatusClass = 'status-pending';
-                                        let statusText = booking.status;
-                                        
-                                        if (booking.status === 'Confirmed') {
-                                            headerStatusClass = 'status-confirmed';
-                                            statusText = 'Confirmed';
-                                        } else if (booking.status === 'Cancelled') {
-                                            headerStatusClass = 'status-canceled';
-                                        } else if (booking.status === 'Completed') {
-                                            headerStatusClass = 'status-completed';
-                                        } else if (booking.status === 'Pending') {
-                                            statusText = 'Pending';
-                                        }
-                                        %>
-                                        <span class="booking-status <%= headerStatusClass %>">
-                                            <%= statusText %>
-                                        </span>
-                                    </div>
+                <!-- For the booking card section (fix within this foreach loop) -->
+<% if (locals.bookings && bookings.length > 0) { %>
+    <div class="bookings-list">
+        <% bookings.forEach(booking => { %>
+            <div class="booking-card position-relative">
+                
+                <div class="booking-header">
+                    <div>
+                        <h3 class="booking-title"><%= booking.service_type %></h3>
+                        <span class="booking-id">Booking #<%= booking.id %></span>
+                    </div>
+                    <div>
+                        <% 
+                        // Determine the appropriate status class and text
+                        let headerStatusClass = 'status-pending';
+                        let statusText = booking.status;
+                        
+                        if (booking.status === 'Confirmed') {
+                            headerStatusClass = 'status-confirmed';
+                            statusText = 'Confirmed';
+                        } else if (booking.status === 'Cancelled') {
+                            headerStatusClass = 'status-canceled';
+                            statusText = 'Cancelled';
+                        } else if (booking.status === 'Completed') {
+                            headerStatusClass = 'status-completed';
+                        } else if (booking.status === 'Pending') {
+                            statusText = 'Pending';
+                        }
+                        %>
+                        <span class="booking-status <%= headerStatusClass %>">
+                            <%= statusText %>
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="booking-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="booking-detail">
+                                <div class="detail-icon">
+                                    <i class="bi bi-person-gear"></i>
                                 </div>
-                                
-                                <div class="booking-body">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="booking-detail">
-                                                <div class="detail-icon">
-                                                    <i class="bi bi-person-gear"></i>
-                                                </div>
-                                                <div class="detail-content">
-                                                    <h4>Service Provider</h4>
-                                                    <p><%= booking.provider_name %></p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="col-md-6">
-                                            <div class="booking-detail">
-                                                <div class="detail-icon">
-                                                    <i class="bi bi-calendar-date"></i>
-                                                </div>
-                                                <div class="detail-content">
-                                                    <h4>Appointment Date</h4>
-                                                    <p><%= new Date(booking.preferred_date).toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'}) %></p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="col-md-6">
-                                            <div class="booking-detail">
-                                                <div class="detail-icon">
-                                                    <i class="bi bi-clock"></i>
-                                                </div>
-                                                <div class="detail-content">
-                                                    <h4>Time Slot</h4>
-                                                    <p><%= booking.time_slot || "Not specified" %></p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div class="detail-content">
+                                    <h4>Service Provider</h4>
+                                    <p><%= booking.provider_name %></p>
                                 </div>
-                                
-                                <div class="booking-footer">
-                                    <div>
-                                        <% 
-                                        let footerStatusClass = 'text-muted';
-                                        let footerStatusIcon = 'bi-clock';
-                                        let paymentStatusText = 'Payment Pending';
-                                        
-                                        // If status is Confirmed, treat it as Paid regardless of payment_status
-                                        if (booking.status === 'Confirmed' || booking.payment_status === 'Paid') {
-                                            footerStatusClass = 'text-success';
-                                            footerStatusIcon = 'bi-check-circle-fill';
-                                            paymentStatusText = 'Paid';
-                                        } else if (booking.status === 'Cancelled') {
-                                            footerStatusClass = 'text-danger';
-                                            footerStatusIcon = 'bi-x-circle-fill';
-                                            paymentStatusText = 'Cancelled';
-                                        }
-                                        %>
-                                        <span class="<%= footerStatusClass %> me-2">
-                                            <i class="bi <%= footerStatusIcon %>"></i>
-                                            <%= paymentStatusText %>
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <% if (booking.status !== 'Confirmed' && booking.payment_status !== 'Paid' && booking.status !== 'Cancelled') { %>
-                                            <a href="/customer/payment/<%= booking.id %>" class="btn btn-sm btn-success me-2">
-                                                <i class="bi bi-credit-card me-1"></i> Pay Now
-                                            </a>
-                                        <% } %>
-                                        <a href="/customer/booking-confirmation/<%= booking.id %>" class="btn btn-view-details">
-                                            <i class="bi bi-eye me-1"></i> View Details
-                                        </a>
-                                    </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="booking-detail">
+                                <div class="detail-icon">
+                                    <i class="bi bi-calendar-date"></i>
                                 </div>
-                            </div> <!-- End of booking card -->
-                        <% }); %>
-                    </div> <!-- End of bookings-list -->
+                                <div class="detail-content">
+                                    <h4>Appointment Date</h4>
+                                    <p><%= new Date(booking.preferred_date).toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'}) %></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="booking-detail">
+                                <div class="detail-icon">
+                                    <i class="bi bi-clock"></i>
+                                </div>
+                                <div class="detail-content">
+                                    <h4>Time Slot</h4>
+                                    <p><%= booking.time_slot || "Not specified" %></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="booking-footer">
+                    <div>
+                        <% 
+                        let footerStatusClass = 'text-muted';
+                        let footerStatusIcon = 'bi-clock';
+                        let paymentStatusText = 'Payment Pending';
+                        
+                        // If status is Confirmed, treat it as Paid regardless of payment_status
+                        if (booking.status === 'Confirmed' || booking.payment_status === 'Paid') {
+                            footerStatusClass = 'text-success';
+                            footerStatusIcon = 'bi-check-circle-fill';
+                            paymentStatusText = 'Paid';
+                        } else if (booking.status === 'Cancelled') {
+                            footerStatusClass = 'text-danger';
+                            footerStatusIcon = 'bi-x-circle-fill';
+                            paymentStatusText = 'Cancelled';
+                        }
+                        %>
+                        <span class="<%= footerStatusClass %> me-2">
+                            <i class="bi <%= footerStatusIcon %>"></i>
+                            <%= paymentStatusText %>
+                        </span>
+                        <% if (booking.status === 'Cancelled' && booking.cancellation_reason) { %>
+                            <span class="text-secondary small ms-2">
+                                <i class="bi bi-info-circle"></i> 
+                                <%= booking.cancellation_reason.length > 30 ? booking.cancellation_reason.substring(0, 30) + '...' : booking.cancellation_reason %>
+                            </span>
+                        <% } %>
+                    </div>
+                    <div>
+                        <% if (booking.status !== 'Confirmed' && booking.payment_status !== 'Paid' && booking.status !== 'Cancelled') { %>
+                            <a href="/customer/payment/<%= booking.id %>" class="btn btn-sm btn-success me-2">
+                                <i class="bi bi-credit-card me-1"></i> Pay Now
+                            </a>
+                        <% } %>
+                        <% if (booking.status === 'Cancelled') { %>
+                            <a href="/customer/booking-cancelled/<%= booking.id %>" class="btn btn-view-details">
+                                <i class="bi bi-eye me-1"></i> View Details
+                            </a>
+                        <% } else { %>
+                            <a href="/customer/booking-confirmation/<%= booking.id %>" class="btn btn-view-details">
+                                <i class="bi bi-eye me-1"></i> View Details
+                            </a>
+                        <% } %>
+                    </div>
+                </div>
+            </div> <!-- End of booking card -->
+        <% }); %>
+    </div> <!-- End of bookings-list -->
+<% } %>
+
                     
                     <!-- Pagination -->
                     <div class="pagination-container">
@@ -512,62 +529,64 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Search functionality
-            const searchInput = document.getElementById('searchBookings');
-            if (searchInput) {
-                searchInput.addEventListener('keyup', function() {
-                    const searchValue = this.value.toLowerCase();
+       document.addEventListener('DOMContentLoaded', function() {
+        // Search functionality
+        const searchInput = document.getElementById('searchBookings');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                const searchValue = this.value.toLowerCase();
+                const bookingCards = document.querySelectorAll('.booking-card');
+                
+                bookingCards.forEach(card => {
+                    const cardText = card.textContent.toLowerCase();
+                    if (cardText.includes(searchValue)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        }
+        
+        // Filter functionality
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        if (filterButtons.length > 0) {
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove active class from all buttons
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    
+                    // Add active class to clicked button
+                    this.classList.add('active');
+                    
+                    const filter = this.getAttribute('data-filter');
                     const bookingCards = document.querySelectorAll('.booking-card');
                     
                     bookingCards.forEach(card => {
-                        const cardText = card.textContent.toLowerCase();
-                        if (cardText.includes(searchValue)) {
+                        const statusElement = card.querySelector('.booking-status');
+                        if (!statusElement) return;
+                        
+                        const bookingStatus = statusElement.textContent.trim().toLowerCase();
+                        
+                        // Check if card should be displayed based on selected filter
+                        if (filter === 'all') {
+                            card.style.display = 'block';
+                        } else if (filter === 'pending' && bookingStatus.includes('pending')) {
+                            card.style.display = 'block';
+                        } else if (filter === 'confirmed' && bookingStatus.includes('confirmed')) {
+                            card.style.display = 'block';
+                        } else if (filter === 'completed' && bookingStatus.includes('completed')) {
+                            card.style.display = 'block';
+                        } else if (filter === 'cancelled' && bookingStatus.includes('cancelled')) {
                             card.style.display = 'block';
                         } else {
                             card.style.display = 'none';
                         }
                     });
                 });
-            }
-            
-            // Filter functionality
-            const filterButtons = document.querySelectorAll('.filter-btn');
-            if (filterButtons.length > 0) {
-                filterButtons.forEach(button => {
-                    button.addEventListener('click', function() {
-                        // Remove active class from all buttons
-                        filterButtons.forEach(btn => btn.classList.remove('active'));
-                        
-                        // Add active class to clicked button
-                        this.classList.add('active');
-                        
-                        const filter = this.getAttribute('data-filter');
-                        const bookingCards = document.querySelectorAll('.booking-card');
-                        
-                        bookingCards.forEach(card => {
-                            const statusElement = card.querySelector('.booking-status');
-                            if (!statusElement) return;
-                            
-                            const bookingStatus = statusElement.textContent.trim().toLowerCase();
-                            
-                            // Check if card should be displayed based on selected filter
-                            if (filter === 'all') {
-                                card.style.display = 'block';
-                            } else if (filter === 'pending' && bookingStatus.includes('pending')) {
-                                card.style.display = 'block';
-                            } else if (filter === 'confirmed' && bookingStatus.includes('confirmed')) {
-                                card.style.display = 'block';
-                            } else if (filter === 'completed' && bookingStatus.includes('completed')) {
-                                card.style.display = 'block';
-                            } else {
-                                card.style.display = 'none';
-                            }
-                        });
-                    });
-                });
-            }
-        });
+            });
+        }
+    });
     </script>
 </body>
 </html>

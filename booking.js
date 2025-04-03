@@ -452,17 +452,8 @@ router.post('/customer/process-payment', isCustomerAuth, async (req, res) => {
 
 router.get('/customer/booking-confirmation/:bookingId?', isCustomerAuth, async (req, res) => {
     try {
-        const bookingId = req.params.bookingId || req.query.bookingId;
-        
-        // If no bookingId provided, just show a generic confirmation
-        if (!bookingId) {
-            return res.render('customer/booking-confirmation', {
-                title: 'Booking Confirmation',
-                user: req.session.user,
-                success: req.session.success,
-                error: req.session.error
-            });
-        }
+        const bookingId = req.params.bookingId;
+        const customerId = req.session.user.id;
         
         // Get detailed booking information with provider name and pricing
         const bookingResult = await pool.query(`
@@ -473,18 +464,25 @@ router.get('/customer/booking-confirmation/:bookingId?', isCustomerAuth, async (
             LEFT JOIN service_categories sc ON sp.id = sc.provider_id AND LOWER(sc.category_name) = LOWER(sb.service_type)
             WHERE sb.id = $1 AND sb.customer_id = $2
             LIMIT 1
-        `, [bookingId, req.session.user.id]);
+        `, [bookingId, customerId]);
         
         if (bookingResult.rows.length === 0) {
             req.session.error = 'Booking not found';
             return res.redirect('/customer/bookings');
         }
         
-        // Render the confirmation page with detailed booking information
+        const booking = bookingResult.rows[0];
+        
+        // If booking is cancelled, redirect to the cancellation page
+        if (booking.status === 'Cancelled') {
+            return res.redirect(`/customer/booking-cancelled/${bookingId}`);
+        }
+        
+        // Otherwise render the normal confirmation page
         res.render('customer/booking-confirmation', {
             title: 'Booking Confirmation',
             user: req.session.user,
-            booking: bookingResult.rows[0],
+            booking: booking,
             success: req.session.success,
             error: req.session.error
         });
@@ -539,10 +537,11 @@ router.get('/customer/bookings', isCustomerAuth, async (req, res) => {
     try {
         const customerId = req.session.user.id;
         
-        // Get all bookings for this customer
+        // Get all bookings for this customer with cancellation fields
         const bookingsResult = await pool.query(`
             SELECT sb.id, sb.service_type, sb.preferred_date, sb.time_slot, sb.status, 
                    sb.payment_status, sb.service_address, sb.created_at, 
+                   sb.cancelled_at, sb.cancelled_by, sb.cancellation_reason,
                    sp.business_name as provider_name
             FROM service_bookings sb
             JOIN service_providers sp ON sb.provider_id = sp.id
@@ -750,6 +749,48 @@ router.get('/customer/test-bookings', async (req, res) => {
       res.send('Error: ' + error.message);
     }
   });
+
+  // Route to view booking cancellation details
+  router.get('/customer/booking-cancelled/:bookingId', isCustomerAuth, async (req, res) => {
+    try {
+        const bookingId = req.params.bookingId;
+        const customerId = req.session.user.id;
+        
+        // Get detailed booking information with provider name, cancellation details
+        const bookingResult = await pool.query(`
+            SELECT sb.*, sp.business_name as provider_name, 
+                   sc.base_fee, sc.fee_type
+            FROM service_bookings sb
+            JOIN service_providers sp ON sb.provider_id = sp.id
+            LEFT JOIN service_categories sc ON sp.id = sc.provider_id AND LOWER(sc.category_name) = LOWER(sb.service_type)
+            WHERE sb.id = $1 AND sb.customer_id = $2 AND sb.status = 'Cancelled'
+            LIMIT 1
+        `, [bookingId, customerId]);
+        
+        if (bookingResult.rows.length === 0) {
+            req.session.error = 'Booking not found or not cancelled';
+            return res.redirect('/customer/bookings');
+        }
+        
+        // Render the cancellation page with detailed booking information
+        res.render('customer/booking-cancellation', {
+            title: 'Booking Cancelled',
+            user: req.session.user,
+            booking: bookingResult.rows[0],
+            success: req.session.success,
+            error: req.session.error
+        });
+        
+        // Clear session messages
+        delete req.session.success;
+        delete req.session.error;
+        
+    } catch (error) {
+        console.error('Error loading booking cancellation:', error);
+        req.session.error = 'Failed to load booking cancellation details';
+        res.redirect('/customer/bookings');
+    }
+});
 
   // Add this route to booking.js
     router.get('/debug-booking/:bookingId', isCustomerAuth, async (req, res) => {
