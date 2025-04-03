@@ -30,6 +30,20 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
+// For Desktop uploads path (based on your console log)
+// const desktopUploadsPath = 'C:\\Users\\ASUS\\OneDrive\\Desktop\\public\\uploads';
+// app.use('/uploads', express.static(desktopUploadsPath));
+
+// For common image placeholders
+app.use('/img', express.static(path.join(__dirname, 'public/img')));
+
+// Log the static serving paths to verify
+// console.log('Static serving paths:');
+// console.log('- Main public:', path.join(__dirname, 'public'));
+// console.log('- Standard uploads:', path.join(__dirname, 'public/uploads'));
+// console.log('- Alternative uploads:', path.join(__dirname, '../public/uploads'));
+// console.log('- Desktop uploads:', desktopUploadsPath);
+
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));

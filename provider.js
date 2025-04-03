@@ -434,14 +434,13 @@ router.get('/bookings', isProvider, async (req, res) => {
             queryParams.push(statusFilter);
         }
         
-        // Add order by clause
+        // Add order by clause - prioritize New, then Accepted, then others
         query += ` ORDER BY CASE 
                      WHEN sb.status = 'New' THEN 1
                      WHEN sb.status = 'Accepted' THEN 2
-                     WHEN sb.status = 'In Progress' THEN 3
-                     WHEN sb.status = 'Completed' THEN 4
-                     WHEN sb.status = 'Cancelled' THEN 5
-                     ELSE 6
+                     WHEN sb.status = 'Completed' THEN 3
+                     WHEN sb.status = 'Cancelled' THEN 4
+                     ELSE 5
                    END, sb.id DESC`;
         
         const bookingsResult = await pool.query(query, queryParams);
@@ -669,7 +668,7 @@ const completeBooking = async (req, res) => {
         // Verify booking belongs to this provider and has the correct status
         const checkResult = await pool.query(
             'SELECT id FROM service_bookings WHERE id = $1 AND provider_id = $2 AND status = $3',
-            [bookingId, providerId, 'In Progress']
+            [bookingId, providerId, 'Accepted']
         );
         
         if (checkResult.rows.length === 0) {
@@ -695,7 +694,7 @@ const completeBooking = async (req, res) => {
     } catch (error) {
         console.error('Error completing service:', error);
         req.session.error = 'Failed to update booking status. Please try again.';
-        res.redirect('/provider/booking/' + bookingId);
+        res.redirect('/provider/bookings');
     }
 };
 

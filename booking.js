@@ -11,13 +11,23 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
+// Create upload directory if it doesn't exist and check permissions
+const uploadDir = 'C:\\Users\\ASUS\\OneDrive\\Desktop\\HandyHub_fyp\\public\\uploads\\booking_images\\';
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    console.log(`Created upload directory: ${uploadDir}`);
+}
+// Check permissions
+try {
+    fs.accessSync(uploadDir, fs.constants.W_OK);
+    console.log(`Upload directory ${uploadDir} is writable`);
+} catch (err) {
+    console.error(`Upload directory ${uploadDir} is not writable:`, err);
+}
+
 // Configure storage for Multer
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const uploadDir = path.join(__dirname, '../public/uploads/booking_images/');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
         cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
@@ -222,21 +232,36 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
         }
         
         // Process uploaded files
+        console.log('Files received:', req.files); // Debug uploaded files
+
         let imageFiles = [];
         if (req.files && req.files.length > 0) {
-            imageFiles = req.files.map(file => `/uploads/booking_images/${file.filename}`);
+            // Make sure paths are correct for web access
+            imageFiles = req.files.map(file => {
+                // Extract the filename from the full path
+                const filename = file.filename;
+                
+                // Use a consistent web path format starting with /
+                return `/uploads/booking_images/${filename}`;
+            });
+            
+            console.log('Processed image files:', imageFiles); // Debug processed paths
         }
-        
+
         // Format full address
         const fullAddress = `${streetAddress}, ${city}, ${state} ${zipCode}`;
-        
+
+        // Convert the imageFiles array to a JSON string for storage
+        const imageFilesJson = JSON.stringify(imageFiles);
+        console.log('Images JSON to be stored:', imageFilesJson);
+
         // Insert the booking into the database with fee information
         const bookingResult = await pool.query(`
             INSERT INTO service_bookings 
             (customer_id, provider_id, service_type, issue_description, service_address, 
-             access_instructions, preferred_date, time_slot, customer_name, 
-             customer_phone, customer_email, status, created_at, images, 
-             base_fee, fee_type)
+            access_instructions, preferred_date, time_slot, customer_name, 
+            customer_phone, customer_email, status, created_at, images, 
+            base_fee, fee_type)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), $13, $14, $15)
             RETURNING id
         `, [
@@ -252,39 +277,39 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             phoneNumber, 
             email, 
             'Pending',
-            JSON.stringify(imageFiles),
+            imageFilesJson, // Store the stringified JSON
             parseFloat(finalBaseFee) || 0, // Convert to number with fallback
             finalFeeType || 'per visit'    // With fallback
         ]);
-        
-        // If booking was successful, redirect to payment page
-        if (bookingResult.rows.length > 0) {
-            const bookingId = bookingResult.rows[0].id;
-            
-            // Store in session for payment
-            req.session.paymentInfo = {
-                bookingId: bookingId,
-                providerId: providerId,
-                serviceType: serviceType,
-                baseFee: parseFloat(finalBaseFee) || 0,
-                feeType: finalFeeType || 'per visit',
-                customerName: fullName,
-                customerEmail: email
-            };
-            
-            console.log('Payment info stored in session:', req.session.paymentInfo);
-            
-            // Redirect to payment page
-            return res.redirect(`/customer/payment/${bookingId}`);
-        } else {
-            throw new Error('Failed to create booking');
-        }
-    } catch (error) {
-        console.error('Error booking service:', error);
-        req.session.error = 'Failed to book service. Please try again later.';
-        return res.redirect(`/customer/book-service/${req.body.providerId}`);
-    }
-});
+                        
+                // If booking was successful, redirect to payment page
+                if (bookingResult.rows.length > 0) {
+                    const bookingId = bookingResult.rows[0].id;
+                    
+                    // Store in session for payment
+                    req.session.paymentInfo = {
+                        bookingId: bookingId,
+                        providerId: providerId,
+                        serviceType: serviceType,
+                        baseFee: parseFloat(finalBaseFee) || 0,
+                        feeType: finalFeeType || 'per visit',
+                        customerName: fullName,
+                        customerEmail: email
+                    };
+                    
+                    console.log('Payment info stored in session:', req.session.paymentInfo);
+                    
+                    // Redirect to payment page
+                    return res.redirect(`/customer/payment/${bookingId}`);
+                } else {
+                    throw new Error('Failed to create booking');
+                }
+            } catch (error) {
+                console.error('Error booking service:', error);
+                req.session.error = 'Failed to book service. Please try again later.';
+                return res.redirect(`/customer/book-service/${req.body.providerId}`);
+            }
+        });
 
 // View customer's bookings
 router.get('/customer/bookings', isCustomerAuth, async (req, res) => {
@@ -624,6 +649,84 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
     }
 });
 
+// Debug endpoint to examine image storage
+router.get('/debug-images/:bookingId', isCustomerAuth, async (req, res) => {
+    try {
+        const bookingId = req.params.bookingId;
+        const result = await pool.query(
+            'SELECT id, images FROM service_bookings WHERE id = $1',
+            [bookingId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.send(`<h1>Booking #${bookingId} not found</h1>`);
+        }
+        
+        const booking = result.rows[0];
+        let parsedImages = [];
+        
+        try {
+            if (typeof booking.images === 'string') {
+                parsedImages = JSON.parse(booking.images);
+            } else if (Array.isArray(booking.images)) {
+                parsedImages = booking.images;
+            }
+        } catch (e) {
+            // Nothing to do
+        }
+        
+        // Create a simple HTML page to display the information and test image paths
+        let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Debug Images - Booking #${bookingId}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1 { color: #333; }
+                pre { background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
+                .image-debug { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+                .image-item { margin: 10px 0; border: 1px solid #eee; padding: 10px; }
+                img { max-width: 300px; border: 1px solid #ddd; }
+                .error { color: red; }
+            </style>
+        </head>
+        <body>
+            <h1>Debug Images for Booking #${bookingId}</h1>
+            
+            <h2>Raw Data</h2>
+            <pre>${JSON.stringify({ 
+                id: booking.id,
+                rawImagesType: typeof booking.images,
+                rawImages: booking.images,
+                parsedImages: parsedImages
+            }, null, 2)}</pre>
+            
+            <div class="image-debug">
+                <h2>Image Test</h2>
+                ${parsedImages.length > 0 ? 
+                    parsedImages.map((path, index) => `
+                        <div class="image-item">
+                            <h3>Image ${index + 1}</h3>
+                            <p>Path: ${path}</p>
+                            <p>Try to load image:</p>
+                            <img src="${path}" alt="Test Image ${index}" onerror="this.onerror=null; this.nextElementSibling.style.display='block'; this.style.display='none';">
+                            <p class="error" style="display:none;">❌ Image failed to load! Path is invalid or inaccessible.</p>
+                        </div>
+                    `).join('') 
+                    : '<p>No images found for this booking.</p>'
+                }
+            </div>
+        </body>
+        </html>
+        `;
+        
+        res.send(html);
+    } catch (error) {
+        res.send(`<h1>Error</h1><pre>${error.message}\n${error.stack}</pre>`);
+    }
+});
+
 router.get('/customer/test-bookings', async (req, res) => {
     try {
       const customerId = req.session?.user?.id || 1; // Fallback for testing
@@ -647,6 +750,68 @@ router.get('/customer/test-bookings', async (req, res) => {
       res.send('Error: ' + error.message);
     }
   });
+
+  // Add this route to booking.js
+    router.get('/debug-booking/:bookingId', isCustomerAuth, async (req, res) => {
+        try {
+            const bookingId = req.params.bookingId;
+            const result = await pool.query(
+                'SELECT id, images, service_type FROM service_bookings WHERE id = $1',
+                [bookingId]
+            );
+            
+            if (result.rows.length === 0) {
+                return res.json({ error: 'Booking not found' });
+            }
+            
+            const booking = result.rows[0];
+            let parsedImages = null;
+            
+            try {
+                if (typeof booking.images === 'string') {
+                    parsedImages = JSON.parse(booking.images);
+                } else {
+                    parsedImages = booking.images;
+                }
+            } catch (e) {
+                console.error('Error parsing images:', e);
+            }
+            
+            res.json({
+                bookingId: booking.id,
+                serviceType: booking.service_type,
+                imagesType: typeof booking.images,
+                rawImages: booking.images,
+                parsedImages: parsedImages
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message, stack: error.stack });
+        }
+    });
+
+// Debug route to check if images are accessible
+router.get('/check-image-path', (req, res) => {
+    const imagePath = req.query.path;
+    
+    if (!imagePath) {
+        return res.status(400).json({ error: 'No image path provided' });
+    }
+    
+    // Try to resolve the physical path
+    const resolvedPath = path.join(__dirname, '..', imagePath.startsWith('/') ? imagePath.substring(1) : imagePath);
+    
+    // Check if file exists
+    const fileExists = fs.existsSync(resolvedPath);
+    
+    res.json({
+        requestedPath: imagePath,
+        resolvedPath: resolvedPath,
+        fileExists: fileExists,
+        serverRoot: path.join(__dirname, '..'),
+        staticServing: 'Check if these paths match your Express static middleware configuration'
+    });
+});
+    
 
 // Helper function to format time as "HH:MM AM/PM"
 function formatTime(date) {

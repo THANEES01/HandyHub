@@ -43,6 +43,7 @@
             box-shadow: 0 2px 15px rgba(0,0,0,0.05);
             margin-bottom: 25px;
             border: 1px solid rgba(0,0,0,0.05);
+            height: 100%;
         }
 
         .card-header {
@@ -88,6 +89,16 @@
             background-color: #fff3cd;
             color: #856404;
         }
+        
+        .status-New {
+            background-color: #cfe2ff;
+            color: #084298;
+        }
+
+        .status-Accepted {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
 
         .status-Completed {
             background-color: #cfe2ff;
@@ -124,6 +135,7 @@
             border-radius: 10px;
             padding: 15px;
             text-align: center;
+            margin-top: 20px;
         }
 
         .issue-image {
@@ -131,6 +143,7 @@
             height: auto;
             border-radius: 8px;
             margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .back-button {
@@ -155,20 +168,41 @@
             margin-bottom: 20px;
         }
 
-        .action-buttons {
-            background-color: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 30px;
-        }
-
-        .btn-lg {
-            padding: 12px 24px;
+        .btn-action-custom {
+            padding: 14px 28px;
             font-size: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            font-weight: 500;
+            margin-top: 15px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .btn i {
-            font-size: 1.1rem;
+        .btn-action-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(0,0,0,0.15);
+        }
+
+        .btn-accept {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+
+        .btn-complete {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: white;
+        }
+
+        .booking-action-wrapper {
+            display: flex;
+            justify-content: flex-start;
+            margin-top: 30px;
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -206,6 +240,36 @@
                 Back to Bookings
             </a>
             <h1 class="h3 mt-3">Booking Details #<%= booking.id %></h1>
+        </div>
+
+        <!-- Action Buttons Outside Box -->
+        <div class="booking-action-wrapper">
+            <% if (booking.status === 'New' || booking.status === 'Pending') { %>
+                <form action="/provider/booking/<%= booking.id %>/accept" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-action-custom btn-accept">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Accept Booking
+                    </button>
+                </form>
+            <% } %>
+            
+            <% if (booking.status === 'Accepted') { %>
+                <form action="/provider/booking/<%= booking.id %>/complete" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-action-custom btn-complete">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Complete Service
+                    </button>
+                </form>
+            <% } %>
+        
+            <% if (booking.status === 'Confirmed') { %>
+                <form action="/provider/booking/<%= booking.id %>/accept" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-action-custom btn-accept">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Accept Service
+                    </button>
+                </form>
+            <% } %>
         </div>
 
         <div class="row">
@@ -254,66 +318,54 @@
                         <div class="info-label">Service Address</div>
                         <div class="info-value"><%= booking.service_address %></div>
                     </div>
-
-                    <div class="action-buttons mt-4 pt-3 border-top">
-                        <h3 class="section-title h5 mb-3">Actions</h3>
-                        
-                        <% if (booking.status === 'New' || booking.status === 'Pending') { %>
-                            <form action="/provider/booking/<%= booking.id %>/accept" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-success btn-lg me-2">
-                                    <i class="bi bi-check-circle-fill me-2"></i>
-                                    Accept Booking
-                                </button>
-                            </form>
-                        <% } %>
-                        
-                        <% if (booking.status === 'Accepted') { %>
-                            <form action="/provider/booking/<%= booking.id %>/start" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-primary btn-lg me-2">
-                                    <i class="bi bi-play-fill me-2"></i>
-                                    Start Service
-                                </button>
-                            </form>
-                        <% } %>
-                        
-                        <% if (booking.status === 'In Progress') { %>
-                            <form action="/provider/booking/<%= booking.id %>/complete" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-success btn-lg me-2">
-                                    <i class="bi bi-check-circle-fill me-2"></i>
-                                    Complete Service
-                                </button>
-                            </form>
-                        <% } %>
-                    
-                        <% if (booking.status === 'Confirmed') { %>
-                            <form action="/provider/booking/<%= booking.id %>/start" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-primary btn-lg me-2">
-                                    <i class="bi bi-play-fill me-2"></i>
-                                    Start Service
-                                </button>
-                            </form>
-                        <% } %>
-                    </div>
                 </div>
             </div>
 
-            <!-- Issue Images -->
+            <!-- Uploaded Photos -->
             <div class="col-md-4">
                 <div class="data-card">
-                    <h2 class="section-title">Issue Images</h2>
+                    <h2 class="section-title">Customer Uploaded Photos</h2>
                     <% if (booking.images) { %>
                         <div class="img-container">
-                            <% booking.images.split(',').forEach(image => { %>
-                                <img src="/<%= image.trim() %>" 
-                                     alt="Issue Image" 
-                                     class="issue-image"
-                                     onerror="this.src='https://via.placeholder.com/300x200?text=Image+Not+Found'"/>
-                            <% }); %>
+                            <% 
+                            let imageArray = [];
+                            try {
+                                // Handle different possible formats of the images data
+                                if (typeof booking.images === 'string') {
+                                    if (booking.images.startsWith('[') && booking.images.endsWith(']')) {
+                                        // If it's a JSON string, parse it
+                                        imageArray = JSON.parse(booking.images);
+                                    } else {
+                                        // If it's a comma-separated string
+                                        imageArray = booking.images.split(',').map(img => img.trim()).filter(img => img);
+                                    }
+                                } else if (Array.isArray(booking.images)) {
+                                    // If it's already an array
+                                    imageArray = booking.images;
+                                }
+                            } catch(e) {
+                                console.error('Error parsing images:', e);
+                            }
+                            %>
+                            
+                            <% if (imageArray && imageArray.length > 0) { %>
+                                <% imageArray.forEach(function(image) { %>
+                                    <img src="<%= image %>" 
+                                         alt="Service Photo" 
+                                         class="issue-image"
+                                         onerror="this.src='https://via.placeholder.com/300x200?text=Image+Not+Found'"/>
+                                <% }); %>
+                            <% } else { %>
+                                <div class="text-center text-muted py-4">
+                                    <i class="bi bi-image fs-1"></i>
+                                    <p class="mt-2">No photos available</p>
+                                </div>
+                            <% } %>
                         </div>
                     <% } else { %>
                         <div class="text-center text-muted py-4">
                             <i class="bi bi-image fs-1"></i>
-                            <p class="mt-2">No images provided</p>
+                            <p class="mt-2">No photos provided</p>
                         </div>
                     <% } %>
                 </div>

@@ -341,10 +341,6 @@
                     Accepted
                     <span class="status-count"><%= bookings.filter(b => b.status === 'Accepted').length %></span>
                 </a>
-                <a href="/provider/bookings?status=In Progress" class="filter-btn <%= locals.statusFilter === 'In Progress' ? 'active' : '' %>">
-                    In Progress
-                    <span class="status-count"><%= bookings.filter(b => b.status === 'In Progress').length %></span>
-                </a>
                 <a href="/provider/bookings?status=Completed" class="filter-btn <%= locals.statusFilter === 'Completed' ? 'active' : '' %>">
                     Completed
                     <span class="status-count"><%= bookings.filter(b => b.status === 'Completed').length %></span>

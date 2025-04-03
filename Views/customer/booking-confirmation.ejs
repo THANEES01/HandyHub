@@ -223,6 +223,45 @@
             animation: pulse 2s infinite;
         }
 
+         /* Add to the existing CSS in booking-confirmation.ejs */
+        .image-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .image-item {
+            width: 150px;
+            height: 150px;
+            overflow: hidden;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            position: relative;
+        }
+        
+        .image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .missing-image {
+        opacity: 0.5;
+        filter: grayscale(1);
+        border: 2px dashed #ff0000;
+        }
+    
+        .debug-info {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
     </style>
 </head>
 <body>
@@ -330,6 +369,65 @@
                             </div>
                             <% } %>
                         </div>
+
+                     <!-- Replace the existing Problem Images section with this code -->
+            <div class="details-section">
+                <h3 class="details-heading">Problem Images</h3>
+                
+                <% if (locals.booking && booking.images) { %>
+                    <% 
+                    let imageArray = [];
+                    try {
+                        // Handle different possible formats of the images data
+                        if (typeof booking.images === 'string') {
+                            // If it's a JSON string, parse it
+                            imageArray = JSON.parse(booking.images);
+                        } else if (Array.isArray(booking.images)) {
+                            // If it's already an array
+                            imageArray = booking.images;
+                        } else if (booking.images && typeof booking.images === 'object') {
+                            // If it's an object (like a PG result)
+                            imageArray = Object.values(booking.images);
+                        }
+                    } catch(e) {
+                        console.error('Error parsing images:', e);
+                    }
+                    %>
+                    
+                    <% if (imageArray && imageArray.length > 0) { %>
+                        <div class="image-gallery">
+                            <% imageArray.forEach(function(imagePath) { %>
+                                <% 
+                                // Ensure path is a string
+                                let imgPath = typeof imagePath === 'string' ? imagePath : '';
+                                
+                                // Make path absolute if it's not already
+                                if (imgPath && !imgPath.startsWith('http') && !imgPath.startsWith('/')) {
+                                    imgPath = '/' + imgPath;
+                                }
+                                %>
+                                <div class="image-item">
+                                    <img src="<%= imgPath %>" alt="Problem Image" class="problem-image img-thumbnail" onerror="this.onerror=null; this.src='/img/image-placeholder.png'; this.classList.add('missing-image');">
+                                </div>
+                            <% }); %>
+                        </div>
+                    <% } else { %>
+                        <p>No images uploaded.</p>
+                    <% } %>
+                <% } else { %>
+                    <p>No images uploaded.</p>
+                <% } %>
+
+                <!-- For debugging - remove in production -->
+                <% if (locals.booking && booking.images) { %>
+                    <div style="display: none;" class="debug-info">
+                        <p><strong>Debug - Images data:</strong> <%= typeof booking.images %></p>
+                        <% if (typeof booking.images === 'string') { %>
+                            <p><strong>Raw JSON:</strong> <%= booking.images %></p>
+                        <% } %>
+                    </div>
+                <% } %>
+            </div>
                         
                         <div class="details-section">
                             <h3 class="details-heading">Payment Information</h3>
