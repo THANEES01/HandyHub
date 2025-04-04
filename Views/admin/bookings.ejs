@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bookings - HandyHub Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #0077be;
+            --secondary-blue: #00a2e8;
+            --dark-blue: #003366;
+            --light-blue: #e6f2ff;
+            --success-green: #28a745;
+        }
+ 
+        .sidebar {
+            background-color: var(--dark-blue);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .sidebar nav {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        }
+
+        .nav-link.text-danger {
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            margin-top: auto;
+            color: #dc3545 !important;
+        }
+    
+        .nav-link.text-danger:hover {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: #fff !important;
+        }
+ 
+        .sidebar .nav-link {
+            color: white;
+            padding: 15px 20px;
+            transition: all 0.3s ease;
+        }
+ 
+        .sidebar .nav-link:hover {
+            background-color: var(--secondary-blue);
+            transform: translateX(10px);
+        }
+ 
+        .sidebar .nav-link.active {
+            background-color: var(--primary-blue);
+            border-left: 4px solid white;
+        }
+ 
+        .main-content {
+            background-color: #f8f9fa;
+        }
+ 
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+ 
+        .card-stats {
+            background: white;
+            transition: transform 0.3s;
+        }
+ 
+        .card-stats:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+
+        /* Stats Card Styling */
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .stats-card-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+
+        .stats-card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #343a40;
+        }
+
+        .stats-card-icon {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 1.8rem;
+            opacity: 0.15;
+        }
+
+        .stats-card.primary {
+            border-left: 4px solid var(--primary-blue);
+        }
+
+        .stats-card.success {
+            border-left: 4px solid var(--success-green);
+        }
+
+        .stats-card.info {
+            border-left: 4px solid var(--secondary-blue);
+        }
+
+        .filter-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border-radius: 30px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #495057;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .filter-btn:hover {
+            background-color: #e9ecef;
+            text-decoration: none;
+        }
+
+        .filter-btn.active {
+            background-color: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+
+        .status-count {
+            background-color: #f8f9fa;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            margin-left: 5px;
+            font-weight: 600;
+        }
+
+        .booking-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .booking-table th {
+            background-color: #f8f9fa;
+            padding: 12px 15px;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+            text-align: left;
+            color: #495057;
+        }
+
+        .booking-table th.actions-header {
+            text-align: center;
+        }
+
+        .booking-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: middle;
+        }
+
+        .booking-table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .booking-table th:first-child,
+        .booking-table td:first-child {
+            padding-left: 20px;
+        }
+
+        .booking-table th:last-child,
+        .booking-table td:last-child {
+            padding-right: 20px;
+            text-align: right;
+        }
+        
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .status-new {
+            background-color: var(--light-blue);
+            color: var(--primary-blue);
+        }
+
+        .status-accepted {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-completed {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .status-cancelled {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .btn-view {
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+
+        .btn-view:hover {
+            background-color: #005ea8;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .btn-icon {
+            margin-right: 5px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            color: #adb5bd;
+            margin-bottom: 15px;
+        }
+
+        .empty-state-message {
+            color: #6c757d;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        /* Modal styles */
+        .modal-content {
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .modal-header {
+            background-color: #0077be;
+            color: white;
+            border-bottom: none;
+            padding: 1.5rem;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .info-section {
+            background-color: #f8f9fa;
+            border-left: 4px solid #0077be;
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+
+        .info-section h5 {
+            color: #003366;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        @media (max-width: 992px) {
+            .stats-cards {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-2 px-0 sidebar">
+            <div class="p-4">
+                <h4>HandyHub Admin</h4>
+            </div>
+            <nav class="nav flex-column">
+                <a class="nav-link" href="/admin/dashboard">
+                    <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+                <a class="nav-link" href="/admin/service-providers">
+                    <i class="bi bi-people"></i> Service Providers
+                </a>
+                <a class="nav-link" href="/admin/customers">
+                    <i class="bi bi-person"></i> Customers
+                </a>
+                <a class="nav-link active" href="/admin/bookings">
+                    <i class="bi bi-calendar"></i> Bookings
+                </a>
+                <a class="nav-link" href="/admin/earnings">
+                    <i class="bi bi-cash"></i> Earnings
+                </a>
+                <!-- Add this at the bottom of the nav -->
+                <div class="mt-auto">
+                    <button onclick="logout()" class="nav-link text-danger">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </button>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-10 main-content p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0 text-gray-800">Manage Bookings</h1>
+                <span class="text-muted">Monitor all bookings across the platform</span>
+            </div>
+
+            <!-- Messages Section -->
+            <% if (locals.success) { %>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i> <%= success %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <% } %>
+
+            <% if (locals.error) { %>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> <%= error %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <% } %>
+
+            <!-- Bookings Section -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <!-- Stats Cards -->
+                    <div class="stats-cards">
+                        <div class="stats-card primary">
+                            <div class="stats-card-title">Total Bookings</div>
+                            <div class="stats-card-value"><%= totalBookings %></div>
+                            <div class="stats-card-icon">
+                                <i class="bi bi-calendar-check"></i>
+                            </div>
+                        </div>
+                        <div class="stats-card success">
+                            <div class="stats-card-title">Completed Bookings</div>
+                            <div class="stats-card-value"><%= completedBookings %></div>
+                            <div class="stats-card-icon">
+                                <i class="bi bi-check-circle"></i>
+                            </div>
+                        </div>
+                        <div class="stats-card info">
+                            <div class="stats-card-title">Upcoming Bookings</div>
+                            <div class="stats-card-value"><%= upcomingBookings %></div>
+                            <div class="stats-card-icon">
+                                <i class="bi bi-calendar-plus"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Section -->
+                    <div class="filter-section">
+                        <a href="/admin/bookings" class="filter-btn <%= !locals.statusFilter ? 'active' : '' %>">
+                            All Bookings
+                            <span class="status-count"><%= bookings.length %></span>
+                        </a>
+                        <a href="/admin/bookings?status=New" class="filter-btn <%= locals.statusFilter === 'New' ? 'active' : '' %>">
+                            New
+                            <span class="status-count"><%= bookings.filter(b => b.status === 'New').length %></span>
+                        </a>
+                        <a href="/admin/bookings?status=Confirmed" class="filter-btn <%= locals.statusFilter === 'Confirmed' ? 'active' : '' %>">
+                            Confirmed
+                            <span class="status-count"><%= bookings.filter(b => b.status === 'Confirmed').length %></span>
+                        </a>
+                        <a href="/admin/bookings?status=Pending" class="filter-btn <%= locals.statusFilter === 'Pending' ? 'active' : '' %>">
+                            Pending
+                            <span class="status-count"><%= bookings.filter(b => b.status === 'Pending').length %></span>
+                        </a>
+                        <a href="/admin/bookings?status=Completed" class="filter-btn <%= locals.statusFilter === 'Completed' ? 'active' : '' %>">
+                            Completed
+                            <span class="status-count"><%= bookings.filter(b => b.status === 'Completed').length %></span>
+                        </a>
+                        <a href="/admin/bookings?status=Cancelled" class="filter-btn <%= locals.statusFilter === 'Cancelled' ? 'active' : '' %>">
+                            Cancelled
+                            <span class="status-count"><%= bookings.filter(b => b.status === 'Cancelled').length %></span>
+                        </a>
+                    </div>
+                
+                    <!-- Bookings Table -->
+                    <div class="table-responsive">
+                        <% if (bookings && bookings.length > 0) { %>
+                            <table class="booking-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Customer</th>
+                                        <th>Provider</th>
+                                        <th>Service Type</th>
+                                        <th>Date</th>
+                                        <th>Time Slot</th>
+                                        <th>Status</th>
+                                        <th class="actions-header">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% bookings.forEach(booking => { %>
+                                        <tr>
+                                            <td><strong>#<%= booking.id %></strong></td>
+                                            <td><%= booking.customer_name %></td>
+                                            <td><%= booking.provider_name %></td>
+                                            <td><%= booking.service_type %></td>
+                                            <td><%= new Date(booking.preferred_date).toLocaleDateString() %></td>
+                                            <td><%= booking.time_slot %></td>
+                                            <td>
+                                                <span class="status-badge <%= booking.status === 'New' ? 'status-new' : 
+                                                                          booking.status === 'Accepted' ? 'status-accepted' : 
+                                                                          booking.status === 'Completed' ? 'status-completed' :
+                                                                          booking.status === 'Cancelled' ? 'status-cancelled' : '' %>">
+                                                    <%= booking.status %>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button class="btn-view" onclick="showBookingDetails('<%= booking.id %>')">
+                                                    <i class="bi bi-eye btn-icon"></i> View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
+                        <% } else { %>
+                            <div class="empty-state">
+                                <div class="empty-state-icon">
+                                    <i class="bi bi-calendar-x"></i>
+                                </div>
+                                <p class="empty-state-message">
+                                    <%= statusFilter ? `No ${statusFilter} bookings found` : 'No bookings available yet' %>
+                                </p>
+                                <% if (statusFilter) { %>
+                                    <a href="/admin/bookings" class="btn btn-outline-primary">
+                                        View All Bookings
+                                    </a>
+                                <% } %>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Booking Details Modal -->
+<div class="modal fade" id="bookingDetailsModal">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Booking Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="info-section">
+                    <h5>Booking Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Booking ID:</strong><br><span id="bookingId"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Booking Date:</strong><br><span id="bookingDate"></span></p>
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <p><strong>Status:</strong><br><span id="bookingStatus"></span></p>
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <p><strong>Time Slot:</strong><br><span id="bookingTimeSlot"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h5>Customer Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Name:</strong><br><span id="customerName"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Email:</strong><br><span id="customerEmail"></span></p>
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <p><strong>Phone:</strong><br><span id="customerPhone"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h5>Provider Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Business Name:</strong><br><span id="providerName"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Email:</strong><br><span id="providerEmail"></span></p>
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <p><strong>Phone:</strong><br><span id="providerPhone"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h5>Service Details</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Service Type:</strong><br><span id="serviceType"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Fee Type:</strong><br><span id="feeType"></span></p>
+                        </div>
+                        <div class="col-12 mt-3">
+                            <p><strong>Service Address:</strong><br><span id="serviceAddress"></span></p>
+                        </div>
+                        <div class="col-12 mt-3">
+                            <p><strong>Issue Description:</strong><br><span id="issueDescription"></span></p>
+                        </div>
+                        <div class="col-12 mt-3">
+                            <p><strong>Additional Notes:</strong><br><span id="additionalNotes"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h5>Payment Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Total Amount:</strong><br><span id="totalAmount"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Payment Status:</strong><br><span id="paymentStatus"></span></p>
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <p><strong>Payment Method:</strong><br><span id="paymentMethod"></span></p>
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <p><strong>Payment Reference:</strong><br><span id="paymentReference"></span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-section" id="cancellationSection" style="display: none;">
+                    <h5>Cancellation Details</h5>
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>Cancellation Reason:</strong><br><span id="cancellationReason"></span></p>
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <p><strong>Cancelled By:</strong><br><span id="cancelledBy"></span></p>
+                        </div>
+                        <div class="col-md-6 mt-3">
+                            <p><strong>Cancelled At:</strong><br><span id="cancelledAt"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function showBookingDetails(id) {
+        console.log('Fetching details for booking ID:', id);
+        
+        fetch(`/admin/booking/${id}/details`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(booking => {
+                console.log('Booking details received:', booking);
+                
+                // Format the date
+                const bookingDate = new Date(booking.preferred_date);
+                const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+                const formattedDate = bookingDate.toLocaleDateString(undefined, dateOptions);
+                
+                // Populate booking information
+                document.getElementById('bookingId').textContent = `#${booking.id}`;
+                document.getElementById('bookingDate').textContent = formattedDate;
+                document.getElementById('bookingStatus').textContent = booking.status;
+                document.getElementById('bookingTimeSlot').textContent = booking.time_slot;
+                
+                // Populate customer information
+                document.getElementById('customerName').textContent = booking.customer_name || 'N/A';
+                document.getElementById('customerEmail').textContent = booking.customer_email || 'N/A';
+                document.getElementById('customerPhone').textContent = booking.customer_phone || 'N/A';
+                
+                // Populate provider information
+                document.getElementById('providerName').textContent = booking.provider_name || 'N/A';
+                document.getElementById('providerEmail').textContent = booking.provider_email || 'N/A';
+                document.getElementById('providerPhone').textContent = booking.provider_phone || 'N/A';
+                
+                // Populate service details
+                document.getElementById('serviceType').textContent = booking.service_type || 'N/A';
+                document.getElementById('feeType').textContent = booking.fee_type || 'N/A';
+                document.getElementById('serviceAddress').textContent = booking.service_address || 'N/A';
+                document.getElementById('issueDescription').textContent = booking.issue_description || 'N/A';
+                document.getElementById('additionalNotes').textContent = booking.notes || 'No additional notes';
+                
+                // Populate payment information
+                const baseFee = booking.base_fee ? parseFloat(booking.base_fee) : 0;
+                document.getElementById('totalAmount').textContent = booking.total_amount ? `RM${parseFloat(booking.total_amount).toFixed(2)}` : (baseFee ? `RM${baseFee.toFixed(2)}` : 'N/A');
+                document.getElementById('paymentStatus').textContent = booking.payment_status || 'N/A';
+                
+                // Show payment method and reference if available
+                if (document.getElementById('paymentMethod')) {
+                    document.getElementById('paymentMethod').textContent = booking.payment_method || 'N/A';
+                }
+                if (document.getElementById('paymentReference')) {
+                    document.getElementById('paymentReference').textContent = booking.payment_reference || 'N/A';
+                }
+                
+                // Add status badge styling to bookingStatus
+                const statusElement = document.getElementById('bookingStatus');
+                statusElement.className = '';
+                statusElement.classList.add('status-badge');
+                if (booking.status === 'New') {
+                    statusElement.classList.add('status-new');
+                } else if (booking.status === 'Accepted' || booking.status === 'Confirmed') {
+                    statusElement.classList.add('status-accepted');
+                } else if (booking.status === 'Completed') {
+                    statusElement.classList.add('status-completed');
+                } else if (booking.status === 'Cancelled' || booking.status === 'Pending') {
+                    statusElement.classList.add('status-cancelled');
+                }
+                
+                // Check if there's cancellation information
+                const cancellationSection = document.getElementById('cancellationSection');
+                if (booking.cancellation_reason || booking.cancelled_at || booking.cancelled_by) {
+                    document.getElementById('cancellationReason').textContent = booking.cancellation_reason || 'N/A';
+                    document.getElementById('cancelledBy').textContent = booking.cancelled_by || 'N/A';
+                    
+                    if (booking.cancelled_at) {
+                        const cancelDate = new Date(booking.cancelled_at);
+                        document.getElementById('cancelledAt').textContent = cancelDate.toLocaleString();
+                    } else {
+                        document.getElementById('cancelledAt').textContent = 'N/A';
+                    }
+                    
+                    cancellationSection.style.display = 'block';
+                } else {
+                    cancellationSection.style.display = 'none';
+                }
+                
+                // Show the modal
+                new bootstrap.Modal(document.getElementById('bookingDetailsModal')).show();
+            })
+            .catch(error => {
+                console.error('Error fetching booking details:', error);
+                alert(`Error loading booking details: ${error.message}`);
+            });
+    }
+
+    function logout() {
+        if (confirm('Are you sure you want to logout?')) {
+            window.location.href = '/auth/logout';
+        }
+    }
+
+    // Auto-dismiss alerts after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    });
+</script>
+</body>
+</html>

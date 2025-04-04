@@ -512,6 +512,196 @@ const getCustomerDetails = async (req, res) => {
     }
 };
 
+// Get all bookings
+// Get all bookings
+const getBookings = async (req, res) => {
+    try {
+        console.log('Starting getBookings function');
+        
+        // Get status filter if any
+        const statusFilter = req.query.status || null; // Make sure it's defined even if null
+        let bookingsQuery;
+        
+        if (statusFilter) {
+            // Query with status filter
+            bookingsQuery = await pool.query(`
+                SELECT 
+                    b.id,
+                    b.customer_id,
+                    b.provider_id,
+                    b.preferred_date,
+                    b.preferred_time_slot as time_slot,
+                    b.service_type,
+                    b.status,
+                    b.notes,
+                    b.total_amount,
+                    b.payment_status,
+                    b.service_address,
+                    b.issue_description,
+                    b.created_at,
+                    b.updated_at,
+                    b.payment_method,
+                    b.payment_reference,
+                    b.base_fee,
+                    b.fee_type,
+                    b.completed_at,
+                    b.cancellation_reason,
+                    b.cancelled_at,
+                    b.cancelled_by,
+                    b.images,
+                    CONCAT(c.first_name, ' ', c.last_name) as customer_name,
+                    c.phone_number as customer_phone,
+                    cu.email as customer_email,
+                    sp.business_name as provider_name,
+                    sp.phone_number as provider_phone,
+                    pu.email as provider_email
+                FROM bookings b
+                JOIN customers c ON b.customer_id = c.id
+                JOIN users cu ON c.user_id = cu.id
+                JOIN service_providers sp ON b.provider_id = sp.id
+                JOIN users pu ON sp.user_id = pu.id
+                WHERE b.status = $1
+                ORDER BY b.preferred_date DESC
+            `, [statusFilter]);
+        } else {
+            // Query for all bookings
+            bookingsQuery = await pool.query(`
+                SELECT 
+                    b.id,
+                    b.customer_id,
+                    b.provider_id,
+                    b.preferred_date,
+                    b.preferred_time_slot as time_slot,
+                    b.service_type,
+                    b.status,
+                    b.notes,
+                    b.total_amount,
+                    b.payment_status,
+                    b.service_address,
+                    b.issue_description,
+                    b.created_at,
+                    b.updated_at,
+                    b.payment_method,
+                    b.payment_reference,
+                    b.base_fee,
+                    b.fee_type,
+                    b.completed_at,
+                    b.cancellation_reason,
+                    b.cancelled_at,
+                    b.cancelled_by,
+                    b.images,
+                    CONCAT(c.first_name, ' ', c.last_name) as customer_name,
+                    c.phone_number as customer_phone,
+                    cu.email as customer_email,
+                    sp.business_name as provider_name,
+                    sp.phone_number as provider_phone,
+                    pu.email as provider_email
+                FROM bookings b
+                JOIN customers c ON b.customer_id = c.id
+                JOIN users cu ON c.user_id = cu.id
+                JOIN service_providers sp ON b.provider_id = sp.id
+                JOIN users pu ON sp.user_id = pu.id
+                ORDER BY b.preferred_date DESC
+            `);
+        }
+        
+        console.log(`Found ${bookingsQuery.rows.length} bookings`);
+        
+        // Calculate booking statistics
+        const completedBookings = bookingsQuery.rows.filter(booking => booking.status === 'Completed').length;
+        
+        const upcomingBookings = bookingsQuery.rows.filter(booking => {
+            const bookingDate = new Date(booking.preferred_date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return bookingDate >= today && (booking.status === 'New' || booking.status === 'Confirmed' || booking.status === 'Accepted' || booking.status === 'Pending');
+        }).length;
+        
+        return res.render('admin/bookings', {
+            title: 'Bookings',
+            bookings: bookingsQuery.rows,
+            totalBookings: bookingsQuery.rows.length,
+            completedBookings: completedBookings,
+            upcomingBookings: upcomingBookings,
+            statusFilter: statusFilter  // Make sure you pass this variable
+        });
+        
+    } catch (error) {
+        console.error('Bookings Error:', error);
+        console.error('Error stack:', error.stack);
+        return res.render('admin/bookings', {
+            title: 'Bookings',
+            bookings: [],
+            totalBookings: 0,
+            completedBookings: 0,
+            upcomingBookings: 0,
+            statusFilter: null,  // Add this line
+            error: 'Failed to load bookings. Please try again later.'
+        });
+    }
+};
+
+// Get booking details
+const getBookingDetails = async (req, res) => {
+    try {
+        const bookingId = req.params.id;
+        
+        // Comprehensive query to get all booking details
+        const bookingQuery = await pool.query(`
+            SELECT 
+                b.id,
+                b.customer_id,
+                b.provider_id,
+                b.preferred_date,
+                b.preferred_time_slot as time_slot,
+                b.service_type,
+                b.status,
+                b.notes,
+                b.total_amount,
+                b.payment_status,
+                b.service_address,
+                b.issue_description,
+                b.created_at,
+                b.updated_at,
+                b.payment_method,
+                b.payment_reference,
+                b.base_fee,
+                b.fee_type,
+                b.completed_at,
+                b.cancellation_reason,
+                b.cancelled_at,
+                b.cancelled_by,
+                b.images,
+                CONCAT(c.first_name, ' ', c.last_name) as customer_name,
+                c.phone_number as customer_phone,
+                cu.email as customer_email,
+                sp.business_name as provider_name,
+                sp.phone_number as provider_phone,
+                pu.email as provider_email
+            FROM bookings b
+            JOIN customers c ON b.customer_id = c.id
+            JOIN users cu ON c.user_id = cu.id
+            JOIN service_providers sp ON b.provider_id = sp.id
+            JOIN users pu ON sp.user_id = pu.id
+            WHERE b.id = $1
+        `, [bookingId]);
+        
+        if (bookingQuery.rows.length === 0) {
+            return res.status(404).json({ error: 'Booking not found' });
+        }
+        
+        // Return booking details as JSON
+        res.json(bookingQuery.rows[0]);
+        
+    } catch (error) {
+        console.error('Error fetching booking details:', error);
+        res.status(500).json({ 
+            error: 'Server error', 
+            details: error.message 
+        });
+    }
+};
+
 // Admin logout route
 router.get('/logout', (req, res) => {
     req.session.destroy((err) => {
@@ -528,6 +718,10 @@ router.get('/dashboard', isAdmin, getDashboard);
 router.get('/provider/:id/details', isAdmin, getProviderDetails);
 router.get('/customer/:id/details', isAdmin, getCustomerDetails);
 router.post('/provider/:id/verify', isAdmin, updateVerificationStatus);
+// Add these routes to the router
+// Make sure to add these routes before exporting the router
+router.get('/bookings', isAdmin, getBookings);
+router.get('/booking/:id/details', isAdmin, getBookingDetails);
 
 
 export default router;
