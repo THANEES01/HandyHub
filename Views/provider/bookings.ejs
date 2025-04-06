@@ -90,23 +90,28 @@
         }
 
         .status-new {
-            background-color: var(--light-blue);
-            color: var(--primary-blue);
+            background-color: #e6f2ff; /* Light blue background */
+            color: #0077be; /* Dark blue text */
         }
 
         .status-accepted {
-            background-color: #d4edda;
-            color: #155724;
+            background-color: #d1f7c4; /* Light green background */
+            color: #2e8b57; /* Sea green text */
         }
 
         .status-completed {
-            background-color: #d1e7dd;
-            color: #0f5132;
+            background-color: #c4e4c4;
+            color: rgb(43, 70, 18);
         }
 
         .status-cancelled {
             background-color: #f8d7da;
             color: #721c24;
+        }
+
+        .status-pending {
+            background-color: #fff3cd; /* Light yellow background from the image */
+            color: #856404; /* Darker yellow/brown text for contrast */
         }
 
         .filter-section {
@@ -469,9 +474,10 @@
                                         </td>
                                         <td>
                                             <span class="status-badge <%= booking.status === 'New' ? 'status-new' : 
-                                                                      booking.status === 'Accepted' ? 'status-accepted' : 
-                                                                      booking.status === 'Completed' ? 'status-completed' :
-                                                                      booking.status === 'Cancelled' ? 'status-cancelled' : '' %>">
+                                                    booking.status === 'Accepted' ? 'status-accepted' : 
+                                                    booking.status === 'Completed' ? 'status-completed' :
+                                                    booking.status === 'Cancelled' ? 'status-cancelled' :
+                                                    booking.status === 'Pending' ? 'status-pending' : '' %>">
                                                 <%= booking.status %>
                                             </span>
                                         </td>

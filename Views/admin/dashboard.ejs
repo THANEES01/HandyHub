@@ -363,6 +363,22 @@
         transform: translateY(-2px);
     }
 
+        /* Add this to your existing styles in dashboard.ejs */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Optional: Add some padding for the section headings to account for the fixed header */
+    #service-providers-section, 
+    #customers-section {
+        scroll-margin-top: 20px; /* Adjust this value to control how far from the top the scrolling stops */
+    }
+
+    /* This ensures that the anchor links work correctly with fixed sidebar */
+    .main-content {
+        scroll-padding-top: 20px;
+    }
+
     </style>
 
 </head>
@@ -378,10 +394,10 @@
                 <a class="nav-link active" href="/admin/dashboard">
                     <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
-                <a class="nav-link" href="/admin/service-providers">
+                <a class="nav-link" href="/admin/dashboard#service-providers-section">
                     <i class="bi bi-people"></i> Service Providers
                 </a>
-                <a class="nav-link" href="/admin/customers">
+                <a class="nav-link" href="/admin/dashboard#customers-section">
                     <i class="bi bi-person"></i> Customers
                 </a>
                 <a class="nav-link" href="/admin/bookings">
@@ -421,7 +437,7 @@
             </div>
 
             <!-- Service Providers Table -->
-            <div class="card mt-4">
+            <div id="service-providers-section" class="card mt-4">
                 <div class="card-body">
                     <h4 class="card-title">Service Providers</h4>
                     <div class="table-responsive">
@@ -589,7 +605,7 @@
 </div>
 
 <!-- Customers Table -->
-<div class="card mt-4">
+<div id="customers-section" class="card mt-4">
     <div class="card-body">
         <h4 class="card-title">Customers</h4>
         <div class="table-responsive">
@@ -1031,6 +1047,47 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+
+    // Add this script to the bottom of your dashboard.ejs file
+document.addEventListener('DOMContentLoaded', function() {
+    // Set active navigation item based on hash
+    function setActiveNavItem() {
+        const hash = window.location.hash;
+        const navItems = document.querySelectorAll('.sidebar .nav-link');
+        
+        // Remove active class from all nav items
+        navItems.forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // Set active class based on hash
+        if (hash === '#service-providers-section') {
+            document.querySelector('.sidebar .nav-link[href="/admin/dashboard#service-providers-section"]').classList.add('active');
+        } else if (hash === '#customers-section') {
+            document.querySelector('.sidebar .nav-link[href="/admin/dashboard#customers-section"]').classList.add('active');
+        } else if (!hash) {
+            // If no hash, default to Dashboard being active
+            document.querySelector('.sidebar .nav-link[href="/admin/dashboard"]').classList.add('active');
+        }
+    }
+    
+    // Initial check
+    setActiveNavItem();
+    
+    // Listen for hash changes
+    window.addEventListener('hashchange', setActiveNavItem);
+    
+    // Handle initial page load if there's a hash in the URL
+    if (window.location.hash) {
+        // Small delay to ensure the page has loaded
+        setTimeout(function() {
+            const targetElement = document.querySelector(window.location.hash);
+            if (targetElement) {
+                targetElement.scrollIntoView();
+            }
+        }, 100);
+    }
+});
 
 </script>
 

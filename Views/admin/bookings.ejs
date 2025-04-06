@@ -321,6 +321,107 @@
                 gap: 15px;
             }
         }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .status-new {
+            background-color: #e6f2ff; /* Lighter blue background */
+            color: #0077be; /* Darker blue text for contrast */
+        }
+
+        .status-accepted {
+            background-color: #d1f7c4; /* Light green background */
+            color: #2e8b57; /* Sea green text for contrast */
+        }
+
+        .status-completed {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .status-cancelled {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        /* Modal styles */
+        .modal-content {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .modal-header, .card-header {
+            background-color: #005ea8 !important; /* Primary Bootstrap blue */
+            color: white;
+        }
+        
+        .modal-header {
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            padding: 1.25rem 1.5rem;
+        }
+        
+        .modal-footer {
+            border-top: 1px solid #eee;
+            padding: 1rem 1.5rem;
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        
+        .card-header {
+            padding: 0.75rem 1.25rem;
+            font-weight: 600;
+        }
+        
+        .card-body {
+            padding: 1.25rem;
+        }
+        
+        .card-body label {
+            color: #6c757d;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+        
+        .card-body p {
+            font-size: 1rem;
+            color: #212529;
+        }
+        
+        /* Status badge styling */
+        .status-badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+        
+        /* Row spacing in cards */
+        .row.g-3 > * {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -335,10 +436,10 @@
                 <a class="nav-link" href="/admin/dashboard">
                     <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
-                <a class="nav-link" href="/admin/service-providers">
+                <a class="nav-link" href="/admin/dashboard#service-providers-section">
                     <i class="bi bi-people"></i> Service Providers
                 </a>
-                <a class="nav-link" href="/admin/customers">
+                <a class="nav-link" href="/admin/dashboard#customers-section">
                     <i class="bi bi-person"></i> Customers
                 </a>
                 <a class="nav-link active" href="/admin/bookings">
@@ -414,15 +515,15 @@
                         </a>
                         <a href="/admin/bookings?status=New" class="filter-btn <%= locals.statusFilter === 'New' ? 'active' : '' %>">
                             New
-                            <span class="status-count"><%= bookings.filter(b => b.status === 'New').length %></span>
-                        </a>
-                        <a href="/admin/bookings?status=Confirmed" class="filter-btn <%= locals.statusFilter === 'Confirmed' ? 'active' : '' %>">
-                            Confirmed
-                            <span class="status-count"><%= bookings.filter(b => b.status === 'Confirmed').length %></span>
+                            <span class="status-count"><%= bookings.filter(b => b.status === 'New' || b.status === 'Confirmed').length %></span>
                         </a>
                         <a href="/admin/bookings?status=Pending" class="filter-btn <%= locals.statusFilter === 'Pending' ? 'active' : '' %>">
                             Pending
                             <span class="status-count"><%= bookings.filter(b => b.status === 'Pending').length %></span>
+                        </a>
+                        <a href="/admin/bookings?status=Accepted" class="filter-btn <%= locals.statusFilter === 'Accepted' ? 'active' : '' %>">
+                            Accepted
+                            <span class="status-count"><%= bookings.filter(b => b.status === 'Accepted').length %></span>
                         </a>
                         <a href="/admin/bookings?status=Completed" class="filter-btn <%= locals.statusFilter === 'Completed' ? 'active' : '' %>">
                             Completed
@@ -454,17 +555,20 @@
                                     <% bookings.forEach(booking => { %>
                                         <tr>
                                             <td><strong>#<%= booking.id %></strong></td>
-                                            <td><%= booking.customer_name %></td>
-                                            <td><%= booking.provider_name %></td>
-                                            <td><%= booking.service_type %></td>
-                                            <td><%= new Date(booking.preferred_date).toLocaleDateString() %></td>
-                                            <td><%= booking.time_slot %></td>
+                                            <td><%= booking.customer_name || 'N/A' %></td>
+                                            <td><%= booking.provider_name || 'N/A' %></td>
+                                            <td><%= booking.service_type || 'N/A' %></td>
+                                            <td><%= booking.preferred_date ? new Date(booking.preferred_date).toLocaleDateString() : 'N/A' %></td>
+                                            <td><%= booking.time_slot || 'N/A' %></td>
                                             <td>
-                                                <span class="status-badge <%= booking.status === 'New' ? 'status-new' : 
+                                                <% let displayStatus = booking.status; %>
+                                                <% if(booking.status === 'Confirmed') { displayStatus = 'New'; } %>
+                                                <span class="status-badge <%= booking.status === 'New' || booking.status === 'Confirmed' ? 'status-new' : 
                                                                           booking.status === 'Accepted' ? 'status-accepted' : 
                                                                           booking.status === 'Completed' ? 'status-completed' :
-                                                                          booking.status === 'Cancelled' ? 'status-cancelled' : '' %>">
-                                                    <%= booking.status %>
+                                                                          booking.status === 'Cancelled' ? 'status-cancelled' :
+                                                                          booking.status === 'Pending' ? 'status-pending' : '' %>">
+                                                    <%= displayStatus || 'Unknown' %>
                                                 </span>
                                             </td>
                                             <td>
@@ -492,13 +596,9 @@
                             </div>
                         <% } %>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Booking Details Modal -->
+<!-- Booking Details Modal with Card Design -->
 <div class="modal fade" id="bookingDetailsModal">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -507,107 +607,166 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="info-section">
-                    <h5>Booking Information</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Booking ID:</strong><br><span id="bookingId"></span></p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Booking Date:</strong><br><span id="bookingDate"></span></p>
-                        </div>
-                        <div class="col-md-6 mt-3">
-                            <p><strong>Status:</strong><br><span id="bookingStatus"></span></p>
-                        </div>
-                        <div class="col-md-6 mt-3">
-                            <p><strong>Time Slot:</strong><br><span id="bookingTimeSlot"></span></p>
+                <!-- Booking Information -->
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Booking Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="fw-bold">Booking ID:</label>
+                                <p id="bookingId" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Booking Date:</label>
+                                <p id="bookingDate" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Status:</label>
+                                <p class="mb-0"><span id="bookingStatus" class="status-badge"></span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Time Slot:</label>
+                                <p id="bookingTimeSlot" class="mb-0"></p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="info-section">
-                    <h5>Customer Information</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Name:</strong><br><span id="customerName"></span></p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Email:</strong><br><span id="customerEmail"></span></p>
-                        </div>
-                        <div class="col-md-6 mt-3">
-                            <p><strong>Phone:</strong><br><span id="customerPhone"></span></p>
+                <!-- Customer Information -->
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Customer Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="fw-bold">Name:</label>
+                                <p id="customerName" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Email:</label>
+                                <p id="customerEmail" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Phone:</label>
+                                <p id="customerPhone" class="mb-0"></p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="info-section">
-                    <h5>Provider Information</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Business Name:</strong><br><span id="providerName"></span></p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Email:</strong><br><span id="providerEmail"></span></p>
-                        </div>
-                        <div class="col-md-6 mt-3">
-                            <p><strong>Phone:</strong><br><span id="providerPhone"></span></p>
+                <!-- Provider Information -->
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Provider Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="fw-bold">Business Name:</label>
+                                <p id="providerName" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Email:</label>
+                                <p id="providerEmail" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Phone:</label>
+                                <p id="providerPhone" class="mb-0"></p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="info-section">
-                    <h5>Service Details</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Service Type:</strong><br><span id="serviceType"></span></p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Fee Type:</strong><br><span id="feeType"></span></p>
-                        </div>
-                        <div class="col-12 mt-3">
-                            <p><strong>Service Address:</strong><br><span id="serviceAddress"></span></p>
-                        </div>
-                        <div class="col-12 mt-3">
-                            <p><strong>Issue Description:</strong><br><span id="issueDescription"></span></p>
-                        </div>
-                        <div class="col-12 mt-3">
-                            <p><strong>Additional Notes:</strong><br><span id="additionalNotes"></span></p>
+                <!-- Service Details -->
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Service Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="fw-bold">Service Type:</label>
+                                <p id="serviceType" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Fee Type:</label>
+                                <p id="feeType" class="mb-0"></p>
+                            </div>
+                            <div class="col-12">
+                                <label class="fw-bold">Service Address:</label>
+                                <p id="serviceAddress" class="mb-0"></p>
+                            </div>
+                            <div class="col-12">
+                                <label class="fw-bold">Issue Description:</label>
+                                <p id="issueDescription" class="mb-0"></p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="info-section">
-                    <h5>Payment Information</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Total Amount:</strong><br><span id="totalAmount"></span></p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Payment Status:</strong><br><span id="paymentStatus"></span></p>
-                        </div>
-                        <div class="col-md-6 mt-3">
-                            <p><strong>Payment Method:</strong><br><span id="paymentMethod"></span></p>
-                        </div>
-                        <div class="col-md-6 mt-3">
-                            <p><strong>Payment Reference:</strong><br><span id="paymentReference"></span></p>
+                <!-- Payment Information -->
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Payment Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="fw-bold">Base Fee:</label>
+                                <p id="paymentBaseFee" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Service Charge (5%):</label>
+                                <p id="paymentServiceCharge" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Total Amount:</label>
+                                <p id="totalAmount" class="mb-0 fw-bold"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Payment Status:</label>
+                                <p class="mb-0"><span id="paymentStatus"></span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Payment Method:</label>
+                                <p id="paymentMethod" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Payment Reference:</label>
+                                <p id="paymentReference" class="mb-0"></p>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="info-section" id="cancellationSection" style="display: none;">
-                    <h5>Cancellation Details</h5>
-                    <div class="row">
-                        <div class="col-12">
-                            <p><strong>Cancellation Reason:</strong><br><span id="cancellationReason"></span></p>
-                        </div>
-                        <div class="col-md-6 mt-3">
-                            <p><strong>Cancelled By:</strong><br><span id="cancelledBy"></span></p>
-                        </div>
-                        <div class="col-md-6 mt-3">
-                            <p><strong>Cancelled At:</strong><br><span id="cancelledAt"></span></p>
+                <!-- Cancellation Details (conditionally displayed) -->
+                <div class="card" id="cancellationSection" style="display: none;">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Cancellation Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="fw-bold">Cancellation Reason:</label>
+                                <p id="cancellationReason" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Cancelled By:</label>
+                                <p id="cancelledBy" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="fw-bold">Cancelled At:</label>
+                                <p id="cancelledAt" class="mb-0"></p>
+                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -615,100 +774,123 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    function showBookingDetails(id) {
-        console.log('Fetching details for booking ID:', id);
-        
-        fetch(`/admin/booking/${id}/details`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(booking => {
-                console.log('Booking details received:', booking);
+   function showBookingDetails(id) {
+    console.log('Fetching details for booking ID:', id);
+    
+    fetch(`/admin/booking/${id}/details`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(booking => {
+            console.log('Booking details received:', booking);
+            
+            // Format the date
+            const bookingDate = new Date(booking.preferred_date);
+            const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+            const formattedDate = bookingDate.toLocaleDateString(undefined, dateOptions);
+            
+            // Populate booking information
+            document.getElementById('bookingId').textContent = `#${booking.id}`;
+            document.getElementById('bookingDate').textContent = formattedDate;
+            
+            // Change 'Confirmed' to 'New' for display
+            let displayStatus = booking.status;
+            if (booking.status === 'Confirmed') {
+                displayStatus = 'New';
+            }
+            document.getElementById('bookingStatus').textContent = displayStatus || 'N/A';
+            document.getElementById('bookingTimeSlot').textContent = booking.time_slot || 'N/A';
+            
+            // Populate customer information
+            document.getElementById('customerName').textContent = booking.customer_name || 'N/A';
+            document.getElementById('customerEmail').textContent = booking.customer_email || 'N/A';
+            document.getElementById('customerPhone').textContent = booking.customer_phone || 'N/A';
+            
+            // Populate provider information
+            document.getElementById('providerName').textContent = booking.provider_name || 'N/A';
+            document.getElementById('providerEmail').textContent = booking.provider_email || 'N/A';
+            document.getElementById('providerPhone').textContent = booking.provider_phone || 'N/A';
+            
+            // Populate service details
+            document.getElementById('serviceType').textContent = booking.service_type || 'N/A';
+            document.getElementById('feeType').textContent = booking.fee_type || 'N/A';
+            document.getElementById('serviceAddress').textContent = booking.service_address || 'N/A';
+            document.getElementById('issueDescription').textContent = booking.issue_description || 'N/A';
+            
+            // Populate payment information - use payment details from the payments table if available
+            const baseFee = booking.payment_base_fee ? parseFloat(booking.payment_base_fee) : 
+                            (booking.base_fee ? parseFloat(booking.base_fee) : 0);
+            const serviceCharge = booking.payment_service_charge ? parseFloat(booking.payment_service_charge) : 
+                                  (baseFee * 0.05); // Calculate as 5% of base fee if not available
+            const totalAmount = booking.payment_total_amount ? parseFloat(booking.payment_total_amount) : 
+                              (baseFee + serviceCharge);
+            
+            document.getElementById('paymentBaseFee').textContent = baseFee ? `RM${baseFee.toFixed(2)}` : 'N/A';
+            document.getElementById('paymentServiceCharge').textContent = serviceCharge ? `RM${serviceCharge.toFixed(2)}` : 'N/A';
+            document.getElementById('totalAmount').textContent = totalAmount ? `RM${totalAmount.toFixed(2)}` : 'N/A';
+            
+            // Style payment status with badge
+            const paymentStatusElement = document.getElementById('paymentStatus');
+            paymentStatusElement.className = 'status-badge';
+            if (booking.payment_status === 'Paid') {
+                paymentStatusElement.classList.add('bg-success', 'text-white');
+            } else {
+                paymentStatusElement.classList.add('bg-warning', 'text-dark');
+            }
+            paymentStatusElement.textContent = booking.payment_status || 'N/A';
+            
+            // Show payment method and reference if available
+            if (document.getElementById('paymentMethod')) {
+                document.getElementById('paymentMethod').textContent = booking.payment_method || 'N/A';
+            }
+            if (document.getElementById('paymentReference')) {
+                document.getElementById('paymentReference').textContent = booking.payment_reference || 'N/A';
+            }
+            
+            // Add status badge styling to bookingStatus
+            const statusElement = document.getElementById('bookingStatus');
+            statusElement.className = 'status-badge';
+            if (booking.status === 'New' || booking.status === 'Confirmed') {
+                statusElement.classList.add('bg-info', 'text-white');
+            } else if (booking.status === 'Accepted') {
+                statusElement.classList.add('bg-primary', 'text-white');
+            } else if (booking.status === 'Completed') {
+                statusElement.classList.add('bg-success', 'text-white');
+            } else if (booking.status === 'Cancelled') {
+                statusElement.classList.add('bg-danger', 'text-white');
+            } else if (booking.status === 'Pending') {
+                statusElement.classList.add('bg-warning', 'text-dark');
+            }
+            
+            // Check if there's cancellation information
+            const cancellationSection = document.getElementById('cancellationSection');
+            if (booking.cancellation_reason || booking.cancelled_at || booking.cancelled_by) {
+                document.getElementById('cancellationReason').textContent = booking.cancellation_reason || 'N/A';
+                document.getElementById('cancelledBy').textContent = booking.cancelled_by || 'N/A';
                 
-                // Format the date
-                const bookingDate = new Date(booking.preferred_date);
-                const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
-                const formattedDate = bookingDate.toLocaleDateString(undefined, dateOptions);
-                
-                // Populate booking information
-                document.getElementById('bookingId').textContent = `#${booking.id}`;
-                document.getElementById('bookingDate').textContent = formattedDate;
-                document.getElementById('bookingStatus').textContent = booking.status;
-                document.getElementById('bookingTimeSlot').textContent = booking.time_slot;
-                
-                // Populate customer information
-                document.getElementById('customerName').textContent = booking.customer_name || 'N/A';
-                document.getElementById('customerEmail').textContent = booking.customer_email || 'N/A';
-                document.getElementById('customerPhone').textContent = booking.customer_phone || 'N/A';
-                
-                // Populate provider information
-                document.getElementById('providerName').textContent = booking.provider_name || 'N/A';
-                document.getElementById('providerEmail').textContent = booking.provider_email || 'N/A';
-                document.getElementById('providerPhone').textContent = booking.provider_phone || 'N/A';
-                
-                // Populate service details
-                document.getElementById('serviceType').textContent = booking.service_type || 'N/A';
-                document.getElementById('feeType').textContent = booking.fee_type || 'N/A';
-                document.getElementById('serviceAddress').textContent = booking.service_address || 'N/A';
-                document.getElementById('issueDescription').textContent = booking.issue_description || 'N/A';
-                document.getElementById('additionalNotes').textContent = booking.notes || 'No additional notes';
-                
-                // Populate payment information
-                const baseFee = booking.base_fee ? parseFloat(booking.base_fee) : 0;
-                document.getElementById('totalAmount').textContent = booking.total_amount ? `RM${parseFloat(booking.total_amount).toFixed(2)}` : (baseFee ? `RM${baseFee.toFixed(2)}` : 'N/A');
-                document.getElementById('paymentStatus').textContent = booking.payment_status || 'N/A';
-                
-                // Show payment method and reference if available
-                if (document.getElementById('paymentMethod')) {
-                    document.getElementById('paymentMethod').textContent = booking.payment_method || 'N/A';
-                }
-                if (document.getElementById('paymentReference')) {
-                    document.getElementById('paymentReference').textContent = booking.payment_reference || 'N/A';
-                }
-                
-                // Add status badge styling to bookingStatus
-                const statusElement = document.getElementById('bookingStatus');
-                statusElement.className = '';
-                statusElement.classList.add('status-badge');
-                if (booking.status === 'New') {
-                    statusElement.classList.add('status-new');
-                } else if (booking.status === 'Accepted' || booking.status === 'Confirmed') {
-                    statusElement.classList.add('status-accepted');
-                } else if (booking.status === 'Completed') {
-                    statusElement.classList.add('status-completed');
-                } else if (booking.status === 'Cancelled' || booking.status === 'Pending') {
-                    statusElement.classList.add('status-cancelled');
-                }
-                
-                // Check if there's cancellation information
-                const cancellationSection = document.getElementById('cancellationSection');
-                if (booking.cancellation_reason || booking.cancelled_at || booking.cancelled_by) {
-                    document.getElementById('cancellationReason').textContent = booking.cancellation_reason || 'N/A';
-                    document.getElementById('cancelledBy').textContent = booking.cancelled_by || 'N/A';
-                    
-                    if (booking.cancelled_at) {
-                        const cancelDate = new Date(booking.cancelled_at);
-                        document.getElementById('cancelledAt').textContent = cancelDate.toLocaleString();
-                    } else {
-                        document.getElementById('cancelledAt').textContent = 'N/A';
-                    }
-                    
-                    cancellationSection.style.display = 'block';
+                if (booking.cancelled_at) {
+                    const cancelDate = new Date(booking.cancelled_at);
+                    document.getElementById('cancelledAt').textContent = cancelDate.toLocaleString();
                 } else {
-                    cancellationSection.style.display = 'none';
+                    document.getElementById('cancelledAt').textContent = 'N/A';
                 }
                 
-                // Show the modal
-                new bootstrap.Modal(document.getElementById('bookingDetailsModal')).show();
-            })
-            .catch(error => {
-                console.error('Error fetching booking details:', error);
-                alert(`Error loading booking details: ${error.message}`);
-            });
-    }
+                cancellationSection.style.display = 'block';
+            } else {
+                cancellationSection.style.display = 'none';
+            }
+            
+            // Show the modal
+            new bootstrap.Modal(document.getElementById('bookingDetailsModal')).show();
+        })
+        .catch(error => {
+            console.error('Error fetching booking details:', error);
+            alert(`Error loading booking details: ${error.message}. Please check console for more details.`);
+        });
+}
 
     function logout() {
         if (confirm('Are you sure you want to logout?')) {

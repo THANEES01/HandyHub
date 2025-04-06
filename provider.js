@@ -238,14 +238,15 @@ const acceptBooking = async (req, res) => {
         const { bookingId } = req.params;
         const providerId = req.session.user.providerId;
         
-        // Verify booking belongs to this provider
+        // Verify booking belongs to this provider and has a valid status for acceptance
+        // Only New or Confirmed bookings can be accepted, not Pending
         const checkResult = await pool.query(
-            'SELECT id, status FROM service_bookings WHERE id = $1 AND provider_id = $2',
-            [bookingId, providerId]
+            'SELECT id, status FROM service_bookings WHERE id = $1 AND provider_id = $2 AND status IN ($3, $4)',
+            [bookingId, providerId, 'New', 'Confirmed']
         );
         
         if (checkResult.rows.length === 0) {
-            req.session.error = 'Booking not found or not authorized';
+            req.session.error = 'Booking not found, not authorized, or cannot be accepted due to its current status';
             return res.redirect('/provider/bookings');
         }
         

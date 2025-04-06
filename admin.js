@@ -512,100 +512,76 @@ const getCustomerDetails = async (req, res) => {
     }
 };
 
-// Get all bookings
-// Get all bookings
 const getBookings = async (req, res) => {
     try {
         console.log('Starting getBookings function');
         
         // Get status filter if any
-        const statusFilter = req.query.status || null; // Make sure it's defined even if null
+        const statusFilter = req.query.status || null;
+        console.log('Status filter:', statusFilter); // Add this log to debug
+        
+        // Build query using only existing columns confirmed from logs
+        let queryText = `
+            SELECT 
+                b.id,
+                b.customer_id,
+                b.provider_id,
+                b.preferred_date,
+                b.time_slot,
+                b.service_type,
+                b.status,
+                b.payment_status,
+                b.service_address,
+                b.issue_description,
+                b.created_at,
+                b.updated_at,
+                b.payment_method,
+                b.payment_reference,
+                b.base_fee,
+                b.fee_type,
+                b.completed_at,
+                b.cancellation_reason,
+                b.cancelled_at,
+                b.cancelled_by,
+                b.images,
+                b.access_instructions,
+                b.customer_name,
+                b.customer_phone,
+                b.customer_email,
+                sp.business_name as provider_name,
+                sp.phone_number as provider_phone,
+                pu.email as provider_email
+            FROM service_bookings b
+            JOIN service_providers sp ON b.provider_id = sp.id
+            JOIN users pu ON sp.user_id = pu.id
+        `;
+        
+        // Declare the bookingsQuery variable first
         let bookingsQuery;
         
+        // Add status filter if provided
         if (statusFilter) {
-            // Query with status filter
-            bookingsQuery = await pool.query(`
-                SELECT 
-                    b.id,
-                    b.customer_id,
-                    b.provider_id,
-                    b.preferred_date,
-                    b.preferred_time_slot as time_slot,
-                    b.service_type,
-                    b.status,
-                    b.notes,
-                    b.total_amount,
-                    b.payment_status,
-                    b.service_address,
-                    b.issue_description,
-                    b.created_at,
-                    b.updated_at,
-                    b.payment_method,
-                    b.payment_reference,
-                    b.base_fee,
-                    b.fee_type,
-                    b.completed_at,
-                    b.cancellation_reason,
-                    b.cancelled_at,
-                    b.cancelled_by,
-                    b.images,
-                    CONCAT(c.first_name, ' ', c.last_name) as customer_name,
-                    c.phone_number as customer_phone,
-                    cu.email as customer_email,
-                    sp.business_name as provider_name,
-                    sp.phone_number as provider_phone,
-                    pu.email as provider_email
-                FROM bookings b
-                JOIN customers c ON b.customer_id = c.id
-                JOIN users cu ON c.user_id = cu.id
-                JOIN service_providers sp ON b.provider_id = sp.id
-                JOIN users pu ON sp.user_id = pu.id
-                WHERE b.status = $1
-                ORDER BY b.preferred_date DESC
-            `, [statusFilter]);
+            // Special case for 'New' filter to include 'Confirmed' status as well
+            if (statusFilter === 'New') {
+                queryText += ` WHERE (b.status = 'New' OR b.status = 'Confirmed')`;
+                console.log('Using special New filter query:', queryText);
+                bookingsQuery = await pool.query(queryText + ` ORDER BY b.preferred_date DESC`);
+            } else {
+                queryText += ` WHERE b.status = $1`;
+                console.log('Using standard filter query:', queryText);
+                bookingsQuery = await pool.query(queryText + ` ORDER BY b.preferred_date DESC`, [statusFilter]);
+            }
         } else {
-            // Query for all bookings
-            bookingsQuery = await pool.query(`
-                SELECT 
-                    b.id,
-                    b.customer_id,
-                    b.provider_id,
-                    b.preferred_date,
-                    b.preferred_time_slot as time_slot,
-                    b.service_type,
-                    b.status,
-                    b.notes,
-                    b.total_amount,
-                    b.payment_status,
-                    b.service_address,
-                    b.issue_description,
-                    b.created_at,
-                    b.updated_at,
-                    b.payment_method,
-                    b.payment_reference,
-                    b.base_fee,
-                    b.fee_type,
-                    b.completed_at,
-                    b.cancellation_reason,
-                    b.cancelled_at,
-                    b.cancelled_by,
-                    b.images,
-                    CONCAT(c.first_name, ' ', c.last_name) as customer_name,
-                    c.phone_number as customer_phone,
-                    cu.email as customer_email,
-                    sp.business_name as provider_name,
-                    sp.phone_number as provider_phone,
-                    pu.email as provider_email
-                FROM bookings b
-                JOIN customers c ON b.customer_id = c.id
-                JOIN users cu ON c.user_id = cu.id
-                JOIN service_providers sp ON b.provider_id = sp.id
-                JOIN users pu ON sp.user_id = pu.id
-                ORDER BY b.preferred_date DESC
-            `);
+            console.log('No filter applied, showing all bookings');
+            bookingsQuery = await pool.query(queryText + ` ORDER BY b.preferred_date DESC`);
         }
         
         console.log(`Found ${bookingsQuery.rows.length} bookings`);
+        
+        // Log the first booking for debugging
+        if (bookingsQuery.rows.length > 0) {
+            console.log('First booking sample:', JSON.stringify(bookingsQuery.rows[0], null, 2));
+        }
         
         // Calculate booking statistics
         const completedBookings = bookingsQuery.rows.filter(booking => booking.status === 'Completed').length;
@@ -623,41 +599,41 @@ const getBookings = async (req, res) => {
             totalBookings: bookingsQuery.rows.length,
             completedBookings: completedBookings,
             upcomingBookings: upcomingBookings,
-            statusFilter: statusFilter  // Make sure you pass this variable
+            statusFilter: statusFilter
         });
         
     } catch (error) {
         console.error('Bookings Error:', error);
         console.error('Error stack:', error.stack);
+        
+        // Send a more detailed error message
         return res.render('admin/bookings', {
             title: 'Bookings',
             bookings: [],
             totalBookings: 0,
             completedBookings: 0,
             upcomingBookings: 0,
-            statusFilter: null,  // Add this line
-            error: 'Failed to load bookings. Please try again later.'
+            statusFilter: null,
+            error: `Failed to load bookings: ${error.message}. Please check the server logs for more details.`
         });
     }
 };
 
-// Get booking details
 const getBookingDetails = async (req, res) => {
     try {
         const bookingId = req.params.id;
+        console.log('Fetching details for booking ID:', bookingId);
         
-        // Comprehensive query to get all booking details
+        // Updated query to join with payments table to get payment details
         const bookingQuery = await pool.query(`
             SELECT 
                 b.id,
                 b.customer_id,
                 b.provider_id,
                 b.preferred_date,
-                b.preferred_time_slot as time_slot,
+                b.time_slot,
                 b.service_type,
                 b.status,
-                b.notes,
-                b.total_amount,
                 b.payment_status,
                 b.service_address,
                 b.issue_description,
@@ -672,23 +648,29 @@ const getBookingDetails = async (req, res) => {
                 b.cancelled_at,
                 b.cancelled_by,
                 b.images,
-                CONCAT(c.first_name, ' ', c.last_name) as customer_name,
-                c.phone_number as customer_phone,
-                cu.email as customer_email,
+                b.access_instructions,
+                b.customer_name,
+                b.customer_phone,
+                b.customer_email,
                 sp.business_name as provider_name,
                 sp.phone_number as provider_phone,
-                pu.email as provider_email
-            FROM bookings b
-            JOIN customers c ON b.customer_id = c.id
-            JOIN users cu ON c.user_id = cu.id
+                pu.email as provider_email,
+                p.base_fee as payment_base_fee,
+                p.service_charge as payment_service_charge,
+                p.amount as payment_total_amount
+            FROM service_bookings b
             JOIN service_providers sp ON b.provider_id = sp.id
             JOIN users pu ON sp.user_id = pu.id
+            LEFT JOIN payments p ON b.id = p.booking_id
             WHERE b.id = $1
         `, [bookingId]);
         
         if (bookingQuery.rows.length === 0) {
+            console.log('No booking found with ID:', bookingId);
             return res.status(404).json({ error: 'Booking not found' });
         }
+        
+        console.log('Successfully retrieved booking details');
         
         // Return booking details as JSON
         res.json(bookingQuery.rows[0]);
@@ -698,6 +680,165 @@ const getBookingDetails = async (req, res) => {
         res.status(500).json({ 
             error: 'Server error', 
             details: error.message 
+        });
+    }
+};
+
+// Function to handle the earnings page
+const getEarnings = async (req, res) => {
+    try {
+        console.log('Starting getEarnings function');
+        
+        // Get filter parameters
+        const timeFilter = req.query.timeFilter || null;
+        const fromDate = req.query.fromDate || null;
+        const toDate = req.query.toDate || null;
+        
+        console.log('Filter parameters:', { timeFilter, fromDate, toDate });
+        
+        // Build the base query
+        let queryText = `
+            SELECT 
+                p.id,
+                p.booking_id,
+                p.customer_id,
+                p.amount,
+                p.base_fee,
+                p.service_charge,
+                p.payment_method,
+                p.payment_reference,
+                p.status,
+                p.created_at,
+                sb.service_type,
+                c.first_name || ' ' || c.last_name as customer_name,
+                sp.business_name as provider_name
+            FROM payments p
+            JOIN service_bookings sb ON p.booking_id = sb.id
+            JOIN customers c ON p.customer_id = c.id
+            JOIN service_providers sp ON sb.provider_id = sp.id
+            WHERE p.status = 'Completed'
+        `;
+        
+        // Add date filtering based on parameters
+        const queryParams = [];
+        let paramIndex = 1;
+        
+        if (timeFilter === 'month') {
+            // Filter for current month
+            const now = new Date();
+            const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            
+            queryText += ` AND p.created_at >= $${paramIndex}`;
+            queryParams.push(firstDayOfMonth.toISOString());
+            paramIndex++;
+        } else if (timeFilter === 'week') {
+            // Filter for current week (last 7 days)
+            const now = new Date();
+            const oneWeekAgo = new Date(now);
+            oneWeekAgo.setDate(now.getDate() - 7);
+            
+            queryText += ` AND p.created_at >= $${paramIndex}`;
+            queryParams.push(oneWeekAgo.toISOString());
+            paramIndex++;
+        } else if (fromDate && toDate) {
+            // Custom date range filter
+            const startDate = new Date(fromDate);
+            // Add one day to end date to include the full day
+            const endDate = new Date(toDate);
+            endDate.setDate(endDate.getDate() + 1);
+            
+            queryText += ` AND p.created_at >= $${paramIndex} AND p.created_at < $${paramIndex + 1}`;
+            queryParams.push(startDate.toISOString(), endDate.toISOString());
+            paramIndex += 2;
+        } else if (fromDate) {
+            // Only from date specified
+            const startDate = new Date(fromDate);
+            
+            queryText += ` AND p.created_at >= $${paramIndex}`;
+            queryParams.push(startDate.toISOString());
+            paramIndex++;
+        } else if (toDate) {
+            // Only to date specified
+            const endDate = new Date(toDate);
+            endDate.setDate(endDate.getDate() + 1); // Include full day
+            
+            queryText += ` AND p.created_at < $${paramIndex}`;
+            queryParams.push(endDate.toISOString());
+            paramIndex++;
+        }
+        
+        // Complete the query with sorting
+        queryText += ` ORDER BY p.created_at DESC`;
+        
+        console.log('Final query:', queryText);
+        console.log('Query params:', queryParams);
+        
+        // Execute the query
+        const earningsResult = await pool.query(queryText, queryParams);
+        
+        console.log(`Found ${earningsResult.rows.length} earning records`);
+        
+        // Calculate total earnings (sum of service charges) with proper null handling
+        let displayTotalEarnings = 0;
+        earningsResult.rows.forEach(earning => {
+            // Check if service_charge is a valid number before adding
+            const serviceCharge = earning.service_charge ? parseFloat(earning.service_charge) : 0;
+            if (!isNaN(serviceCharge)) {
+                displayTotalEarnings += serviceCharge;
+            }
+        });
+        
+        // Get total earnings (all time)
+        const totalEarningsQuery = await pool.query(`
+            SELECT COALESCE(SUM(service_charge), 0) as total_earnings, COUNT(*) as booking_count
+            FROM payments
+            WHERE status = 'Completed'
+        `);
+        
+        const totalEarnings = parseFloat(totalEarningsQuery.rows[0].total_earnings) || 0;
+        const totalBookings = parseInt(totalEarningsQuery.rows[0].booking_count) || 0;
+        
+        // Get current month earnings
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        const currentMonthEarningsQuery = await pool.query(`
+            SELECT COALESCE(SUM(service_charge), 0) as month_earnings
+            FROM payments
+            WHERE status = 'Completed' AND created_at >= $1
+        `, [firstDayOfMonth.toISOString()]);
+        
+        const currentMonthEarnings = parseFloat(currentMonthEarningsQuery.rows[0].month_earnings) || 0;
+        
+        // Render the earnings page
+        return res.render('admin/earnings', {
+            title: 'Platform Earnings',
+            earnings: earningsResult.rows,
+            displayTotalEarnings: displayTotalEarnings,
+            totalEarnings: totalEarnings,
+            currentMonthEarnings: currentMonthEarnings,
+            totalBookings: totalBookings,
+            timeFilter: timeFilter,
+            fromDate: fromDate || '',
+            toDate: toDate || ''
+        });
+        
+    } catch (error) {
+        console.error('Earnings Error:', error);
+        console.error('Error stack:', error.stack);
+        
+        // Send a more detailed error message
+        return res.render('admin/earnings', {
+            title: 'Platform Earnings',
+            earnings: [],
+            displayTotalEarnings: 0,
+            totalEarnings: 0,
+            currentMonthEarnings: 0,
+            totalBookings: 0,
+            timeFilter: null,
+            fromDate: '',
+            toDate: '',
+            error: `Failed to load earnings: ${error.message}. Please check the server logs for more details.`
         });
     }
 };
@@ -722,6 +863,8 @@ router.post('/provider/:id/verify', isAdmin, updateVerificationStatus);
 // Make sure to add these routes before exporting the router
 router.get('/bookings', isAdmin, getBookings);
 router.get('/booking/:id/details', isAdmin, getBookingDetails);
+//Earnings router
+router.get('/earnings', isAdmin, getEarnings);
 
 
 export default router;

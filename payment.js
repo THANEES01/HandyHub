@@ -192,13 +192,15 @@ router.post('/process-payment', isCustomerAuth, async (req, res) => {
                 try {
                     await pool.query(`
                         INSERT INTO payments (
-                            booking_id, customer_id, amount, payment_method, 
+                            booking_id, customer_id, amount, base_fee, service_charge, payment_method, 
                             payment_reference, status, created_at
-                        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
                     `, [
                         bookingId, 
                         req.session.user.id, 
-                        parseFloat(req.session.paymentInfo.baseFee) * 1.05,
+                        parseFloat(req.session.paymentInfo.baseFee) * 1.05, // Total amount
+                        parseFloat(req.session.paymentInfo.baseFee),        // Base fee
+                        parseFloat(req.session.paymentInfo.baseFee) * 0.05, // Service charge
                         'Stripe',
                         payment_intent,
                         'Completed'
@@ -261,13 +263,15 @@ router.get('/process-payment', isCustomerAuth, async (req, res) => {
                 try {
                     await pool.query(`
                         INSERT INTO payments (
-                            booking_id, customer_id, amount, payment_method, 
+                            booking_id, customer_id, amount, base_fee, service_charge, payment_method, 
                             payment_reference, status, created_at
-                        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
                     `, [
                         bookingId, 
                         req.session.user.id, 
-                        parseFloat(req.session.paymentInfo.baseFee) * 1.05,
+                        parseFloat(req.session.paymentInfo.baseFee) * 1.05, // Total amount
+                        parseFloat(req.session.paymentInfo.baseFee),        // Base fee
+                        parseFloat(req.session.paymentInfo.baseFee) * 0.05, // Service charge
                         'Stripe',
                         payment_intent,
                         'Completed'

@@ -102,6 +102,18 @@
             color: white;
         }
 
+        .status-Pending {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background-color: #fff3cd; /* Light yellow background */
+            color: #856404; /* Darker yellow/brown text */
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
         .status-Cancelled {
             background-color: var(--danger-red);
             color: white;
@@ -352,6 +364,17 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .status-New {
+            background-color: #e6f2ff; /* Light blue background */
+            color: #0077be; /* Dark blue text */
+        }
+
+        .status-Accepted {
+            background-color: #d1f7c4; /* Light green background */
+            color: #2e8b57; /* Sea green text */
+        }
+
     </style>
 </head>
 <body>
@@ -407,7 +430,7 @@
             <!-- Action Buttons - Only show for New/Pending/Accepted statuses -->
             <% if (booking.status !== 'Completed' && booking.status !== 'Cancelled') { %>
                 <div class="booking-action-wrapper">
-                    <% if (booking.status === 'New' || booking.status === 'Pending' || booking.status === 'Confirmed') { %>
+                    <% if (booking.status === 'New' || booking.status === 'Confirmed') { %>
                         <form action="/provider/booking/<%= booking.id %>/accept" method="POST">
                             <button type="submit" class="btn btn-action-custom btn-accept">
                                 <i class="bi bi-check-circle"></i> Accept Booking
@@ -568,9 +591,9 @@
                     <div class="data-card" style="border-left: 4px solid var(--danger-red);">
                         <div class="card-header">
                             <h3 class="section-title">Cancellation Details</h3>
-                            <span class="status-badge status-Cancelled">
+                            <!-- <span class="status-badge status-Cancelled">
                                 <i class="bi bi-x-circle"></i> Cancelled
-                            </span>
+                            </span> -->
                         </div>
                         
                         <div class="info-group">
