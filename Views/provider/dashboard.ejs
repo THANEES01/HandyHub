@@ -364,9 +364,50 @@
             </div>
         </div>
 
+        <!-- Service Coverage Area Section -->
+        <div class="data-section">
+            <h3 class="section-title">
+                <i class="bi bi-geo-alt"></i> Service Coverage Area
+                <a href="/provider/edit-profile" class="btn btn-sm btn-outline-primary float-end">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+            </h3>
+            
+            <% if (provider.coverageAreas && provider.coverageAreas.length > 0) { %>
+                <div class="table-responsive">
+                    <table class="pricing-table">
+                        <thead>
+                            <tr>
+                                <th>State</th>
+                                <th>City</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% provider.coverageAreas.forEach(area => { %>
+                                <tr>
+                                    <td><strong><%= area.state_name %></strong></td>
+                                    <td><%= area.city_name %></td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            <% } else { %>
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    You haven't set any service coverage areas yet. Please <a href="/provider/edit-profile">edit your profile</a> to set where you provide your services.
+                </div>
+            <% } %>
+        </div>
+
         <!-- Pricing Information Section -->
         <div class="data-section">
-            <h3 class="section-title">Pricing Information</h3>
+            <h3 class="section-title">Pricing Information
+                <a href="/provider/edit-profile" class="btn btn-sm btn-outline-primary float-end">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+            </h3>
+            
             <% if (provider.categories && provider.categories.length > 0) { %>
                 <div class="table-responsive">
                     <table class="pricing-table">

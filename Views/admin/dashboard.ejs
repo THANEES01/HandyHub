@@ -378,6 +378,31 @@
     .main-content {
         scroll-padding-top: 20px;
     }
+    
+    /* Coverage table styles */
+    #coverageTableBody td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #dee2e6;
+        background-color: white;
+    }
+
+    #coverageTableBody tr:last-child td {
+        border-bottom: none;
+    }
+
+    #coverageTableBody td:first-child {
+        background-color: #f8f9fa;
+        font-weight: 500;
+        color: var(--dark-blue);
+    }
+
+    /* Add a responsive design for the coverage table */
+    @media (max-width: 767px) {
+        #coverageTableBody td[rowspan] {
+            display: table-cell;
+            border-right: 1px solid #dee2e6;
+        }
+    }
 
     </style>
 
@@ -537,6 +562,24 @@
                         </table>
                     </div>
                 </div>
+                
+                <!-- Add this new section after the availability section in the providerDetailsModal -->
+                <div class="info-section">
+                    <h5>Service Coverage Areas</h5>
+                    <div id="coverageLocations">
+                        <table class="pricing-table">
+                            <thead>
+                                <tr>
+                                    <th>State</th>
+                                    <th>City</th>
+                                </tr>
+                            </thead>
+                            <tbody id="coverageTableBody">
+                                <!-- Coverage data will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
                 <!-- Add this new section for availability information -->
                 <div class="info-section">
@@ -680,415 +723,463 @@
     let currentProviderId = null;
 
     function showProviderDetails(id) {
-    currentProviderId = id;
-    console.log('Current Provider ID set:', currentProviderId);
-    
-    fetch(`/admin/provider/${id}/details`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(provider => {
-            // Debug log the full provider data
-            console.log('Provider details received:', provider);
-            
-            // Set business information
-            document.getElementById('businessName').textContent = provider.business_name || 'N/A';
-            document.getElementById('businessEmail').textContent = provider.email || 'N/A';
-            document.getElementById('businessPhone').textContent = provider.phone_number || 'N/A';
-            
-            // Handle categories display
-            const categoriesElement = document.getElementById('serviceCategories');
-            if (provider.categories && provider.categories.length > 0 && provider.categories[0] !== null) {
-                categoriesElement.innerHTML = provider.categories
-                    .map(cat => `<span class="service-tag">${cat}</span>`)
-                    .join('');
-            } else {
-                categoriesElement.innerHTML = '<span class="text-muted">No categories</span>';
-            }
-            
-            // Handle services display
-            const servicesElement = document.getElementById('servicesOffered');
-            if (provider.services && provider.services.length > 0 && provider.services[0] !== null) {
-                servicesElement.innerHTML = provider.services
-                    .map(service => `<span class="service-tag">${service}</span>`)
-                    .join('');
-            } else {
-                servicesElement.innerHTML = '<span class="text-muted">No services offered</span>';
-            }
-
-            // Handle pricing display
-            const pricingTableBody = document.getElementById('pricingTableBody');
-            pricingTableBody.innerHTML = '';
-
-            if (provider.pricing && provider.pricing.length > 0) {
-                provider.pricing.forEach(pricing => {
-                    const row = document.createElement('tr');
-                    
-                    // Format the category name to be more readable
-                    const formattedCategory = pricing.category
-                        .replace(/_/g, ' ')
-                        .replace(/\b\w/g, c => c.toUpperCase());
-
-                    // Format the fee type to be more readable
-                    const formattedFeeType = pricing.fee_type
-                        .replace(/_/g, ' ')
-                        .replace(/\b\w/g, c => c.toUpperCase());
-                    
-                    row.innerHTML = `
-                        <td>${formattedCategory}</td>
-                        <td>RM${pricing.base_fee.toFixed(2)}</td>
-                        <td><span class="fee-type-badge">${formattedFeeType}</span></td>
-                    `;
-                    pricingTableBody.appendChild(row);
-                });
-            } else {
-                pricingTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="3" class="text-center">No pricing information available</td>
-                    </tr>
-                `;
-            }
-
-            // Handle availability display
-            const availabilityTableBody = document.getElementById('availabilityTableBody');
-            availabilityTableBody.innerHTML = '';
-
-            if (provider.availability && provider.availability.length > 0) {
-                console.log('Availability data found:', provider.availability);
+        currentProviderId = id;
+        console.log('Current Provider ID set:', currentProviderId);
+        
+        fetch(`/admin/provider/${id}/details`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(provider => {
+                // Debug log the full provider data
+                console.log('Provider details received:', provider);
                 
-                provider.availability.forEach(day => {
-                    const row = document.createElement('tr');
-                    
-                    // Format slot duration to be more readable
-                    let durationText = '';
-                    if (day.slot_duration === 30) {
-                        durationText = '30 minutes';
-                    } else if (day.slot_duration === 60) {
-                        durationText = '1 hour';
-                    } else if (day.slot_duration === 90) {
-                        durationText = '1.5 hours';
-                    } else if (day.slot_duration === 120) {
-                        durationText = '2 hours';
-                    } else if (day.slot_duration === 180) {
-                        durationText = '3 hours';
-                    } else {
-                        durationText = `${day.slot_duration} minutes`;
-                    }
-                    
-                    // Format time strings to be more readable
-                    function formatTime(timeStr) {
-                        if (!timeStr) return 'N/A';
-                        
-                        // Handle different time formats
-                        let hours, minutes;
-                        if (timeStr.includes(':')) {
-                            [hours, minutes] = timeStr.split(':');
-                        } else {
-                            hours = timeStr;
-                            minutes = '00';
-                        }
-                        
-                        hours = parseInt(hours);
-                        const ampm = hours >= 12 ? 'PM' : 'AM';
-                        hours = hours % 12 || 12; // Convert to 12-hour format
-                        
-                        return `${hours}:${minutes.padStart(2, '0')} ${ampm}`;
-                    }
-                    
-                    row.innerHTML = `
-                        <td>${day.day_of_week}</td>
-                        <td>${day.is_available ? formatTime(day.start_time) : 'Not Available'}</td>
-                        <td>${day.is_available ? formatTime(day.end_time) : 'Not Available'}</td>
-                        <td>${day.is_available ? durationText : 'N/A'}</td>
-                        <td>
-                            ${day.is_available 
-                                ? '<span class="badge bg-success">Available</span>' 
-                                : '<span class="badge bg-secondary">Not Available</span>'}
-                        </td>
-                    `;
-                    availabilityTableBody.appendChild(row);
-                });
-            } else {
-                console.log('No availability data found');
-                availabilityTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-center">No availability information available</td>
-                    </tr>
-                `;
-            }
-
-            // Handle document preview with extensive logging
-            const documentPreview = document.getElementById('documentPreview');
-            console.log('Full document path:', provider.certification_file);
-
-            if (provider.certification_file) {
-                const fileExt = provider.certification_file.split('.').pop().toLowerCase();
+                // Set business information
+                document.getElementById('businessName').textContent = provider.business_name || 'N/A';
+                document.getElementById('businessEmail').textContent = provider.email || 'N/A';
+                document.getElementById('businessPhone').textContent = provider.phone_number || 'N/A';
                 
-                // Clear previous content
-                documentPreview.innerHTML = '';
+                // Handle categories display
+                const categoriesElement = document.getElementById('serviceCategories');
+                if (provider.categories && provider.categories.length > 0 && provider.categories[0] !== null) {
+                    categoriesElement.innerHTML = provider.categories
+                        .map(cat => `<span class="service-tag">${cat}</span>`)
+                        .join('');
+                } else {
+                    categoriesElement.innerHTML = '<span class="text-muted">No categories</span>';
+                }
+                
+                // Handle services display
+                const servicesElement = document.getElementById('servicesOffered');
+                if (provider.services && provider.services.length > 0 && provider.services[0] !== null) {
+                    servicesElement.innerHTML = provider.services
+                        .map(service => `<span class="service-tag">${service}</span>`)
+                        .join('');
+                } else {
+                    servicesElement.innerHTML = '<span class="text-muted">No services offered</span>';
+                }
 
-                if (fileExt === 'pdf') {
-                    // For PDF files, use an embed element
-                    const pdfEmbed = document.createElement('embed');
-                    pdfEmbed.src = provider.certification_file;
-                    pdfEmbed.type = 'application/pdf';
-                    pdfEmbed.width = '100%';
-                    pdfEmbed.height = '500px';
-                    
-                    documentPreview.appendChild(pdfEmbed);
+                // Handle pricing display
+                const pricingTableBody = document.getElementById('pricingTableBody');
+                pricingTableBody.innerHTML = '';
 
-                    pdfEmbed.addEventListener('error', () => {
-                        console.error('PDF failed to load:', provider.certification_file);
-                        documentPreview.innerHTML = `
-                            <div class="alert alert-danger">
-                                Unable to load PDF. 
-                                Check file path: ${provider.certification_file}
-                            </div>
+                if (provider.pricing && provider.pricing.length > 0) {
+                    provider.pricing.forEach(pricing => {
+                        const row = document.createElement('tr');
+                        
+                        // Format the category name to be more readable
+                        const formattedCategory = pricing.category
+                            .replace(/_/g, ' ')
+                            .replace(/\b\w/g, c => c.toUpperCase());
+
+                        // Format the fee type to be more readable
+                        const formattedFeeType = pricing.fee_type
+                            .replace(/_/g, ' ')
+                            .replace(/\b\w/g, c => c.toUpperCase());
+                        
+                        row.innerHTML = `
+                            <td>${formattedCategory}</td>
+                            <td>RM${pricing.base_fee.toFixed(2)}</td>
+                            <td><span class="fee-type-badge">${formattedFeeType}</span></td>
                         `;
+                        pricingTableBody.appendChild(row);
                     });
                 } else {
-                    // For image files, use img element
-                    const img = document.createElement('img');
-                    img.src = provider.certification_file;
-                    img.alt = 'Business Documentation';
-                    img.style.maxWidth = '100%';
-                    img.style.maxHeight = '500px';
-                    img.style.objectFit = 'contain';
-
-                    documentPreview.appendChild(img);
-
-                    img.addEventListener('error', () => {
-                        console.error('Image failed to load:', provider.certification_file);
-                        documentPreview.innerHTML = `
-                            <div class="alert alert-danger">
-                                Unable to load document. 
-                                Check file path: ${provider.certification_file}
-                            </div>
-                        `;
-                    });
+                    pricingTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="3" class="text-center">No pricing information available</td>
+                        </tr>
+                    `;
                 }
-            } else {
-                documentPreview.innerHTML = '<p class="text-muted">No documentation provided</p>';
-            }
-            
-            // Show the modal
-            new bootstrap.Modal(document.getElementById('providerDetailsModal')).show();
-        })
-        .catch(error => {
-            console.error('Error fetching provider details:', error);
-            
-            // Clear previous content
-            document.getElementById('documentPreview').innerHTML = `
-                <div class="alert alert-danger">
-                    Unable to load document. Error: ${error.message}
-                </div>
-            `;
-            
-            // Still show the modal with error message
-            new bootstrap.Modal(document.getElementById('providerDetailsModal')).show();
-        });
-}
 
-function deleteProvider(id, businessName) {
-    // Set the provider ID and name for deletion
-    currentProviderId = id;
-    document.getElementById('providerNameToDelete').textContent = businessName;
-    
-    // Show the confirmation modal
-    const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
-    deleteModal.show();
-    
-    // Set up the confirm button
-    document.getElementById('confirmDeleteBtn').onclick = function() {
-        // Send delete request to the server
-        fetch(`/admin/provider/${id}/delete`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(result => {
-            if (result.success) {
-                // Remove the row from the table
-                const providerRow = document.querySelector(`tr[data-provider-id="${id}"]`);
-                if (providerRow) {
-                    providerRow.remove();
-                }
-                
-                // Hide the modal
-                deleteModal.hide();
-                
-                // Show success message
-                alert('Service provider deleted successfully');
-            } else {
-                throw new Error(result.error || 'Failed to delete service provider');
-            }
-        })
-        .catch(error => {
-            console.error('Error deleting provider:', error);
-            alert(`Error: ${error.message}`);
-        });
-    };
-}
+                // Handle availability display
+                const availabilityTableBody = document.getElementById('availabilityTableBody');
+                availabilityTableBody.innerHTML = '';
 
-function updateVerificationStatus(status) {
-        if (!currentProviderId) return;
-
-        const data = { status };
-        if (status === 'reject') {
-            const reason = prompt('Please provide a detailed reason for rejection:');
-            if (!reason) return; // Cancel if no reason is provided
-            data.rejectionReason = reason;
-        }
-
-        fetch(`/admin/provider/${currentProviderId}/verify`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => {
-            // Log the raw response for debugging
-            console.log('Response status:', response.status);
-            return response.json();
-        })
-        .then(result => {
-            if (result.success) {
-                // Find the row in the providers table
-                const providerRow = document.querySelector(`tr[data-provider-id="${currentProviderId}"]`);
-                
-                if (providerRow) {
-                    // Update status badge
-                    const statusCell = providerRow.querySelector('td:nth-child(4)');
-                    if (statusCell) {
-                        if (status === 'approve') {
-                            statusCell.innerHTML = '<span class="badge bg-success">Approved</span>';
+                if (provider.availability && provider.availability.length > 0) {
+                    console.log('Availability data found:', provider.availability);
+                    
+                    provider.availability.forEach(day => {
+                        const row = document.createElement('tr');
+                        
+                        // Format slot duration to be more readable
+                        let durationText = '';
+                        if (day.slot_duration === 30) {
+                            durationText = '30 minutes';
+                        } else if (day.slot_duration === 60) {
+                            durationText = '1 hour';
+                        } else if (day.slot_duration === 90) {
+                            durationText = '1.5 hours';
+                        } else if (day.slot_duration === 120) {
+                            durationText = '2 hours';
+                        } else if (day.slot_duration === 180) {
+                            durationText = '3 hours';
                         } else {
-                            statusCell.innerHTML = '<span class="badge bg-danger">Rejected</span>';
+                            durationText = `${day.slot_duration} minutes`;
+                        }
+                        
+                        // Format time strings to be more readable
+                        function formatTime(timeStr) {
+                            if (!timeStr) return 'N/A';
+                            
+                            // Handle different time formats
+                            let hours, minutes;
+                            if (timeStr.includes(':')) {
+                                [hours, minutes] = timeStr.split(':');
+                            } else {
+                                hours = timeStr;
+                                minutes = '00';
+                            }
+                            
+                            hours = parseInt(hours);
+                            const ampm = hours >= 12 ? 'PM' : 'AM';
+                            hours = hours % 12 || 12; // Convert to 12-hour format
+                            
+                            return `${hours}:${minutes.padStart(2, '0')} ${ampm}`;
+                        }
+                        
+                        row.innerHTML = `
+                            <td>${day.day_of_week}</td>
+                            <td>${day.is_available ? formatTime(day.start_time) : 'Not Available'}</td>
+                            <td>${day.is_available ? formatTime(day.end_time) : 'Not Available'}</td>
+                            <td>${day.is_available ? durationText : 'N/A'}</td>
+                            <td>
+                                ${day.is_available 
+                                    ? '<span class="badge bg-success">Available</span>' 
+                                    : '<span class="badge bg-secondary">Not Available</span>'}
+                            </td>
+                        `;
+                        availabilityTableBody.appendChild(row);
+                    });
+                } else {
+                    console.log('No availability data found');
+                    availabilityTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center">No availability information available</td>
+                        </tr>
+                    `;
+                }
+
+                // Handle coverage locations
+                const coverageTableBody = document.getElementById('coverageTableBody');
+                    coverageTableBody.innerHTML = '';
+
+                    if (provider.coverage_locations && provider.coverage_locations.length > 0) {
+                        console.log('Coverage locations found:', provider.coverage_locations);
+                        
+                        // Group locations by state
+                        const locationsByState = {};
+                        provider.coverage_locations.forEach(location => {
+                            if (!locationsByState[location.state_name]) {
+                                locationsByState[location.state_name] = [];
+                            }
+                            locationsByState[location.state_name].push(location.city_name);
+                        });
+                        
+                        // Sort states alphabetically
+                        const sortedStates = Object.keys(locationsByState).sort();
+                        
+                        sortedStates.forEach(state => {
+                            // Sort cities alphabetically within each state
+                            const cities = locationsByState[state].sort();
+                            
+                            // Create a row for each city
+                            cities.forEach((city, index) => {
+                                const row = document.createElement('tr');
+                                
+                                // Only show state name in the first row for this state
+                                if (index === 0) {
+                                    row.innerHTML = `
+                                        <td rowspan="${cities.length}">${state}</td>
+                                        <td>${city}</td>
+                                    `;
+                                } else {
+                                    row.innerHTML = `<td>${city}</td>`;
+                                }
+                                
+                                coverageTableBody.appendChild(row);
+                            });
+                        });
+                    } else {
+                        console.log('No coverage locations found');
+                        coverageTableBody.innerHTML = `
+                            <tr>
+                                <td colspan="2" class="text-center">No coverage areas available</td>
+                            </tr>
+                        `;
+                    }
+                    
+                // Handle document preview with extensive logging
+                const documentPreview = document.getElementById('documentPreview');
+                console.log('Full document path:', provider.certification_file);
+
+                if (provider.certification_file) {
+                    const fileExt = provider.certification_file.split('.').pop().toLowerCase();
+                    
+                    // Clear previous content
+                    documentPreview.innerHTML = '';
+
+                    if (fileExt === 'pdf') {
+                        // For PDF files, use an embed element
+                        const pdfEmbed = document.createElement('embed');
+                        pdfEmbed.src = provider.certification_file;
+                        pdfEmbed.type = 'application/pdf';
+                        pdfEmbed.width = '100%';
+                        pdfEmbed.height = '500px';
+                        
+                        documentPreview.appendChild(pdfEmbed);
+
+                        pdfEmbed.addEventListener('error', () => {
+                            console.error('PDF failed to load:', provider.certification_file);
+                            documentPreview.innerHTML = `
+                                <div class="alert alert-danger">
+                                    Unable to load PDF. 
+                                    Check file path: ${provider.certification_file}
+                                </div>
+                            `;
+                        });
+                    } else {
+                        // For image files, use img element
+                        const img = document.createElement('img');
+                        img.src = provider.certification_file;
+                        img.alt = 'Business Documentation';
+                        img.style.maxWidth = '100%';
+                        img.style.maxHeight = '500px';
+                        img.style.objectFit = 'contain';
+
+                        documentPreview.appendChild(img);
+
+                        img.addEventListener('error', () => {
+                            console.error('Image failed to load:', provider.certification_file);
+                            documentPreview.innerHTML = `
+                                <div class="alert alert-danger">
+                                    Unable to load document. 
+                                    Check file path: ${provider.certification_file}
+                                </div>
+                            `;
+                        });
+                    }
+                } else {
+                    documentPreview.innerHTML = '<p class="text-muted">No documentation provided</p>';
+                }
+                
+                // Show the modal
+                new bootstrap.Modal(document.getElementById('providerDetailsModal')).show();
+            })
+            .catch(error => {
+                console.error('Error fetching provider details:', error);
+                
+                // Clear previous content
+                document.getElementById('documentPreview').innerHTML = `
+                    <div class="alert alert-danger">
+                        Unable to load document. Error: ${error.message}
+                    </div>
+                `;
+                
+                // Still show the modal with error message
+                new bootstrap.Modal(document.getElementById('providerDetailsModal')).show();
+            });
+    }
+
+    function deleteProvider(id, businessName) {
+        // Set the provider ID and name for deletion
+        currentProviderId = id;
+        document.getElementById('providerNameToDelete').textContent = businessName;
+        
+        // Show the confirmation modal
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        deleteModal.show();
+        
+        // Set up the confirm button
+        document.getElementById('confirmDeleteBtn').onclick = function() {
+            // Send delete request to the server
+            fetch(`/admin/provider/${id}/delete`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    // Remove the row from the table
+                    const providerRow = document.querySelector(`tr[data-provider-id="${id}"]`);
+                    if (providerRow) {
+                        providerRow.remove();
+                    }
+                    
+                    // Hide the modal
+                    deleteModal.hide();
+                    
+                    // Show success message
+                    alert('Service provider deleted successfully');
+                } else {
+                    throw new Error(result.error || 'Failed to delete service provider');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting provider:', error);
+                alert(`Error: ${error.message}`);
+            });
+        };
+    }
+
+    function updateVerificationStatus(status) {
+            if (!currentProviderId) return;
+
+            const data = { status };
+            if (status === 'reject') {
+                const reason = prompt('Please provide a detailed reason for rejection:');
+                if (!reason) return; // Cancel if no reason is provided
+                data.rejectionReason = reason;
+            }
+
+            fetch(`/admin/provider/${currentProviderId}/verify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                // Log the raw response for debugging
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    // Find the row in the providers table
+                    const providerRow = document.querySelector(`tr[data-provider-id="${currentProviderId}"]`);
+                    
+                    if (providerRow) {
+                        // Update status badge
+                        const statusCell = providerRow.querySelector('td:nth-child(4)');
+                        if (statusCell) {
+                            if (status === 'approve') {
+                                statusCell.innerHTML = '<span class="badge bg-success">Approved</span>';
+                            } else {
+                                statusCell.innerHTML = '<span class="badge bg-danger">Rejected</span>';
+                            }
                         }
                     }
+                    
+                    // Close the modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('providerDetailsModal'));
+                    if (modal) modal.hide();
+
+                    // Show success message
+                    alert(result.message);
+                } else {
+                    throw new Error(result.error || 'Operation failed');
                 }
-                
-                // Close the modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('providerDetailsModal'));
-                if (modal) modal.hide();
-
-                // Show success message
-                alert(result.message);
-            } else {
-                throw new Error(result.error || 'Operation failed');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error updating verification status');
-        });
-}
-
-function showCustomerDetails(id) {
-    console.log('Fetching details for customer ID:', id);
-    
-    fetch(`/admin/customer/${id}/details`)
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(customer => {
-            console.log('Customer details received:', customer);
-            
-            // Populate basic details
-            document.getElementById('customerName').textContent = customer.name || 'N/A';
-            document.getElementById('customerEmail').textContent = customer.email || 'N/A';
-            document.getElementById('customerPhone').textContent = customer.phone_number || 'N/A';
-            document.getElementById('customerJoinedDate').textContent = 
-                customer.joined_date ? new Date(customer.joined_date).toLocaleDateString() : 'N/A';
-            
-            // Show the modal
-            new bootstrap.Modal(document.getElementById('customerDetailsModal')).show();
-        })
-        .catch(error => {
-            console.error('Error fetching customer details:', error);
-            alert(`Error loading customer details: ${error.message}`);
-        });
-}
-
-function logout() {
-    if (confirm('Are you sure you want to logout?')) {
-        // Use browser's navigation to redirect to the logout route
-        window.location.href = '/auth/logout';
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-        // Enable tooltips
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        });
-        
-        // Add click handler for availability status buttons
-        document.querySelectorAll('.availability-status').forEach(button => {
-            button.addEventListener('click', function() {
-                const providerId = this.getAttribute('data-provider-id');
-                showProviderDetails(providerId);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating verification status');
             });
-        });
-    });
+    }
 
-    // Add this script to the bottom of your dashboard.ejs file
-document.addEventListener('DOMContentLoaded', function() {
-    // Set active navigation item based on hash
-    function setActiveNavItem() {
-        const hash = window.location.hash;
-        const navItems = document.querySelectorAll('.sidebar .nav-link');
+    function showCustomerDetails(id) {
+        console.log('Fetching details for customer ID:', id);
         
-        // Remove active class from all nav items
-        navItems.forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        // Set active class based on hash
-        if (hash === '#service-providers-section') {
-            document.querySelector('.sidebar .nav-link[href="/admin/dashboard#service-providers-section"]').classList.add('active');
-        } else if (hash === '#customers-section') {
-            document.querySelector('.sidebar .nav-link[href="/admin/dashboard#customers-section"]').classList.add('active');
-        } else if (!hash) {
-            // If no hash, default to Dashboard being active
-            document.querySelector('.sidebar .nav-link[href="/admin/dashboard"]').classList.add('active');
+        fetch(`/admin/customer/${id}/details`)
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(customer => {
+                console.log('Customer details received:', customer);
+                
+                // Populate basic details
+                document.getElementById('customerName').textContent = customer.name || 'N/A';
+                document.getElementById('customerEmail').textContent = customer.email || 'N/A';
+                document.getElementById('customerPhone').textContent = customer.phone_number || 'N/A';
+                document.getElementById('customerJoinedDate').textContent = 
+                    customer.joined_date ? new Date(customer.joined_date).toLocaleDateString() : 'N/A';
+                
+                // Show the modal
+                new bootstrap.Modal(document.getElementById('customerDetailsModal')).show();
+            })
+            .catch(error => {
+                console.error('Error fetching customer details:', error);
+                alert(`Error loading customer details: ${error.message}`);
+            });
+    }
+
+    function logout() {
+        if (confirm('Are you sure you want to logout?')) {
+            // Use browser's navigation to redirect to the logout route
+            window.location.href = '/auth/logout';
         }
     }
-    
-    // Initial check
-    setActiveNavItem();
-    
-    // Listen for hash changes
-    window.addEventListener('hashchange', setActiveNavItem);
-    
-    // Handle initial page load if there's a hash in the URL
-    if (window.location.hash) {
-        // Small delay to ensure the page has loaded
-        setTimeout(function() {
-            const targetElement = document.querySelector(window.location.hash);
-            if (targetElement) {
-                targetElement.scrollIntoView();
-            }
-        }, 100);
-    }
-});
 
+    document.addEventListener('DOMContentLoaded', function() {
+            // Enable tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
+            
+            // Add click handler for availability status buttons
+            document.querySelectorAll('.availability-status').forEach(button => {
+                button.addEventListener('click', function() {
+                    const providerId = this.getAttribute('data-provider-id');
+                    showProviderDetails(providerId);
+                });
+            });
+        });
+
+        // Add this script to the bottom of your dashboard.ejs file
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set active navigation item based on hash
+        function setActiveNavItem() {
+            const hash = window.location.hash;
+            const navItems = document.querySelectorAll('.sidebar .nav-link');
+            
+            // Remove active class from all nav items
+            navItems.forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Set active class based on hash
+            if (hash === '#service-providers-section') {
+                document.querySelector('.sidebar .nav-link[href="/admin/dashboard#service-providers-section"]').classList.add('active');
+            } else if (hash === '#customers-section') {
+                document.querySelector('.sidebar .nav-link[href="/admin/dashboard#customers-section"]').classList.add('active');
+            } else if (!hash) {
+                // If no hash, default to Dashboard being active
+                document.querySelector('.sidebar .nav-link[href="/admin/dashboard"]').classList.add('active');
+            }
+        }
+        
+        // Initial check
+        setActiveNavItem();
+        
+        // Listen for hash changes
+        window.addEventListener('hashchange', setActiveNavItem);
+        
+        // Handle initial page load if there's a hash in the URL
+        if (window.location.hash) {
+            // Small delay to ensure the page has loaded
+            setTimeout(function() {
+                const targetElement = document.querySelector(window.location.hash);
+                if (targetElement) {
+                    targetElement.scrollIntoView();
+                }
+            }, 100);
+        }
+    });
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

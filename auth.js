@@ -294,9 +294,17 @@ const providerRegister = async (req, res) => {
             serviceCategories,
             services,
             password,
-            categoryFees,  // New field for base fees
-            feeTypes       // New field for fee types (per visit or per hour)
+            coverageAreas  // New field for coverage areas
         } = req.body;
+
+        console.log("Registration data:", {
+            businessName,
+            email,
+            phoneNumber,
+            serviceCategories: Array.isArray(serviceCategories) ? serviceCategories.length : "1 category",
+            servicesCount: services ? JSON.parse(services).length : 0,
+            coverageAreas: coverageAreas ? JSON.parse(coverageAreas).length : 0
+        });
 
         await client.query('BEGIN');
 
@@ -327,19 +335,40 @@ const providerRegister = async (req, res) => {
             [newUser.rows[0].id, businessName, phoneNumber, certificationPath]
         );
 
+        const providerId = newProvider.rows[0].id;
+
+        // Extract fee data from the form
+        function extractCategoryData(body, category) {
+            const feeField = `categoryFees[${category}]`;
+            const feeTypeField = `feeTypes[${category}]`;
+            
+            return {
+                fee: body[feeField] ? parseFloat(body[feeField]) : 0,
+                feeType: body[feeTypeField] || 'per visit'
+            };
+        }
+
         // Insert service categories with base fees
         if (Array.isArray(serviceCategories)) {
             for (const category of serviceCategories) {
-                // Get the base fee for this category (default to 0 if not set)
-                const baseFee = categoryFees && categoryFees[category] ? parseFloat(categoryFees[category]) : 0;
-                // Get the fee type for this category (default to 'per visit' if not set)
-                const feeType = feeTypes && feeTypes[category] ? feeTypes[category] : 'per visit';
+                // Extract fee data using the helper function
+                const { fee, feeType } = extractCategoryData(req.body, category);
+                
+                console.log(`Adding category ${category} with fee ${fee} (${feeType})`);
                 
                 await client.query(
                     'INSERT INTO service_categories (provider_id, category_name, base_fee, fee_type) VALUES ($1, $2, $3, $4)',
-                    [newProvider.rows[0].id, category, baseFee, feeType]
+                    [providerId, category, fee, feeType]
                 );
             }
+        } else if (serviceCategories) {
+            // Handle single category case
+            const { fee, feeType } = extractCategoryData(req.body, serviceCategories);
+            
+            await client.query(
+                'INSERT INTO service_categories (provider_id, category_name, base_fee, fee_type) VALUES ($1, $2, $3, $4)',
+                [providerId, serviceCategories, fee, feeType]
+            );
         }
 
         // Insert provider availability
@@ -351,9 +380,20 @@ const providerRegister = async (req, res) => {
                 
                 await client.query(
                     'INSERT INTO provider_availability (provider_id, day_of_week, start_time, end_time, slot_duration, is_available) VALUES ($1, $2, $3, $4, $5, $6)',
-                    [newProvider.rows[0].id, day, startTime, endTime, slotDuration, true]
+                    [providerId, day, startTime, endTime, slotDuration, true]
                 );
             }
+        } else if (req.body.availableDays) {
+            // Handle single day case
+            const day = req.body.availableDays;
+            const startTime = req.body[`startTime_${day}`];
+            const endTime = req.body[`endTime_${day}`];
+            const slotDuration = parseInt(req.body.slotDuration);
+            
+            await client.query(
+                'INSERT INTO provider_availability (provider_id, day_of_week, start_time, end_time, slot_duration, is_available) VALUES ($1, $2, $3, $4, $5, $6)',
+                [providerId, day, startTime, endTime, slotDuration, true]
+            );
         }
 
         // Insert services
@@ -362,8 +402,62 @@ const providerRegister = async (req, res) => {
             for (const service of servicesArray) {
                 await client.query(
                     'INSERT INTO services_offered (provider_id, service_name) VALUES ($1, $2)',
-                    [newProvider.rows[0].id, service]
+                    [providerId, service]
                 );
+            }
+        }
+
+        // Insert coverage areas
+        if (coverageAreas) {
+            const coverageAreasArray = JSON.parse(coverageAreas);
+            
+            if (Array.isArray(coverageAreasArray) && coverageAreasArray.length > 0) {
+                console.log(`Adding ${coverageAreasArray.length} coverage areas`);
+                
+                for (const area of coverageAreasArray) {
+                    // First check if the city exists in our database
+                    let cityResult = await client.query(
+                        'SELECT id FROM cities WHERE city_name = $1 AND state_id = $2',
+                        [area.cityName, area.stateId]
+                    );
+                    
+                    let cityId;
+                    
+                    // If city doesn't exist, insert it
+                    if (cityResult.rows.length === 0) {
+                        // First check if state exists
+                        let stateResult = await client.query(
+                            'SELECT id FROM states WHERE id = $1',
+                            [area.stateId]
+                        );
+                        
+                        // If state doesn't exist, insert it
+                        if (stateResult.rows.length === 0) {
+                            const newState = await client.query(
+                                'INSERT INTO states (id, state_name) VALUES ($1, $2) RETURNING id',
+                                [area.stateId, area.stateName]
+                            );
+                        }
+                        
+                        // Insert the city
+                        const newCity = await client.query(
+                            'INSERT INTO cities (city_name, state_id) VALUES ($1, $2) RETURNING id',
+                            [area.cityName, area.stateId]
+                        );
+                        
+                        cityId = newCity.rows[0].id;
+                    } else {
+                        cityId = cityResult.rows[0].id;
+                    }
+                    
+                    // Insert the provider coverage
+                    await client.query(
+                        'INSERT INTO provider_coverage (provider_id, city_id) VALUES ($1, $2)',
+                        [providerId, cityId]
+                    );
+                    
+                    console.log(`Added coverage for ${area.cityName}, ${area.stateName}`);
+                }
             }
         }
 

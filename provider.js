@@ -78,12 +78,23 @@ const getDashboard = async (req, res) => {
             END
         `, [providerResult.rows[0].id]);
 
+        // Get provider's coverage areas
+        const coverageAreasResult = await pool.query(`
+            SELECT pc.id, pc.city_id, c.city_name, s.id as state_id, s.state_name
+            FROM provider_coverage pc
+            JOIN cities c ON pc.city_id = c.id
+            JOIN states s ON c.state_id = s.id
+            WHERE pc.provider_id = $1
+            ORDER BY s.state_name, c.city_name
+        `, [providerResult.rows[0].id]);
+
         // Combine all data
         const providerData = {
             ...providerResult.rows[0],
             services: servicesResult.rows,
             categories: categoriesResult.rows,
-            availability: availabilityResult.rows
+            availability: availabilityResult.rows,
+            coverageAreas: coverageAreasResult.rows
         };
 
         // Get recent bookings for the provider
@@ -135,8 +146,11 @@ const updateProfile = async (req, res) => {
             baseFees = {},
             feeTypes = {},
             availableDays = [],
-            slotDuration
+            slotDuration,
+            coverageAreas = '[]'
         } = req.body;
+        
+        console.log('Coverage areas data received:', coverageAreas);
         
         await client.query('BEGIN');
         
@@ -212,7 +226,36 @@ const updateProfile = async (req, res) => {
             console.log(`Inserted availability for ${day}: ${isAvailable ? 'Available' : 'Not available'} from ${startTime} to ${endTime}`);
         }
         
-        console.log(`Updated profile with ${insertedCategories} categories, ${insertedServices} services, and 7 availability records`);
+        // Handle coverage areas update
+        // First, delete existing coverage areas
+        await client.query('DELETE FROM provider_coverage WHERE provider_id = $1', [providerId]);
+        
+        // Parse coverage areas JSON
+        let coverageAreasArray = [];
+        try {
+            coverageAreasArray = JSON.parse(coverageAreas);
+            console.log('Parsed coverage areas:', coverageAreasArray);
+        } catch (e) {
+            console.error('Error parsing coverage areas JSON:', e);
+            coverageAreasArray = [];
+        }
+        
+        // Insert new coverage areas
+        let insertedCoverageAreas = 0;
+        if (Array.isArray(coverageAreasArray) && coverageAreasArray.length > 0) {
+            for (const area of coverageAreasArray) {
+                if (area && area.cityId) {
+                    await client.query(
+                        'INSERT INTO provider_coverage (provider_id, city_id) VALUES ($1, $2)',
+                        [providerId, area.cityId]
+                    );
+                    insertedCoverageAreas++;
+                    console.log(`Inserted coverage area: City ID ${area.cityId}`);
+                }
+            }
+        }
+        
+        console.log(`Updated profile with ${insertedCategories} categories, ${insertedServices} services, 7 availability records, and ${insertedCoverageAreas} coverage areas`);
         
         await client.query('COMMIT');
         
@@ -338,7 +381,19 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         
         console.log('Availability records found:', availabilityResult.rows.length);
         
-        // 5. Format the data for the frontend
+        // 5. Fetch coverage areas
+        const coverageAreasResult = await pool.query(`
+            SELECT pc.id, pc.city_id, c.city_name, s.id as state_id, s.state_name
+            FROM provider_coverage pc
+            JOIN cities c ON pc.city_id = c.id
+            JOIN states s ON c.state_id = s.id
+            WHERE pc.provider_id = $1
+            ORDER BY s.state_name, c.city_name
+        `, [providerId]);
+        
+        console.log('Coverage areas found:', coverageAreasResult.rows.length);
+        
+        // 6. Format the data for the frontend
         
         // Format categories - ensure consistent structure
         const formattedCategories = categoriesResult.rows.map(cat => ({
@@ -381,17 +436,28 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
             };
         });
         
+        // Format coverage areas
+        const formattedCoverageAreas = coverageAreasResult.rows.map(area => ({
+            id: area.id,
+            city_id: area.city_id,
+            city_name: area.city_name,
+            state_id: area.state_id,
+            state_name: area.state_name
+        }));
+        
         // Log the formatted data for debugging
         console.log('Formatted categories:', formattedCategories);
         console.log('Formatted services:', formattedServices);
         console.log('Formatted availability:', formattedAvailability);
+        console.log('Formatted coverage areas:', formattedCoverageAreas);
         
-        // 6. Add the formatted data to the provider object
+        // 7. Add the formatted data to the provider object
         provider.categories = formattedCategories;
         provider.services = formattedServices;
         provider.availability = formattedAvailability;
+        provider.coverageAreas = formattedCoverageAreas;
         
-        // 7. Render the template with the complete provider data
+        // 8. Render the template with the complete provider data
         res.render('provider/edit-profile', {
             title: 'Edit Profile',
             provider: provider,
@@ -942,6 +1008,32 @@ router.get('/booking/:bookingId/cancel', isProvider, async (req, res) => {
         console.error('Error loading cancellation page:', error);
         req.session.error = 'Failed to load cancellation page. Please try again.';
         res.redirect('/provider/bookings');
+    }
+});
+
+// API endpoint to get cities by state ID
+router.get('/api/cities/:stateId', isProvider, async (req, res) => {
+    try {
+        const { stateId } = req.params;
+        
+        // Query to get cities for the given state
+        const citiesResult = await pool.query(
+            'SELECT id, city_name FROM cities WHERE state_id = $1 ORDER BY city_name',
+            [stateId]
+        );
+        
+        res.json({
+            success: true,
+            cities: citiesResult.rows
+        });
+        
+    } catch (error) {
+        console.error('Error fetching cities:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch cities',
+            error: error.message
+        });
     }
 });
 

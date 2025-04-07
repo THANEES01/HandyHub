@@ -108,7 +108,7 @@ const getDashboard = async (req, res) => {
 
 const getProviderDetails = async (req, res) => {
     try {
-        // Updated query to include pricing, availability, and other information with correct ordering
+        // Updated query to include pricing, availability, and coverage information with correct GROUP BY handling
         const query = `
             SELECT 
                 sp.id,
@@ -160,7 +160,21 @@ const getProviderDetails = async (req, res) => {
                             WHEN day_of_week = 'Sunday' THEN 7
                         END
                     ) pa
-                ) as availability
+                ) as availability,
+                (
+                    SELECT jsonb_agg(
+                        jsonb_build_object(
+                            'city_id', c.id,
+                            'city_name', c.city_name,
+                            'state_id', s.id,
+                            'state_name', s.state_name
+                        )
+                    )
+                    FROM provider_coverage pc
+                    JOIN cities c ON pc.city_id = c.id
+                    JOIN states s ON c.state_id = s.id
+                    WHERE pc.provider_id = sp.id
+                ) as coverage_locations
             FROM service_providers sp
             JOIN users u ON sp.user_id = u.id
             LEFT JOIN service_categories sc ON sc.provider_id = sp.id
@@ -182,12 +196,9 @@ const getProviderDetails = async (req, res) => {
 
         const providerData = provider.rows[0];
         
-        // Add extensive logging to debug availability data
+        // Add extensive logging to debug data
         console.log('Provider ID:', providerData.id);
-        console.log('Availability data type:', typeof providerData.availability);
-        console.log('Availability is array?', Array.isArray(providerData.availability));
-        console.log('Availability length:', providerData.availability ? providerData.availability.length : 'N/A');
-        console.log('Availability data:', JSON.stringify(providerData.availability, null, 2));
+        console.log('Coverage locations data:', JSON.stringify(providerData.coverage_locations, null, 2));
         
         // Remove the duplicate '/uploads/certifications/' prefix
         if (providerData.certification_url) {

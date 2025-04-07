@@ -247,6 +247,27 @@
             margin-top: 10px;
             font-style: italic;
         }
+
+        /* Additional styles for the coverage area section */
+    #coverageList .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .coverage-container .table th {
+        color: var(--dark-blue);
+        font-weight: 500;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .coverage-container .table td {
+        vertical-align: middle;
+        padding: 0.5rem;
+    }
+    
+    .coverage-container .services-box {
+        margin-bottom: 0;
+    }
     </style>
 </head>
 <body>
@@ -411,6 +432,75 @@
                     </div>
                     <input type="hidden" name="services" id="servicesInput">
                 </div>
+
+                <!-- Service Coverage Area Section -->
+                <div class="form-section mt-4">
+                    <label class="form-label">Service Coverage Area</label>
+                    <p class="text-muted small mb-3">Select the states and cities where you provide your services</p>
+                    
+                    <div class="coverage-container">
+                        <!-- State and City Selection Row -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small">State</label>
+                                <select id="stateSelect" class="form-select" onchange="loadCities()">
+                                    <option value="">Select a state</option>
+                                    <option value="1" data-code="01">Johor</option>
+                                    <option value="2" data-code="02">Kedah</option>
+                                    <option value="3" data-code="03">Kelantan</option>
+                                    <option value="4" data-code="04">Melaka</option>
+                                    <option value="5" data-code="05">Negeri Sembilan</option>
+                                    <option value="6" data-code="06">Pahang</option>
+                                    <option value="7" data-code="07">Pulau Pinang</option>
+                                    <option value="8" data-code="08">Perak</option>
+                                    <option value="9" data-code="09">Perlis</option>
+                                    <option value="10" data-code="10">Selangor</option>
+                                    <option value="11" data-code="11">Terengganu</option>
+                                    <option value="12" data-code="12">Sabah</option>
+                                    <option value="13" data-code="13">Sarawak</option>
+                                    <option value="14" data-code="14">Wilayah Persekutuan Kuala Lumpur</option>
+                                    <option value="15" data-code="15">Wilayah Persekutuan Labuan</option>
+                                    <option value="16" data-code="16">Wilayah Persekutuan Putrajaya</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">City</label>
+                                <select id="citySelect" class="form-select" disabled>
+                                    <option value="">Select a state first</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Add Button Row -->
+                        <div class="mb-4">
+                            <button type="button" class="add-service-btn" onclick="addCoverage()">
+                                <i class="bi bi-plus-circle me-2"></i>Add to Coverage Area
+                            </button>
+                        </div>
+                        
+                        <!-- Coverage Areas List -->
+                        <div class="services-box">
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>State</th>
+                                            <th>City</th>
+                                            <th width="80px">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="coverageList">
+                                        <tr id="noCoverageRow">
+                                            <td colspan="3" class="text-center text-muted py-4">No coverage areas selected yet</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <input type="hidden" name="coverageAreas" id="coverageAreasInput" value="[]">
+                        </div>
+                    </div>
+                </div>
+                <br>
 
                 <div class="mb-4">
                     <label class="form-label">Business/Skill Certification</label>
@@ -685,6 +775,550 @@
     if (document.readyState === 'complete') {
         addService();
     }
+
+    // Define the Malaysian cities data structure
+const malaysianCities = {
+    // Johor
+    1: [
+        { id: 1, name: 'Johor Bahru' },
+        { id: 2, name: 'Iskandar Puteri' },
+        { id: 3, name: 'Pasir Gudang' },
+        { id: 4, name: 'Batu Pahat' },
+        { id: 5, name: 'Kluang' },
+        { id: 6, name: 'Segamat' },
+        { id: 7, name: 'Muar' },
+        { id: 8, name: 'Kulai' },
+        { id: 9, name: 'Pontian' },
+        { id: 10, name: 'Kota Tinggi' },
+        { id: 11, name: 'Tangkak' },
+        { id: 12, name: 'Yong Peng' },
+        { id: 13, name: 'Simpang Renggam' },
+        { id: 14, name: 'Rengit' },
+        { id: 15, name: 'Pekan Nanas' },
+        { id: 16, name: 'Ulu Tiram' },
+        { id: 17, name: 'Skudai' },
+        { id: 18, name: 'Senai' },
+        { id: 19, name: 'Masai' },
+        { id: 20, name: 'Labis' },
+        { id: 21, name: 'Chaah' },
+        { id: 22, name: 'Bakri' },
+        { id: 23, name: 'Parit Raja' },
+        { id: 24, name: 'Benut' },
+        { id: 25, name: 'Ayer Hitam' },
+        { id: 26, name: 'Pagoh' },
+        { id: 27, name: 'Bukit Gambir' },
+        { id: 28, name: 'Sri Gading' },
+        { id: 29, name: 'Endau' },
+        { id: 30, name: 'Pengerang' },
+        { id: 31, name: 'Tenggaroh' },
+        { id: 32, name: 'Sungai Rengit' }
+    ],
+    
+    // Kedah
+    2: [
+        { id: 33, name: 'Alor Setar' },
+        { id: 34, name: 'Sungai Petani' },
+        { id: 35, name: 'Kulim' },
+        { id: 36, name: 'Langkawi' },
+        { id: 37, name: 'Jitra' }
+    ],
+    
+    // Kelantan
+    3: [
+        { id: 38, name: 'Kota Bharu' },
+        { id: 39, name: 'Pasir Mas' },
+        { id: 40, name: 'Tumpat' },
+        { id: 41, name: 'Tanah Merah' },
+        { id: 42, name: 'Machang' },
+        { id: 43, name: 'Kuala Krai' },
+        { id: 44, name: 'Gua Musang' },
+        { id: 45, name: 'Jeli' },
+        { id: 46, name: 'Bachok' },
+        { id: 47, name: 'Pasir Puteh' },
+        { id: 48, name: 'Rantau Panjang' },
+        { id: 49, name: 'Wakaf Bharu' },
+        { id: 50, name: 'Pengkalan Chepa' },
+        { id: 51, name: 'Ketereh' },
+        { id: 52, name: 'Dabong' }
+    ],
+    
+    // Melaka
+    4: [
+        { id: 53, name: 'Melaka City' },
+        { id: 54, name: 'Ayer Keroh' },
+        { id: 55, name: 'Batu Berendam' },
+        { id: 56, name: 'Alor Gajah' },
+        { id: 57, name: 'Jasin' },
+        { id: 58, name: 'Bukit Beruang' },
+        { id: 59, name: 'Masjid Tanah' },
+        { id: 60, name: 'Merlimau' },
+        { id: 61, name: 'Durian Tunggal' },
+        { id: 62, name: 'Tangga Batu' },
+        { id: 63, name: 'Tanjung Kling' }
+    ],
+    
+    // Negeri Sembilan
+    5: [
+        { id: 64, name: 'Seremban' },
+        { id: 65, name: 'Nilai' },
+        { id: 66, name: 'Port Dickson' },
+        { id: 67, name: 'Bahau' },
+        { id: 68, name: 'Kuala Pilah' },
+        { id: 69, name: 'Tampin' },
+        { id: 70, name: 'Rembau' },
+        { id: 71, name: 'Gemas' },
+        { id: 72, name: 'Lukut' },
+        { id: 73, name: 'Mantin' },
+        { id: 74, name: 'Senawang' },
+        { id: 75, name: 'Lenggeng' },
+        { id: 76, name: 'Juasseh' },
+        { id: 77, name: 'Batu Kikir' },
+        { id: 78, name: 'Pedas' }
+    ],
+    
+    // Pahang
+    6: [
+        { id: 79, name: 'Kuantan' },
+        { id: 80, name: 'Temerloh' },
+        { id: 81, name: 'Bentong' },
+        { id: 82, name: 'Raub' },
+        { id: 83, name: 'Jerantut' },
+        { id: 84, name: 'Kuala Lipis' },
+        { id: 85, name: 'Maran' },
+        { id: 86, name: 'Pekan' },
+        { id: 87, name: 'Rompin' },
+        { id: 88, name: 'Bera' },
+        { id: 89, name: 'Gambang' },
+        { id: 90, name: 'Karak' },
+        { id: 91, name: 'Triang' },
+        { id: 92, name: 'Chenor' },
+        { id: 93, name: 'Sungai Lembing' },
+        { id: 94, name: 'Jengka' },
+        { id: 95, name: 'Genting Highlands' }
+    ],
+    
+    // Pulau Pinang
+    7: [
+        { id: 96, name: 'George Town' },
+        { id: 97, name: 'Bayan Lepas' },
+        { id: 98, name: 'Gelugor' },
+        { id: 99, name: 'Ayer Itam' },
+        { id: 100, name: 'Tanjung Tokong' },
+        { id: 101, name: 'Tanjung Bungah' },
+        { id: 102, name: 'Batu Ferringhi' },
+        { id: 103, name: 'Balik Pulau' },
+        { id: 104, name: 'Bukit Mertajam' },
+        { id: 105, name: 'Seberang Jaya' },
+        { id: 106, name: 'Butterworth' },
+        { id: 107, name: 'Nibong Tebal' },
+        { id: 108, name: 'Kepala Batas' },
+        { id: 109, name: 'Permatang Pauh' },
+        { id: 110, name: 'Simpang Ampat' },
+        { id: 111, name: 'Juru' },
+        { id: 112, name: 'Sungai Ara' },
+        { id: 113, name: 'Teluk Kumbar' },
+        { id: 114, name: 'Batu Maung' },
+        { id: 115, name: 'Penaga' }
+    ],
+    
+    // Perak
+    8: [
+        { id: 116, name: 'Ipoh' },
+        { id: 117, name: 'Taiping' },
+        { id: 118, name: 'Batu Gajah' },
+        { id: 119, name: 'Teluk Intan' },
+        { id: 120, name: 'Kuala Kangsar' },
+        { id: 121, name: 'Seri Iskandar' },
+        { id: 122, name: 'Lumut' },
+        { id: 123, name: 'Sitiawan' },
+        { id: 124, name: 'Parit Buntar' },
+        { id: 125, name: 'Kampar' },
+        { id: 126, name: 'Tapah' },
+        { id: 127, name: 'Tanjung Malim' },
+        { id: 128, name: 'Manjung' },
+        { id: 129, name: 'Ayer Tawar' },
+        { id: 130, name: 'Pantai Remis' },
+        { id: 131, name: 'Simpang Pulai' },
+        { id: 132, name: 'Bagan Serai' },
+        { id: 133, name: 'Slim River' },
+        { id: 134, name: 'Tronoh' }
+    ],
+    
+    // Perlis
+    9: [
+        { id: 135, name: 'Kangar' },
+        { id: 136, name: 'Arau' },
+        { id: 137, name: 'Kuala Perlis' }
+    ],
+    
+    // Selangor
+    10: [
+        { id: 138, name: 'Shah Alam' },
+        { id: 139, name: 'Petaling Jaya' },
+        { id: 140, name: 'Subang Jaya' },
+        { id: 141, name: 'Selayang' },
+        { id: 142, name: 'Kajang' },
+        { id: 143, name: 'Sepang' },
+        { id: 144, name: 'Klang' },
+        { id: 145, name: 'Puchong' },
+        { id: 146, name: 'Ampang' },
+        { id: 147, name: 'Rawang' },
+        { id: 148, name: 'Batu Caves' },
+        { id: 149, name: 'Bandar Baru Bangi' },
+        { id: 150, name: 'Seri Kembangan' },
+        { id: 151, name: 'Hulu Langat' },
+        { id: 152, name: 'Bukit Beruntung' },
+        { id: 153, name: 'Sungai Buloh' },
+        { id: 154, name: 'Tanjung Karang' },
+        { id: 155, name: 'Meru' },
+        { id: 156, name: 'Kapar' },
+        { id: 157, name: 'Bestari Jaya' }
+    ],
+    
+    // Terengganu
+    11: [
+        { id: 158, name: 'Kuala Terengganu' },
+        { id: 159, name: 'Dungun' },
+        { id: 160, name: 'Kemaman' },
+        { id: 161, name: 'Marang' },
+        { id: 162, name: 'Chukai' },
+        { id: 163, name: 'Kijal' },
+        { id: 164, name: 'Besut' },
+        { id: 165, name: 'Permaisuri' },
+        { id: 166, name: 'Setiu' },
+        { id: 167, name: 'Paka' }
+    ],
+    
+    // Sabah
+    12: [
+        { id: 168, name: 'Kota Kinabalu' },
+        { id: 169, name: 'Sandakan' },
+        { id: 170, name: 'Tawau' },
+        { id: 171, name: 'Lahad Datu' },
+        { id: 172, name: 'Keningau' },
+        { id: 173, name: 'Semporna' },
+        { id: 174, name: 'Kudat' },
+        { id: 175, name: 'Beaufort' },
+        { id: 176, name: 'Papar' },
+        { id: 177, name: 'Tuaran' },
+        { id: 178, name: 'Kota Belud' },
+        { id: 179, name: 'Ranau' },
+        { id: 180, name: 'Sipitang' },
+        { id: 181, name: 'Tenom' },
+        { id: 182, name: 'Tambunan' },
+        { id: 183, name: 'Kunak' },
+        { id: 184, name: 'Pitas' },
+        { id: 185, name: 'Kota Marudu' },
+        { id: 186, name: 'Nabawan' },
+        { id: 187, name: 'Kuala Penyu' }
+    ],
+    
+    // Sarawak
+    13: [
+        { id: 188, name: 'Kuching' },
+        { id: 189, name: 'Miri' },
+        { id: 190, name: 'Sibu' },
+        { id: 191, name: 'Bintulu' },
+        { id: 192, name: 'Samarahan' },
+        { id: 193, name: 'Serian' },
+        { id: 194, name: 'Mukah' },
+        { id: 195, name: 'Kapit' },
+        { id: 196, name: 'Limbang' },
+        { id: 197, name: 'Marudi' },
+        { id: 198, name: 'Belaga' },
+        { id: 199, name: 'Sri Aman' },
+        { id: 200, name: 'Asajaya' },
+        { id: 201, name: 'Batang Ai' },
+        { id: 202, name: 'Tebedu' },
+        { id: 203, name: 'Bekenu' },
+        { id: 204, name: 'Tatau' },
+        { id: 205, name: 'Lawas' },
+        { id: 206, name: 'Pusa' },
+        { id: 207, name: 'Julau' }
+    ],
+    
+    // Wilayah Persekutuan Kuala Lumpur
+    14: [
+        { id: 208, name: 'Kuala Lumpur' },
+        { id: 209, name: 'Bukit Bintang' },
+        { id: 210, name: 'KLCC' },
+        { id: 211, name: 'Chinatown' },
+        { id: 212, name: 'Sri Hartamas' },
+        { id: 213, name: 'Taman Tun Dr. Ismail' },
+        { id: 214, name: 'Mont Kiara' },
+        { id: 215, name: 'Damansara' }
+    ],
+    
+    // Wilayah Persekutuan Labuan
+    15: [
+        { id: 216, name: 'Labuan' },
+        { id: 217, name: 'Victoria' },
+        { id: 218, name: 'Rancha-Rancha' },
+        { id: 219, name: 'Kampung Sungai Pagar' },
+        { id: 220, name: 'Kampung Layang-Layang' }
+    ],
+    
+    // Wilayah Persekutuan Putrajaya
+    16: [
+        { id: 221, name: 'Putrajaya' },
+        { id: 222, name: 'Presidential Palace' },
+        { id: 223, name: 'Putra Square' },
+        { id: 224, name: 'Putrajaya Lake' }
+    ]
+};
+
+// Map state IDs to names for easier access
+const stateNames = {
+    1: 'Johor',
+    2: 'Kedah',
+    3: 'Kelantan',
+    4: 'Melaka',
+    5: 'Negeri Sembilan',
+    6: 'Pahang',
+    7: 'Pulau Pinang',
+    8: 'Perak',
+    9: 'Perlis',
+    10: 'Selangor',
+    11: 'Terengganu',
+    12: 'Sabah',
+    13: 'Sarawak',
+    14: 'Wilayah Persekutuan Kuala Lumpur',
+    15: 'Wilayah Persekutuan Labuan',
+    16: 'Wilayah Persekutuan Putrajaya'
+};
+
+// Map state codes to state IDs
+const stateCodes = {
+    '01': 1,
+    '02': 2,
+    '03': 3,
+    '04': 4,
+    '05': 5,
+    '06': 6,
+    '07': 7,
+    '08': 8,
+    '09': 9,
+    '10': 10,
+    '11': 11,
+    '12': 12,
+    '13': 13,
+    '14': 14,
+    '15': 15,
+    '16': 16
+};
+
+// Store selected coverage areas
+const selectedCoverageAreas = [];
+
+// Load cities based on selected state
+function loadCities() {
+    const stateSelect = document.getElementById('stateSelect');
+    const citySelect = document.getElementById('citySelect');
+    const stateId = stateSelect.value;
+    
+    // Clear city dropdown
+    citySelect.innerHTML = '';
+    
+    if (!stateId) {
+        citySelect.innerHTML = '<option value="">Select a state first</option>';
+        citySelect.disabled = true;
+        return;
+    }
+    
+    // Enable city dropdown
+    citySelect.disabled = false;
+    
+    // Add default option
+    citySelect.innerHTML = '<option value="">Select a city</option>';
+    
+    // Add cities for selected state
+    const cities = malaysianCities[stateId] || [];
+    cities.forEach(city => {
+        const option = document.createElement('option');
+        option.value = city.id;
+        option.textContent = city.name;
+        citySelect.appendChild(option);
+    });
+    
+    // Log debug message
+    if (typeof debugLog === 'function') {
+        debugLog(`Loaded ${cities.length} cities for ${stateNames[stateId]}`);
+    } else {
+        console.log(`Loaded ${cities.length} cities for ${stateNames[stateId]}`);
+    }
+}
+
+// Add selected coverage area
+function addCoverage() {
+    const stateSelect = document.getElementById('stateSelect');
+    const citySelect = document.getElementById('citySelect');
+    
+    const stateId = stateSelect.value;
+    const cityId = citySelect.value;
+    
+    if (!stateId) {
+        alert('Please select a state');
+        return;
+    }
+    
+    if (!cityId) {
+        alert('Please select a city');
+        return;
+    }
+    
+    const stateName = stateNames[stateId];
+    
+    // Find city object by ID across all states (in case city ID doesn't match index)
+    let cityObj = null;
+    const cities = malaysianCities[stateId] || [];
+    for (const city of cities) {
+        if (city.id == cityId) {
+            cityObj = city;
+            break;
+        }
+    }
+    
+    if (!cityObj) {
+        alert('Invalid city selected');
+        return;
+    }
+    
+    const cityName = cityObj.name;
+    
+    // Check if this area is already added
+    const isDuplicate = selectedCoverageAreas.some(area => 
+        area.stateId == stateId && area.cityId == cityId
+    );
+    
+    if (isDuplicate) {
+        alert(`${cityName}, ${stateName} is already in your coverage areas`);
+        return;
+    }
+    
+    // Add to selected areas
+    const coverageArea = {
+        stateId: stateId,
+        stateName: stateName,
+        cityId: cityId,
+        cityName: cityName
+    };
+    
+    selectedCoverageAreas.push(coverageArea);
+    
+    // Update the UI
+    updateCoverageList();
+    
+    // Reset selects
+    citySelect.value = '';
+    citySelect.disabled = true;
+    stateSelect.value = '';
+    
+    // Show success message
+    if (typeof debugLog === 'function') {
+        debugLog(`Added coverage area: ${cityName}, ${stateName}`);
+    } else {
+        console.log(`Added coverage area: ${cityName}, ${stateName}`);
+    }
+}
+
+// Remove a coverage area
+function removeCoverage(index) {
+    selectedCoverageAreas.splice(index, 1);
+    updateCoverageList();
+    
+    if (typeof debugLog === 'function') {
+        debugLog('Removed coverage area');
+    } else {
+        console.log('Removed coverage area');
+    }
+}
+
+// Update the coverage list in the UI
+function updateCoverageList() {
+    const coverageList = document.getElementById('coverageList');
+    const noCoverageRow = document.getElementById('noCoverageRow');
+    const coverageAreasInput = document.getElementById('coverageAreasInput');
+    
+    // Create new no coverage row if it doesn't exist
+    let noRow = noCoverageRow;
+    if (!noRow) {
+        noRow = document.createElement('tr');
+        noRow.id = 'noCoverageRow';
+        noRow.innerHTML = '<td colspan="3" class="text-center text-muted py-4">No coverage areas selected yet</td>';
+    }
+    
+    // Clear the list
+    coverageList.innerHTML = '';
+    
+    // Show or hide the "no coverage" message
+    if (selectedCoverageAreas.length === 0) {
+        coverageList.appendChild(noRow);
+    } else {
+        // Add each coverage area to the list
+        selectedCoverageAreas.forEach((area, index) => {
+            const row = document.createElement('tr');
+            
+            const stateCell = document.createElement('td');
+            stateCell.textContent = area.stateName;
+            
+            const cityCell = document.createElement('td');
+            cityCell.textContent = area.cityName;
+            
+            const actionCell = document.createElement('td');
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'btn btn-sm btn-danger';
+            removeButton.innerHTML = '<i class="bi bi-trash"></i>';
+            removeButton.onclick = function() { removeCoverage(index); };
+            
+            actionCell.appendChild(removeButton);
+            
+            row.appendChild(stateCell);
+            row.appendChild(cityCell);
+            row.appendChild(actionCell);
+            
+            coverageList.appendChild(row);
+        });
+    }
+    
+    // Update the hidden input with the JSON data
+    coverageAreasInput.value = JSON.stringify(selectedCoverageAreas);
+}
+
+// Add validation for coverage areas
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('providerRegistrationForm');
+    
+    if (form) {
+        // Store original submit handler if it exists
+        const originalSubmitHandler = form.onsubmit;
+        
+        // Override form submission
+        form.onsubmit = function(e) {
+            // Validate that at least one coverage area is selected
+            if (selectedCoverageAreas.length === 0) {
+                alert('Please select at least one coverage area');
+                e.preventDefault();
+                return false;
+            }
+            
+            // Make sure the hidden input is updated with the latest data
+            document.getElementById('coverageAreasInput').value = JSON.stringify(selectedCoverageAreas);
+            
+            // Call the original submit handler if it exists
+            if (typeof originalSubmitHandler === 'function') {
+                return originalSubmitHandler.call(this, e);
+            }
+        };
+    }
+    
+    // Initialize the form
+    if (typeof debugLog === 'function') {
+        debugLog('Location coverage selection initialized');
+    } else {
+        console.log('Location coverage selection initialized');
+    }
+});
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
