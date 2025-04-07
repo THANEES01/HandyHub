@@ -453,184 +453,238 @@
 
     <script>
         const services = new Set();
-        const selectedCategories = new Set();
-        const baseFees = {};
+    const selectedCategories = new Set();
+    const baseFees = {};
 
-        function addService() {
-            const serviceInput = document.createElement('div');
-            serviceInput.className = 'service-input-group';
-            const inputId = `service-${Date.now()}`;
-            serviceInput.innerHTML = `
-                <input type="text" 
-                    id="${inputId}"
-                    placeholder="Enter service name" 
-                    class="form-control"
-                    onchange="updateServices(this)"
-                    onkeyup="updateServices(this)">
-                <button type="button" onclick="removeService(this, '${inputId}')">
-                    <i class="bi bi-trash"></i>
-                </button>
-            `;
-            document.getElementById('servicesList').appendChild(serviceInput);
-        }
+    // Helper function to create a debug log
+    function debugLog(message, data) {
+        console.log(`[PROVIDER FORM] ${message}`, data || '');
+    }
 
-        function removeService(button, inputId) {
-            const input = document.getElementById(inputId);
-            if (input && input.value) {
-                services.delete(input.value.trim());
-                updateServicesInput();
-            }
-            button.parentElement.remove();
-        }
+    function addService() {
+        debugLog('Adding new service input field');
+        const serviceInput = document.createElement('div');
+        serviceInput.className = 'service-input-group';
+        const inputId = `service-${Date.now()}`;
+        serviceInput.innerHTML = `
+            <input type="text" 
+                id="${inputId}"
+                placeholder="Enter service name" 
+                class="form-control"
+                onchange="updateServices(this)"
+                onkeyup="updateServices(this)">
+            <button type="button" onclick="removeService(this, '${inputId}')">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        document.getElementById('servicesList').appendChild(serviceInput);
+    }
 
-        function updateServices(input) {
-            const value = input.value.trim();
-            if (value) {
-                services.add(value);
-            } else {
-                services.delete(value);
-            }
+    function removeService(button, inputId) {
+        const input = document.getElementById(inputId);
+        if (input && input.value) {
+            debugLog(`Removing service: ${input.value.trim()}`);
+            services.delete(input.value.trim());
             updateServicesInput();
         }
+        button.parentElement.remove();
+    }
 
-        function updateServicesInput() {
-            const servicesArray = Array.from(services).filter(Boolean);
-            document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
-            console.log('Updated services:', servicesArray); // Debug log
+    function updateServices(input) {
+        const value = input.value.trim();
+        if (value) {
+            debugLog(`Adding/Updating service: ${value}`);
+            services.add(value);
+        } else {
+            services.delete(value);
         }
+        updateServicesInput();
+    }
 
-        function togglePricingCard(checkbox) {
-            const categoryId = checkbox.id;
-            const categoryLabel = checkbox.nextElementSibling.textContent;
-            const feeType = checkbox.dataset.feeType;
-            
-            if (checkbox.checked) {
-                selectedCategories.add(categoryId);
-                addPricingCard(categoryId, categoryLabel, feeType);
-            } else {
-                selectedCategories.delete(categoryId);
-                removePricingCard(categoryId);
-            }
-            
-            // Show or hide the pricing section based on selections
-            const pricingSection = document.getElementById('pricing-section');
-            pricingSection.style.display = selectedCategories.size > 0 ? 'block' : 'none';
-            
-            updateCategoryFeesInput();
+    function updateServicesInput() {
+        const servicesArray = Array.from(services).filter(Boolean);
+        document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
+        debugLog('Updated services array:', servicesArray);
+    }
+
+    function togglePricingCard(checkbox) {
+        const categoryId = checkbox.id;
+        const categoryLabel = checkbox.nextElementSibling.textContent;
+        const feeType = checkbox.dataset.feeType;
+        
+        if (checkbox.checked) {
+            debugLog(`Category selected: ${categoryId} (${categoryLabel})`);
+            selectedCategories.add(categoryId);
+            addPricingCard(categoryId, categoryLabel, feeType);
+        } else {
+            debugLog(`Category deselected: ${categoryId}`);
+            selectedCategories.delete(categoryId);
+            removePricingCard(categoryId);
         }
         
-        function addPricingCard(categoryId, categoryLabel, feeType) {
-            const container = document.getElementById('pricing-cards-container');
+        // Show or hide the pricing section based on selections
+        const pricingSection = document.getElementById('pricing-section');
+        pricingSection.style.display = selectedCategories.size > 0 ? 'block' : 'none';
+    }
+
+    function addPricingCard(categoryId, categoryLabel, feeType) {
+        const container = document.getElementById('pricing-cards-container');
+        
+        // Create card if it doesn't exist
+        if (!document.getElementById(`pricing-card-${categoryId}`)) {
+            const card = document.createElement('div');
+            card.id = `pricing-card-${categoryId}`;
+            card.className = 'pricing-card';
             
-            // Create card if it doesn't exist
-            if (!document.getElementById(`pricing-card-${categoryId}`)) {
-                const card = document.createElement('div');
-                card.id = `pricing-card-${categoryId}`;
-                card.className = 'pricing-card';
-                
-                const feeLabel = feeType === 'per hour' ? 'Hourly Rate' : 'Base Service Fee';
-                const feeTip = feeType === 'per hour' ? 
-                    'This is your hourly rate for this service' : 
-                    'This is the initial fee charged for each service visit';
-                
-                card.innerHTML = `
-                    <h5>${categoryLabel}</h5>
-                    <div class="mb-3">
-                        <span class="fee-type-label">${feeLabel} (RM)</span>
-                        <div class="input-group">
-                            <span class="input-group-text">RM</span>
-                            <input type="number" 
-                                min="0" 
-                                step="0.01" 
-                                class="form-control" 
-                                id="fee-${categoryId}" 
-                                name="categoryFees[${categoryId}]" 
-                                placeholder="Enter amount" 
-                                onchange="updateFee('${categoryId}', this.value)" 
-                                required>
-                        </div>
-                        <input type="hidden" name="feeTypes[${categoryId}]" value="${feeType}">
-                        <p class="pricing-info">${feeTip}</p>
+            const feeLabel = feeType === 'per hour' ? 'Hourly Rate' : 'Base Service Fee';
+            const feeTip = feeType === 'per hour' ? 
+                'This is your hourly rate for this service' : 
+                'This is the initial fee charged for each service visit';
+            
+            card.innerHTML = `
+                <h5>${categoryLabel}</h5>
+                <div class="mb-3">
+                    <span class="fee-type-label">${feeLabel} (RM)</span>
+                    <div class="input-group">
+                        <span class="input-group-text">RM</span>
+                        <input type="number" 
+                            min="0" 
+                            step="0.01" 
+                            class="form-control" 
+                            id="fee-${categoryId}" 
+                            name="categoryFees[${categoryId}]" 
+                            placeholder="Enter amount" 
+                            onchange="updateFee('${categoryId}', this.value)" 
+                            required>
                     </div>
-                `;
-                
-                container.appendChild(card);
-            }
-        }
-        
-        function removePricingCard(categoryId) {
-            const card = document.getElementById(`pricing-card-${categoryId}`);
-            if (card) {
-                card.remove();
-                delete baseFees[categoryId];
-            }
-        }
-        
-        function updateFee(categoryId, value) {
-            baseFees[categoryId] = parseFloat(value) || 0;
-            updateCategoryFeesInput();
-        }
-        
-        function updateCategoryFeesInput() {
-            // This data will be submitted with the form
-            console.log('Updated fees:', baseFees);
-        }
-
-        document.getElementById('providerRegistrationForm').addEventListener('submit', function(e) {
-            const password = document.querySelector('input[name="password"]').value;
-            const confirmPassword = document.querySelector('input[name="confirmPassword"]').value;
-            const categories = document.querySelectorAll('input[name="serviceCategories[]"]:checked');
-            const servicesArray = Array.from(services).filter(Boolean);
+                    <input type="hidden" name="feeTypes[${categoryId}]" value="${feeType}">
+                    <p class="pricing-info">${feeTip}</p>
+                </div>
+            `;
             
-            let isValid = true;
-            let errorMessage = '';
+            container.appendChild(card);
+            debugLog(`Added pricing card for ${categoryId}`);
+        }
+    }
 
-            // Validate categories
-            if (categories.length === 0) {
-                isValid = false;
-                errorMessage = 'Please select at least one service category';
-            }
+    function removePricingCard(categoryId) {
+        const card = document.getElementById(`pricing-card-${categoryId}`);
+        if (card) {
+            card.remove();
+            delete baseFees[categoryId];
+            debugLog(`Removed pricing card for ${categoryId}`);
+        }
+    }
 
-            // Validate services
-            if (servicesArray.length === 0) {
-                isValid = false;
-                errorMessage = errorMessage || 'Please add at least one service';
-            }
-            
-            // Validate base fees are set
-            const selectedCategoryIds = Array.from(categories).map(cat => cat.id);
-            for (const categoryId of selectedCategoryIds) {
-                const feeInput = document.getElementById(`fee-${categoryId}`);
-                if (!feeInput || !feeInput.value || parseFloat(feeInput.value) <= 0) {
-                    isValid = false;
-                    errorMessage = errorMessage || 'Please set a base fee for all selected categories';
-                    break;
-                }
-            }
+    function updateFee(categoryId, value) {
+        baseFees[categoryId] = parseFloat(value) || 0;
+        debugLog(`Updated fee for ${categoryId} to ${value}`);
+    }
 
-            // Validate passwords
-            if (password !== confirmPassword) {
-                isValid = false;
-                errorMessage = 'Passwords do not match';
-            }
-
-            if (password.length < 8) {
-                isValid = false;
-                errorMessage = 'Password must be at least 8 characters long';
-            }
-
-            if (!isValid) {
-                e.preventDefault();
-                alert(errorMessage);
-            } else {
-                // Log the final data being submitted
-                console.log('Submitting services:', servicesArray);
-                console.log('Submitting fees:', baseFees);
-            }
-        });
-
+    document.addEventListener('DOMContentLoaded', function() {
+        debugLog('Form initialized');
+        
         // Add initial service field
         addService();
+        
+        // Form validation and submission
+        const form = document.getElementById('providerRegistrationForm');
+        debugLog('Form element found:', form !== null);
+        
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                debugLog('Form submission started');
+                const password = document.querySelector('input[name="password"]').value;
+                const confirmPassword = document.querySelector('input[name="confirmPassword"]').value;
+                const categories = document.querySelectorAll('input[name="serviceCategories[]"]:checked');
+                const servicesArray = Array.from(services).filter(Boolean);
+                
+                let isValid = true;
+                let errorMessage = '';
+                
+                // Update the hidden services input one last time before submission
+                document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
+                
+                // Log form submission details
+                debugLog('Form submission details:', {
+                    businessName: document.querySelector('input[name="businessName"]').value,
+                    email: document.querySelector('input[name="email"]').value,
+                    phoneNumber: document.querySelector('input[name="phoneNumber"]').value,
+                    categoriesSelected: categories.length,
+                    servicesCount: servicesArray.length,
+                    certificationFile: document.querySelector('input[name="certification"]').value
+                });
+
+                // Validate categories
+                if (categories.length === 0) {
+                    isValid = false;
+                    errorMessage = 'Please select at least one service category';
+                    debugLog('Validation failed: No categories selected');
+                }
+
+                // Validate services
+                if (servicesArray.length === 0) {
+                    isValid = false;
+                    errorMessage = errorMessage || 'Please add at least one service';
+                    debugLog('Validation failed: No services added');
+                }
+                
+                // Validate base fees are set
+                const selectedCategoryIds = Array.from(categories).map(cat => cat.id);
+                for (const categoryId of selectedCategoryIds) {
+                    const feeInput = document.getElementById(`fee-${categoryId}`);
+                    if (!feeInput || !feeInput.value || parseFloat(feeInput.value) <= 0) {
+                        isValid = false;
+                        errorMessage = errorMessage || 'Please set a base fee for all selected categories';
+                        debugLog(`Validation failed: Missing fee for category ${categoryId}`);
+                        break;
+                    }
+                }
+
+                // Validate passwords
+                if (password !== confirmPassword) {
+                    isValid = false;
+                    errorMessage = errorMessage || 'Passwords do not match';
+                    debugLog('Validation failed: Passwords do not match');
+                }
+
+                if (password.length < 8) {
+                    isValid = false;
+                    errorMessage = errorMessage || 'Password must be at least 8 characters long';
+                    debugLog('Validation failed: Password too short');
+                }
+                
+                // Validate file upload
+                const certificationFile = document.querySelector('input[name="certification"]');
+                if (certificationFile && certificationFile.files.length === 0) {
+                    isValid = false;
+                    errorMessage = errorMessage || 'Please upload your certification file';
+                    debugLog('Validation failed: No certification file selected');
+                }
+
+                if (!isValid) {
+                    e.preventDefault();
+                    alert(errorMessage);
+                    debugLog('Form submission prevented due to validation errors');
+                } else {
+                    debugLog('Form validation passed, submitting data...');
+                    // Form is valid, submission will proceed
+                    console.log('Submitting services:', servicesArray);
+                    console.log('Submitting fees:', baseFees);
+                    
+                    // Double-check that the services input has been updated
+                    if (document.getElementById('servicesInput').value === '') {
+                        document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
+                    }
+                }
+            });
+        }
+    });
+
+    // Add initial service field if script is loaded after DOM
+    if (document.readyState === 'complete') {
+        addService();
+    }
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
