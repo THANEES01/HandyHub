@@ -276,21 +276,21 @@
 
     <div class="register-container">
         <div class="register-card">
+            <!-- FOR PROVIDER-REGISTER.EJS -->
             <div class="logo-section">
                 <i class="bi bi-tools"></i>
                 <h4>Service Provider Registration</h4>
                 <p class="text-muted mt-2">Join our network of trusted service providers</p>
             </div>
 
-
-            <!-- Add error and success messages -->
-            <% if (locals.error) { %>
+            <!-- IMPROVED MESSAGE DISPLAY - ADD THIS TO ALL TEMPLATES -->
+            <% if (error) { %>
                 <div class="alert alert-danger" role="alert">
                     <%= error %>
                 </div>
             <% } %>
 
-            <% if (locals.success) { %>
+            <% if (success) { %>
                 <div class="alert alert-success" role="alert">
                     <%= success %>
                 </div>
@@ -543,782 +543,843 @@
 
     <script>
         const services = new Set();
-    const selectedCategories = new Set();
-    const baseFees = {};
+        const selectedCategories = new Set();
+        const baseFees = {};
 
-    // Helper function to create a debug log
-    function debugLog(message, data) {
-        console.log(`[PROVIDER FORM] ${message}`, data || '');
-    }
+        // Helper function to create a debug log
+        function debugLog(message, data) {
+            console.log(`[PROVIDER FORM] ${message}`, data || '');
+        }
 
-    function addService() {
-        debugLog('Adding new service input field');
-        const serviceInput = document.createElement('div');
-        serviceInput.className = 'service-input-group';
-        const inputId = `service-${Date.now()}`;
-        serviceInput.innerHTML = `
-            <input type="text" 
-                id="${inputId}"
-                placeholder="Enter service name" 
-                class="form-control"
-                onchange="updateServices(this)"
-                onkeyup="updateServices(this)">
-            <button type="button" onclick="removeService(this, '${inputId}')">
-                <i class="bi bi-trash"></i>
-            </button>
-        `;
-        document.getElementById('servicesList').appendChild(serviceInput);
-    }
+        function addService() {
+            debugLog('Adding new service input field');
+            const serviceInput = document.createElement('div');
+            serviceInput.className = 'service-input-group';
+            const inputId = `service-${Date.now()}`;
+            serviceInput.innerHTML = `
+                <input type="text" 
+                    id="${inputId}"
+                    placeholder="Enter service name" 
+                    class="form-control"
+                    onchange="updateServices(this)"
+                    onkeyup="updateServices(this)">
+                <button type="button" onclick="removeService(this, '${inputId}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+            document.getElementById('servicesList').appendChild(serviceInput);
+        }
 
-    function removeService(button, inputId) {
-        const input = document.getElementById(inputId);
-        if (input && input.value) {
-            debugLog(`Removing service: ${input.value.trim()}`);
-            services.delete(input.value.trim());
+        function removeService(button, inputId) {
+            const input = document.getElementById(inputId);
+            if (input && input.value) {
+                debugLog(`Removing service: ${input.value.trim()}`);
+                services.delete(input.value.trim());
+                updateServicesInput();
+            }
+            button.parentElement.remove();
+        }
+
+        function updateServices(input) {
+            const value = input.value.trim();
+            if (value) {
+                debugLog(`Adding/Updating service: ${value}`);
+                services.add(value);
+            } else {
+                services.delete(value);
+            }
             updateServicesInput();
         }
-        button.parentElement.remove();
-    }
 
-    function updateServices(input) {
-        const value = input.value.trim();
-        if (value) {
-            debugLog(`Adding/Updating service: ${value}`);
-            services.add(value);
-        } else {
-            services.delete(value);
+        function updateServicesInput() {
+            const servicesArray = Array.from(services).filter(Boolean);
+            document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
+            debugLog('Updated services array:', servicesArray);
         }
-        updateServicesInput();
-    }
 
-    function updateServicesInput() {
-        const servicesArray = Array.from(services).filter(Boolean);
-        document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
-        debugLog('Updated services array:', servicesArray);
-    }
+        function togglePricingCard(checkbox) {
+            const categoryId = checkbox.id;
+            const categoryLabel = checkbox.nextElementSibling.textContent;
+            const feeType = checkbox.dataset.feeType;
+            
+            if (checkbox.checked) {
+                debugLog(`Category selected: ${categoryId} (${categoryLabel})`);
+                selectedCategories.add(categoryId);
+                addPricingCard(categoryId, categoryLabel, feeType);
+            } else {
+                debugLog(`Category deselected: ${categoryId}`);
+                selectedCategories.delete(categoryId);
+                removePricingCard(categoryId);
+            }
+            
+            // Show or hide the pricing section based on selections
+            const pricingSection = document.getElementById('pricing-section');
+            pricingSection.style.display = selectedCategories.size > 0 ? 'block' : 'none';
+        }
 
-    function togglePricingCard(checkbox) {
-        const categoryId = checkbox.id;
-        const categoryLabel = checkbox.nextElementSibling.textContent;
-        const feeType = checkbox.dataset.feeType;
-        
-        if (checkbox.checked) {
-            debugLog(`Category selected: ${categoryId} (${categoryLabel})`);
-            selectedCategories.add(categoryId);
-            addPricingCard(categoryId, categoryLabel, feeType);
-        } else {
-            debugLog(`Category deselected: ${categoryId}`);
-            selectedCategories.delete(categoryId);
-            removePricingCard(categoryId);
+        function updateFee(categoryId, value) {
+            const numValue = parseFloat(value) || 0;
+            baseFees[categoryId] = numValue;
+            debugLog(`Updated fee for ${categoryId} to ${numValue}`);
+            
+            // Make sure the fee input has the correct value
+            const feeInput = document.getElementById(`fee-${categoryId}`);
+            if (feeInput && feeInput.value !== value) {
+                feeInput.value = value;
+            }
         }
         
-        // Show or hide the pricing section based on selections
-        const pricingSection = document.getElementById('pricing-section');
-        pricingSection.style.display = selectedCategories.size > 0 ? 'block' : 'none';
-    }
+        // Add this function to validate fee inputs before form submission
+        function validateFees() {
+            let isValid = true;
+            let errorMessage = '';
+            
+            // Check all selected categories for fees
+            const selectedCategoryCheckboxes = document.querySelectorAll('input[name="serviceCategories[]"]:checked');
+            
+            for (const checkbox of selectedCategoryCheckboxes) {
+                const categoryId = checkbox.id;
+                const feeInput = document.getElementById(`fee-${categoryId}`);
+                
+                if (!feeInput || !feeInput.value || parseFloat(feeInput.value) <= 0) {
+                    isValid = false;
+                    errorMessage = 'Please set a base fee for all selected categories';
+                    debugLog(`Validation failed: Missing fee for category ${categoryId}`);
+                    
+                    // Highlight the missing fee input
+                    if (feeInput) {
+                        feeInput.classList.add('is-invalid');
+                    }
+                } else {
+                    // Ensure the fee is properly set
+                    updateFee(categoryId, feeInput.value);
+                    
+                    if (feeInput) {
+                        feeInput.classList.remove('is-invalid');
+                    }
+                }
+            }
+            
+            if (!isValid) {
+                alert(errorMessage);
+            }
+            
+            return isValid;
+        }
 
-    function addPricingCard(categoryId, categoryLabel, feeType) {
-        const container = document.getElementById('pricing-cards-container');
-        
-        // Create card if it doesn't exist
-        if (!document.getElementById(`pricing-card-${categoryId}`)) {
-            const card = document.createElement('div');
-            card.id = `pricing-card-${categoryId}`;
-            card.className = 'pricing-card';
+        function addPricingCard(categoryId, categoryLabel, feeType) {
+            const container = document.getElementById('pricing-cards-container');
             
-            const feeLabel = feeType === 'per hour' ? 'Hourly Rate' : 'Base Service Fee';
-            const feeTip = feeType === 'per hour' ? 
-                'This is your hourly rate for this service' : 
-                'This is the initial fee charged for each service visit';
-            
-            card.innerHTML = `
-                <h5>${categoryLabel}</h5>
-                <div class="mb-3">
-                    <span class="fee-type-label">${feeLabel} (RM)</span>
-                    <div class="input-group">
-                        <span class="input-group-text">RM</span>
-                        <input type="number" 
-                            min="0" 
-                            step="0.01" 
-                            class="form-control" 
-                            id="fee-${categoryId}" 
-                            name="categoryFees[${categoryId}]" 
-                            placeholder="Enter amount" 
-                            onchange="updateFee('${categoryId}', this.value)" 
-                            required>
+            // Create card if it doesn't exist
+            if (!document.getElementById(`pricing-card-${categoryId}`)) {
+                const card = document.createElement('div');
+                card.id = `pricing-card-${categoryId}`;
+                card.className = 'pricing-card';
+                
+                const feeLabel = feeType === 'per hour' ? 'Hourly Rate' : 'Base Service Fee';
+                const feeTip = feeType === 'per hour' ? 
+                    'This is your hourly rate for this service' : 
+                    'This is the initial fee charged for each service visit';
+                
+                card.innerHTML = `
+                    <h5>${categoryLabel}</h5>
+                    <div class="mb-3">
+                        <span class="fee-type-label">${feeLabel} (RM)</span>
+                        <div class="input-group">
+                            <span class="input-group-text">RM</span>
+                            <input type="number" 
+                                min="0" 
+                                step="0.01" 
+                                class="form-control" 
+                                id="fee-${categoryId}" 
+                                name="categoryFees[${categoryId}]" 
+                                placeholder="Enter amount" 
+                                onchange="updateFee('${categoryId}', this.value)" 
+                                onblur="updateFee('${categoryId}', this.value)"
+                                required>
+                            <div class="invalid-feedback">
+                                Please enter a valid amount
+                            </div>
+                        </div>
+                        <input type="hidden" name="feeTypes[${categoryId}]" value="${feeType}">
+                        <p class="pricing-info">${feeTip}</p>
                     </div>
-                    <input type="hidden" name="feeTypes[${categoryId}]" value="${feeType}">
-                    <p class="pricing-info">${feeTip}</p>
-                </div>
-            `;
+                `;
+                
+                container.appendChild(card);
+                debugLog(`Added pricing card for ${categoryId}`);
+                
+                // Initialize the fee value if we already have one
+                if (baseFees[categoryId]) {
+                    const input = card.querySelector(`#fee-${categoryId}`);
+                    if (input) {
+                        input.value = baseFees[categoryId];
+                    }
+                }
+            }
+        }
+
+        function removePricingCard(categoryId) {
+            const card = document.getElementById(`pricing-card-${categoryId}`);
+            if (card) {
+                card.remove();
+                delete baseFees[categoryId];
+                debugLog(`Removed pricing card for ${categoryId}`);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            debugLog('Form initialized');
             
-            container.appendChild(card);
-            debugLog(`Added pricing card for ${categoryId}`);
-        }
-    }
+            // Add initial service field
+            addService();
+            
+            // Form validation and submission
+            const form = document.getElementById('providerRegistrationForm');
+            debugLog('Form element found:', form !== null);
+            
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    debugLog('Form submission started');
+                    const password = document.querySelector('input[name="password"]').value;
+                    const confirmPassword = document.querySelector('input[name="confirmPassword"]').value;
+                    const categories = document.querySelectorAll('input[name="serviceCategories[]"]:checked');
+                    const servicesArray = Array.from(services).filter(Boolean);
+                    
+                    let isValid = true;
+                    let errorMessage = '';
+                    
+                    // Update the hidden services input one last time before submission
+                    document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
+                    
+                    // Log form submission details
+                    debugLog('Form submission details:', {
+                        businessName: document.querySelector('input[name="businessName"]').value,
+                        email: document.querySelector('input[name="email"]').value,
+                        phoneNumber: document.querySelector('input[name="phoneNumber"]').value,
+                        categoriesSelected: categories.length,
+                        servicesCount: servicesArray.length,
+                        certificationFile: document.querySelector('input[name="certification"]').value
+                    });
 
-    function removePricingCard(categoryId) {
-        const card = document.getElementById(`pricing-card-${categoryId}`);
-        if (card) {
-            card.remove();
-            delete baseFees[categoryId];
-            debugLog(`Removed pricing card for ${categoryId}`);
-        }
-    }
+                    // Validate categories
+                    if (categories.length === 0) {
+                        isValid = false;
+                        errorMessage = 'Please select at least one service category';
+                        debugLog('Validation failed: No categories selected');
+                    }
 
-    function updateFee(categoryId, value) {
-        baseFees[categoryId] = parseFloat(value) || 0;
-        debugLog(`Updated fee for ${categoryId} to ${value}`);
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        debugLog('Form initialized');
-        
-        // Add initial service field
-        addService();
-        
-        // Form validation and submission
-        const form = document.getElementById('providerRegistrationForm');
-        debugLog('Form element found:', form !== null);
-        
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                debugLog('Form submission started');
-                const password = document.querySelector('input[name="password"]').value;
-                const confirmPassword = document.querySelector('input[name="confirmPassword"]').value;
-                const categories = document.querySelectorAll('input[name="serviceCategories[]"]:checked');
-                const servicesArray = Array.from(services).filter(Boolean);
-                
-                let isValid = true;
-                let errorMessage = '';
-                
-                // Update the hidden services input one last time before submission
-                document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
-                
-                // Log form submission details
-                debugLog('Form submission details:', {
-                    businessName: document.querySelector('input[name="businessName"]').value,
-                    email: document.querySelector('input[name="email"]').value,
-                    phoneNumber: document.querySelector('input[name="phoneNumber"]').value,
-                    categoriesSelected: categories.length,
-                    servicesCount: servicesArray.length,
-                    certificationFile: document.querySelector('input[name="certification"]').value
-                });
-
-                // Validate categories
-                if (categories.length === 0) {
-                    isValid = false;
-                    errorMessage = 'Please select at least one service category';
-                    debugLog('Validation failed: No categories selected');
-                }
-
-                // Validate services
-                if (servicesArray.length === 0) {
-                    isValid = false;
-                    errorMessage = errorMessage || 'Please add at least one service';
-                    debugLog('Validation failed: No services added');
-                }
-                
-                // Validate base fees are set
-                const selectedCategoryIds = Array.from(categories).map(cat => cat.id);
-                for (const categoryId of selectedCategoryIds) {
-                    const feeInput = document.getElementById(`fee-${categoryId}`);
-                    if (!feeInput || !feeInput.value || parseFloat(feeInput.value) <= 0) {
+                    // Validate services
+                    if (servicesArray.length === 0) {
+                        isValid = false;
+                        errorMessage = errorMessage || 'Please add at least one service';
+                        debugLog('Validation failed: No services added');
+                    }
+                    
+                    // Validate base fees are set - using our new validation function
+                    if (!validateFees()) {
                         isValid = false;
                         errorMessage = errorMessage || 'Please set a base fee for all selected categories';
-                        debugLog(`Validation failed: Missing fee for category ${categoryId}`);
-                        break;
                     }
-                }
 
-                // Validate passwords
-                if (password !== confirmPassword) {
-                    isValid = false;
-                    errorMessage = errorMessage || 'Passwords do not match';
-                    debugLog('Validation failed: Passwords do not match');
-                }
+                    // Validate passwords
+                    if (password !== confirmPassword) {
+                        isValid = false;
+                        errorMessage = errorMessage || 'Passwords do not match';
+                        debugLog('Validation failed: Passwords do not match');
+                    }
 
-                if (password.length < 8) {
-                    isValid = false;
-                    errorMessage = errorMessage || 'Password must be at least 8 characters long';
-                    debugLog('Validation failed: Password too short');
-                }
-                
-                // Validate file upload
-                const certificationFile = document.querySelector('input[name="certification"]');
-                if (certificationFile && certificationFile.files.length === 0) {
-                    isValid = false;
-                    errorMessage = errorMessage || 'Please upload your certification file';
-                    debugLog('Validation failed: No certification file selected');
-                }
-
-                if (!isValid) {
-                    e.preventDefault();
-                    alert(errorMessage);
-                    debugLog('Form submission prevented due to validation errors');
-                } else {
-                    debugLog('Form validation passed, submitting data...');
-                    // Form is valid, submission will proceed
-                    console.log('Submitting services:', servicesArray);
-                    console.log('Submitting fees:', baseFees);
+                    if (password.length < 8) {
+                        isValid = false;
+                        errorMessage = errorMessage || 'Password must be at least 8 characters long';
+                        debugLog('Validation failed: Password too short');
+                    }
                     
-                    // Double-check that the services input has been updated
-                    if (document.getElementById('servicesInput').value === '') {
-                        document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
+                    // Validate file upload
+                    const certificationFile = document.querySelector('input[name="certification"]');
+                    if (certificationFile && certificationFile.files.length === 0) {
+                        isValid = false;
+                        errorMessage = errorMessage || 'Please upload your certification file';
+                        debugLog('Validation failed: No certification file selected');
                     }
-                }
-            });
-        }
-    });
 
-    // Add initial service field if script is loaded after DOM
-    if (document.readyState === 'complete') {
-        addService();
-    }
+                    // Validate coverage areas
+                    if (selectedCoverageAreas.length === 0) {
+                        isValid = false;
+                        errorMessage = errorMessage || 'Please select at least one coverage area';
+                        debugLog('Validation failed: No coverage areas selected');
+                    }
 
-    // Define the Malaysian cities data structure
-const malaysianCities = {
-    // Johor
-    1: [
-        { id: 1, name: 'Johor Bahru' },
-        { id: 2, name: 'Iskandar Puteri' },
-        { id: 3, name: 'Pasir Gudang' },
-        { id: 4, name: 'Batu Pahat' },
-        { id: 5, name: 'Kluang' },
-        { id: 6, name: 'Segamat' },
-        { id: 7, name: 'Muar' },
-        { id: 8, name: 'Kulai' },
-        { id: 9, name: 'Pontian' },
-        { id: 10, name: 'Kota Tinggi' },
-        { id: 11, name: 'Tangkak' },
-        { id: 12, name: 'Yong Peng' },
-        { id: 13, name: 'Simpang Renggam' },
-        { id: 14, name: 'Rengit' },
-        { id: 15, name: 'Pekan Nanas' },
-        { id: 16, name: 'Ulu Tiram' },
-        { id: 17, name: 'Skudai' },
-        { id: 18, name: 'Senai' },
-        { id: 19, name: 'Masai' },
-        { id: 20, name: 'Labis' },
-        { id: 21, name: 'Chaah' },
-        { id: 22, name: 'Bakri' },
-        { id: 23, name: 'Parit Raja' },
-        { id: 24, name: 'Benut' },
-        { id: 25, name: 'Ayer Hitam' },
-        { id: 26, name: 'Pagoh' },
-        { id: 27, name: 'Bukit Gambir' },
-        { id: 28, name: 'Sri Gading' },
-        { id: 29, name: 'Endau' },
-        { id: 30, name: 'Pengerang' },
-        { id: 31, name: 'Tenggaroh' },
-        { id: 32, name: 'Sungai Rengit' }
-    ],
-    
-    // Kedah
-    2: [
-        { id: 33, name: 'Alor Setar' },
-        { id: 34, name: 'Sungai Petani' },
-        { id: 35, name: 'Kulim' },
-        { id: 36, name: 'Langkawi' },
-        { id: 37, name: 'Jitra' }
-    ],
-    
-    // Kelantan
-    3: [
-        { id: 38, name: 'Kota Bharu' },
-        { id: 39, name: 'Pasir Mas' },
-        { id: 40, name: 'Tumpat' },
-        { id: 41, name: 'Tanah Merah' },
-        { id: 42, name: 'Machang' },
-        { id: 43, name: 'Kuala Krai' },
-        { id: 44, name: 'Gua Musang' },
-        { id: 45, name: 'Jeli' },
-        { id: 46, name: 'Bachok' },
-        { id: 47, name: 'Pasir Puteh' },
-        { id: 48, name: 'Rantau Panjang' },
-        { id: 49, name: 'Wakaf Bharu' },
-        { id: 50, name: 'Pengkalan Chepa' },
-        { id: 51, name: 'Ketereh' },
-        { id: 52, name: 'Dabong' }
-    ],
-    
-    // Melaka
-    4: [
-        { id: 53, name: 'Melaka City' },
-        { id: 54, name: 'Ayer Keroh' },
-        { id: 55, name: 'Batu Berendam' },
-        { id: 56, name: 'Alor Gajah' },
-        { id: 57, name: 'Jasin' },
-        { id: 58, name: 'Bukit Beruang' },
-        { id: 59, name: 'Masjid Tanah' },
-        { id: 60, name: 'Merlimau' },
-        { id: 61, name: 'Durian Tunggal' },
-        { id: 62, name: 'Tangga Batu' },
-        { id: 63, name: 'Tanjung Kling' }
-    ],
-    
-    // Negeri Sembilan
-    5: [
-        { id: 64, name: 'Seremban' },
-        { id: 65, name: 'Nilai' },
-        { id: 66, name: 'Port Dickson' },
-        { id: 67, name: 'Bahau' },
-        { id: 68, name: 'Kuala Pilah' },
-        { id: 69, name: 'Tampin' },
-        { id: 70, name: 'Rembau' },
-        { id: 71, name: 'Gemas' },
-        { id: 72, name: 'Lukut' },
-        { id: 73, name: 'Mantin' },
-        { id: 74, name: 'Senawang' },
-        { id: 75, name: 'Lenggeng' },
-        { id: 76, name: 'Juasseh' },
-        { id: 77, name: 'Batu Kikir' },
-        { id: 78, name: 'Pedas' }
-    ],
-    
-    // Pahang
-    6: [
-        { id: 79, name: 'Kuantan' },
-        { id: 80, name: 'Temerloh' },
-        { id: 81, name: 'Bentong' },
-        { id: 82, name: 'Raub' },
-        { id: 83, name: 'Jerantut' },
-        { id: 84, name: 'Kuala Lipis' },
-        { id: 85, name: 'Maran' },
-        { id: 86, name: 'Pekan' },
-        { id: 87, name: 'Rompin' },
-        { id: 88, name: 'Bera' },
-        { id: 89, name: 'Gambang' },
-        { id: 90, name: 'Karak' },
-        { id: 91, name: 'Triang' },
-        { id: 92, name: 'Chenor' },
-        { id: 93, name: 'Sungai Lembing' },
-        { id: 94, name: 'Jengka' },
-        { id: 95, name: 'Genting Highlands' }
-    ],
-    
-    // Pulau Pinang
-    7: [
-        { id: 96, name: 'George Town' },
-        { id: 97, name: 'Bayan Lepas' },
-        { id: 98, name: 'Gelugor' },
-        { id: 99, name: 'Ayer Itam' },
-        { id: 100, name: 'Tanjung Tokong' },
-        { id: 101, name: 'Tanjung Bungah' },
-        { id: 102, name: 'Batu Ferringhi' },
-        { id: 103, name: 'Balik Pulau' },
-        { id: 104, name: 'Bukit Mertajam' },
-        { id: 105, name: 'Seberang Jaya' },
-        { id: 106, name: 'Butterworth' },
-        { id: 107, name: 'Nibong Tebal' },
-        { id: 108, name: 'Kepala Batas' },
-        { id: 109, name: 'Permatang Pauh' },
-        { id: 110, name: 'Simpang Ampat' },
-        { id: 111, name: 'Juru' },
-        { id: 112, name: 'Sungai Ara' },
-        { id: 113, name: 'Teluk Kumbar' },
-        { id: 114, name: 'Batu Maung' },
-        { id: 115, name: 'Penaga' }
-    ],
-    
-    // Perak
-    8: [
-        { id: 116, name: 'Ipoh' },
-        { id: 117, name: 'Taiping' },
-        { id: 118, name: 'Batu Gajah' },
-        { id: 119, name: 'Teluk Intan' },
-        { id: 120, name: 'Kuala Kangsar' },
-        { id: 121, name: 'Seri Iskandar' },
-        { id: 122, name: 'Lumut' },
-        { id: 123, name: 'Sitiawan' },
-        { id: 124, name: 'Parit Buntar' },
-        { id: 125, name: 'Kampar' },
-        { id: 126, name: 'Tapah' },
-        { id: 127, name: 'Tanjung Malim' },
-        { id: 128, name: 'Manjung' },
-        { id: 129, name: 'Ayer Tawar' },
-        { id: 130, name: 'Pantai Remis' },
-        { id: 131, name: 'Simpang Pulai' },
-        { id: 132, name: 'Bagan Serai' },
-        { id: 133, name: 'Slim River' },
-        { id: 134, name: 'Tronoh' }
-    ],
-    
-    // Perlis
-    9: [
-        { id: 135, name: 'Kangar' },
-        { id: 136, name: 'Arau' },
-        { id: 137, name: 'Kuala Perlis' }
-    ],
-    
-    // Selangor
-    10: [
-        { id: 138, name: 'Shah Alam' },
-        { id: 139, name: 'Petaling Jaya' },
-        { id: 140, name: 'Subang Jaya' },
-        { id: 141, name: 'Selayang' },
-        { id: 142, name: 'Kajang' },
-        { id: 143, name: 'Sepang' },
-        { id: 144, name: 'Klang' },
-        { id: 145, name: 'Puchong' },
-        { id: 146, name: 'Ampang' },
-        { id: 147, name: 'Rawang' },
-        { id: 148, name: 'Batu Caves' },
-        { id: 149, name: 'Bandar Baru Bangi' },
-        { id: 150, name: 'Seri Kembangan' },
-        { id: 151, name: 'Hulu Langat' },
-        { id: 152, name: 'Bukit Beruntung' },
-        { id: 153, name: 'Sungai Buloh' },
-        { id: 154, name: 'Tanjung Karang' },
-        { id: 155, name: 'Meru' },
-        { id: 156, name: 'Kapar' },
-        { id: 157, name: 'Bestari Jaya' }
-    ],
-    
-    // Terengganu
-    11: [
-        { id: 158, name: 'Kuala Terengganu' },
-        { id: 159, name: 'Dungun' },
-        { id: 160, name: 'Kemaman' },
-        { id: 161, name: 'Marang' },
-        { id: 162, name: 'Chukai' },
-        { id: 163, name: 'Kijal' },
-        { id: 164, name: 'Besut' },
-        { id: 165, name: 'Permaisuri' },
-        { id: 166, name: 'Setiu' },
-        { id: 167, name: 'Paka' }
-    ],
-    
-    // Sabah
-    12: [
-        { id: 168, name: 'Kota Kinabalu' },
-        { id: 169, name: 'Sandakan' },
-        { id: 170, name: 'Tawau' },
-        { id: 171, name: 'Lahad Datu' },
-        { id: 172, name: 'Keningau' },
-        { id: 173, name: 'Semporna' },
-        { id: 174, name: 'Kudat' },
-        { id: 175, name: 'Beaufort' },
-        { id: 176, name: 'Papar' },
-        { id: 177, name: 'Tuaran' },
-        { id: 178, name: 'Kota Belud' },
-        { id: 179, name: 'Ranau' },
-        { id: 180, name: 'Sipitang' },
-        { id: 181, name: 'Tenom' },
-        { id: 182, name: 'Tambunan' },
-        { id: 183, name: 'Kunak' },
-        { id: 184, name: 'Pitas' },
-        { id: 185, name: 'Kota Marudu' },
-        { id: 186, name: 'Nabawan' },
-        { id: 187, name: 'Kuala Penyu' }
-    ],
-    
-    // Sarawak
-    13: [
-        { id: 188, name: 'Kuching' },
-        { id: 189, name: 'Miri' },
-        { id: 190, name: 'Sibu' },
-        { id: 191, name: 'Bintulu' },
-        { id: 192, name: 'Samarahan' },
-        { id: 193, name: 'Serian' },
-        { id: 194, name: 'Mukah' },
-        { id: 195, name: 'Kapit' },
-        { id: 196, name: 'Limbang' },
-        { id: 197, name: 'Marudi' },
-        { id: 198, name: 'Belaga' },
-        { id: 199, name: 'Sri Aman' },
-        { id: 200, name: 'Asajaya' },
-        { id: 201, name: 'Batang Ai' },
-        { id: 202, name: 'Tebedu' },
-        { id: 203, name: 'Bekenu' },
-        { id: 204, name: 'Tatau' },
-        { id: 205, name: 'Lawas' },
-        { id: 206, name: 'Pusa' },
-        { id: 207, name: 'Julau' }
-    ],
-    
-    // Wilayah Persekutuan Kuala Lumpur
-    14: [
-        { id: 208, name: 'Kuala Lumpur' },
-        { id: 209, name: 'Bukit Bintang' },
-        { id: 210, name: 'KLCC' },
-        { id: 211, name: 'Chinatown' },
-        { id: 212, name: 'Sri Hartamas' },
-        { id: 213, name: 'Taman Tun Dr. Ismail' },
-        { id: 214, name: 'Mont Kiara' },
-        { id: 215, name: 'Damansara' }
-    ],
-    
-    // Wilayah Persekutuan Labuan
-    15: [
-        { id: 216, name: 'Labuan' },
-        { id: 217, name: 'Victoria' },
-        { id: 218, name: 'Rancha-Rancha' },
-        { id: 219, name: 'Kampung Sungai Pagar' },
-        { id: 220, name: 'Kampung Layang-Layang' }
-    ],
-    
-    // Wilayah Persekutuan Putrajaya
-    16: [
-        { id: 221, name: 'Putrajaya' },
-        { id: 222, name: 'Presidential Palace' },
-        { id: 223, name: 'Putra Square' },
-        { id: 224, name: 'Putrajaya Lake' }
-    ]
-};
-
-// Map state IDs to names for easier access
-const stateNames = {
-    1: 'Johor',
-    2: 'Kedah',
-    3: 'Kelantan',
-    4: 'Melaka',
-    5: 'Negeri Sembilan',
-    6: 'Pahang',
-    7: 'Pulau Pinang',
-    8: 'Perak',
-    9: 'Perlis',
-    10: 'Selangor',
-    11: 'Terengganu',
-    12: 'Sabah',
-    13: 'Sarawak',
-    14: 'Wilayah Persekutuan Kuala Lumpur',
-    15: 'Wilayah Persekutuan Labuan',
-    16: 'Wilayah Persekutuan Putrajaya'
-};
-
-// Map state codes to state IDs
-const stateCodes = {
-    '01': 1,
-    '02': 2,
-    '03': 3,
-    '04': 4,
-    '05': 5,
-    '06': 6,
-    '07': 7,
-    '08': 8,
-    '09': 9,
-    '10': 10,
-    '11': 11,
-    '12': 12,
-    '13': 13,
-    '14': 14,
-    '15': 15,
-    '16': 16
-};
-
-// Store selected coverage areas
-const selectedCoverageAreas = [];
-
-// Load cities based on selected state
-function loadCities() {
-    const stateSelect = document.getElementById('stateSelect');
-    const citySelect = document.getElementById('citySelect');
-    const stateId = stateSelect.value;
-    
-    // Clear city dropdown
-    citySelect.innerHTML = '';
-    
-    if (!stateId) {
-        citySelect.innerHTML = '<option value="">Select a state first</option>';
-        citySelect.disabled = true;
-        return;
-    }
-    
-    // Enable city dropdown
-    citySelect.disabled = false;
-    
-    // Add default option
-    citySelect.innerHTML = '<option value="">Select a city</option>';
-    
-    // Add cities for selected state
-    const cities = malaysianCities[stateId] || [];
-    cities.forEach(city => {
-        const option = document.createElement('option');
-        option.value = city.id;
-        option.textContent = city.name;
-        citySelect.appendChild(option);
-    });
-    
-    // Log debug message
-    if (typeof debugLog === 'function') {
-        debugLog(`Loaded ${cities.length} cities for ${stateNames[stateId]}`);
-    } else {
-        console.log(`Loaded ${cities.length} cities for ${stateNames[stateId]}`);
-    }
-}
-
-// Add selected coverage area
-function addCoverage() {
-    const stateSelect = document.getElementById('stateSelect');
-    const citySelect = document.getElementById('citySelect');
-    
-    const stateId = stateSelect.value;
-    const cityId = citySelect.value;
-    
-    if (!stateId) {
-        alert('Please select a state');
-        return;
-    }
-    
-    if (!cityId) {
-        alert('Please select a city');
-        return;
-    }
-    
-    const stateName = stateNames[stateId];
-    
-    // Find city object by ID across all states (in case city ID doesn't match index)
-    let cityObj = null;
-    const cities = malaysianCities[stateId] || [];
-    for (const city of cities) {
-        if (city.id == cityId) {
-            cityObj = city;
-            break;
-        }
-    }
-    
-    if (!cityObj) {
-        alert('Invalid city selected');
-        return;
-    }
-    
-    const cityName = cityObj.name;
-    
-    // Check if this area is already added
-    const isDuplicate = selectedCoverageAreas.some(area => 
-        area.stateId == stateId && area.cityId == cityId
-    );
-    
-    if (isDuplicate) {
-        alert(`${cityName}, ${stateName} is already in your coverage areas`);
-        return;
-    }
-    
-    // Add to selected areas
-    const coverageArea = {
-        stateId: stateId,
-        stateName: stateName,
-        cityId: cityId,
-        cityName: cityName
-    };
-    
-    selectedCoverageAreas.push(coverageArea);
-    
-    // Update the UI
-    updateCoverageList();
-    
-    // Reset selects
-    citySelect.value = '';
-    citySelect.disabled = true;
-    stateSelect.value = '';
-    
-    // Show success message
-    if (typeof debugLog === 'function') {
-        debugLog(`Added coverage area: ${cityName}, ${stateName}`);
-    } else {
-        console.log(`Added coverage area: ${cityName}, ${stateName}`);
-    }
-}
-
-// Remove a coverage area
-function removeCoverage(index) {
-    selectedCoverageAreas.splice(index, 1);
-    updateCoverageList();
-    
-    if (typeof debugLog === 'function') {
-        debugLog('Removed coverage area');
-    } else {
-        console.log('Removed coverage area');
-    }
-}
-
-// Update the coverage list in the UI
-function updateCoverageList() {
-    const coverageList = document.getElementById('coverageList');
-    const noCoverageRow = document.getElementById('noCoverageRow');
-    const coverageAreasInput = document.getElementById('coverageAreasInput');
-    
-    // Create new no coverage row if it doesn't exist
-    let noRow = noCoverageRow;
-    if (!noRow) {
-        noRow = document.createElement('tr');
-        noRow.id = 'noCoverageRow';
-        noRow.innerHTML = '<td colspan="3" class="text-center text-muted py-4">No coverage areas selected yet</td>';
-    }
-    
-    // Clear the list
-    coverageList.innerHTML = '';
-    
-    // Show or hide the "no coverage" message
-    if (selectedCoverageAreas.length === 0) {
-        coverageList.appendChild(noRow);
-    } else {
-        // Add each coverage area to the list
-        selectedCoverageAreas.forEach((area, index) => {
-            const row = document.createElement('tr');
-            
-            const stateCell = document.createElement('td');
-            stateCell.textContent = area.stateName;
-            
-            const cityCell = document.createElement('td');
-            cityCell.textContent = area.cityName;
-            
-            const actionCell = document.createElement('td');
-            const removeButton = document.createElement('button');
-            removeButton.type = 'button';
-            removeButton.className = 'btn btn-sm btn-danger';
-            removeButton.innerHTML = '<i class="bi bi-trash"></i>';
-            removeButton.onclick = function() { removeCoverage(index); };
-            
-            actionCell.appendChild(removeButton);
-            
-            row.appendChild(stateCell);
-            row.appendChild(cityCell);
-            row.appendChild(actionCell);
-            
-            coverageList.appendChild(row);
+                    if (!isValid) {
+                        e.preventDefault();
+                        alert(errorMessage);
+                        debugLog('Form submission prevented due to validation errors');
+                    } else {
+                        debugLog('Form validation passed, submitting data...');
+                        // Form is valid, submission will proceed
+                        console.log('Submitting services:', servicesArray);
+                        console.log('Submitting fees:', baseFees);
+                        
+                        // Double-check that the services input has been updated
+                        if (document.getElementById('servicesInput').value === '') {
+                            document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
+                        }
+                        
+                        // Update the hidden coverage areas input
+                        document.getElementById('coverageAreasInput').value = JSON.stringify(selectedCoverageAreas);
+                    }
+                });
+            }
         });
-    }
-    
-    // Update the hidden input with the JSON data
-    coverageAreasInput.value = JSON.stringify(selectedCoverageAreas);
-}
 
-// Add validation for coverage areas
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('providerRegistrationForm');
-    
-    if (form) {
-        // Store original submit handler if it exists
-        const originalSubmitHandler = form.onsubmit;
-        
-        // Override form submission
-        form.onsubmit = function(e) {
-            // Validate that at least one coverage area is selected
-            if (selectedCoverageAreas.length === 0) {
-                alert('Please select at least one coverage area');
-                e.preventDefault();
-                return false;
-            }
+        // Define the Malaysian cities data structure
+        const malaysianCities = {
+            // Johor
+            1: [
+                { id: 1, name: 'Johor Bahru' },
+                { id: 2, name: 'Iskandar Puteri' },
+                { id: 3, name: 'Pasir Gudang' },
+                { id: 4, name: 'Batu Pahat' },
+                { id: 5, name: 'Kluang' },
+                { id: 6, name: 'Segamat' },
+                { id: 7, name: 'Muar' },
+                { id: 8, name: 'Kulai' },
+                { id: 9, name: 'Pontian' },
+                { id: 10, name: 'Kota Tinggi' },
+                { id: 11, name: 'Tangkak' },
+                { id: 12, name: 'Yong Peng' },
+                { id: 13, name: 'Simpang Renggam' },
+                { id: 14, name: 'Rengit' },
+                { id: 15, name: 'Pekan Nanas' },
+                { id: 16, name: 'Ulu Tiram' },
+                { id: 17, name: 'Skudai' },
+                { id: 18, name: 'Senai' },
+                { id: 19, name: 'Masai' },
+                { id: 20, name: 'Labis' },
+                { id: 21, name: 'Chaah' },
+                { id: 22, name: 'Bakri' },
+                { id: 23, name: 'Parit Raja' },
+                { id: 24, name: 'Benut' },
+                { id: 25, name: 'Ayer Hitam' },
+                { id: 26, name: 'Pagoh' },
+                { id: 27, name: 'Bukit Gambir' },
+                { id: 28, name: 'Sri Gading' },
+                { id: 29, name: 'Endau' },
+                { id: 30, name: 'Pengerang' },
+                { id: 31, name: 'Tenggaroh' },
+                { id: 32, name: 'Sungai Rengit' }
+            ],
             
-            // Make sure the hidden input is updated with the latest data
-            document.getElementById('coverageAreasInput').value = JSON.stringify(selectedCoverageAreas);
+            // Kedah
+            2: [
+                { id: 33, name: 'Alor Setar' },
+                { id: 34, name: 'Sungai Petani' },
+                { id: 35, name: 'Kulim' },
+                { id: 36, name: 'Langkawi' },
+                { id: 37, name: 'Jitra' }
+            ],
             
-            // Call the original submit handler if it exists
-            if (typeof originalSubmitHandler === 'function') {
-                return originalSubmitHandler.call(this, e);
-            }
+            // Kelantan
+            3: [
+                { id: 38, name: 'Kota Bharu' },
+                { id: 39, name: 'Pasir Mas' },
+                { id: 40, name: 'Tumpat' },
+                { id: 41, name: 'Tanah Merah' },
+                { id: 42, name: 'Machang' },
+                { id: 43, name: 'Kuala Krai' },
+                { id: 44, name: 'Gua Musang' },
+                { id: 45, name: 'Jeli' },
+                { id: 46, name: 'Bachok' },
+                { id: 47, name: 'Pasir Puteh' },
+                { id: 48, name: 'Rantau Panjang' },
+                { id: 49, name: 'Wakaf Bharu' },
+                { id: 50, name: 'Pengkalan Chepa' },
+                { id: 51, name: 'Ketereh' },
+                { id: 52, name: 'Dabong' }
+            ],
+            
+            // Melaka
+            4: [
+                { id: 53, name: 'Melaka City' },
+                { id: 54, name: 'Ayer Keroh' },
+                { id: 55, name: 'Batu Berendam' },
+                { id: 56, name: 'Alor Gajah' },
+                { id: 57, name: 'Jasin' },
+                { id: 58, name: 'Bukit Beruang' },
+                { id: 59, name: 'Masjid Tanah' },
+                { id: 60, name: 'Merlimau' },
+                { id: 61, name: 'Durian Tunggal' },
+                { id: 62, name: 'Tangga Batu' },
+                { id: 63, name: 'Tanjung Kling' }
+            ],
+            
+            // Negeri Sembilan
+            5: [
+                { id: 64, name: 'Seremban' },
+                { id: 65, name: 'Nilai' },
+                { id: 66, name: 'Port Dickson' },
+                { id: 67, name: 'Bahau' },
+                { id: 68, name: 'Kuala Pilah' },
+                { id: 69, name: 'Tampin' },
+                { id: 70, name: 'Rembau' },
+                { id: 71, name: 'Gemas' },
+                { id: 72, name: 'Lukut' },
+                { id: 73, name: 'Mantin' },
+                { id: 74, name: 'Senawang' },
+                { id: 75, name: 'Lenggeng' },
+                { id: 76, name: 'Juasseh' },
+                { id: 77, name: 'Batu Kikir' },
+                { id: 78, name: 'Pedas' }
+            ],
+            
+            // Pahang
+            6: [
+                { id: 79, name: 'Kuantan' },
+                { id: 80, name: 'Temerloh' },
+                { id: 81, name: 'Bentong' },
+                { id: 82, name: 'Raub' },
+                { id: 83, name: 'Jerantut' },
+                { id: 84, name: 'Kuala Lipis' },
+                { id: 85, name: 'Maran' },
+                { id: 86, name: 'Pekan' },
+                { id: 87, name: 'Rompin' },
+                { id: 88, name: 'Bera' },
+                { id: 89, name: 'Gambang' },
+                { id: 90, name: 'Karak' },
+                { id: 91, name: 'Triang' },
+                { id: 92, name: 'Chenor' },
+                { id: 93, name: 'Sungai Lembing' },
+                { id: 94, name: 'Jengka' },
+                { id: 95, name: 'Genting Highlands' }
+            ],
+            
+            // Pulau Pinang
+            7: [
+                { id: 96, name: 'George Town' },
+                { id: 97, name: 'Bayan Lepas' },
+                { id: 98, name: 'Gelugor' },
+                { id: 99, name: 'Ayer Itam' },
+                { id: 100, name: 'Tanjung Tokong' },
+                { id: 101, name: 'Tanjung Bungah' },
+                { id: 102, name: 'Batu Ferringhi' },
+                { id: 103, name: 'Balik Pulau' },
+                { id: 104, name: 'Bukit Mertajam' },
+                { id: 105, name: 'Seberang Jaya' },
+                { id: 106, name: 'Butterworth' },
+                { id: 107, name: 'Nibong Tebal' },
+                { id: 108, name: 'Kepala Batas' },
+                { id: 109, name: 'Permatang Pauh' },
+                { id: 110, name: 'Simpang Ampat' },
+                { id: 111, name: 'Juru' },
+                { id: 112, name: 'Sungai Ara' },
+                { id: 113, name: 'Teluk Kumbar' },
+                { id: 114, name: 'Batu Maung' },
+                { id: 115, name: 'Penaga' }
+            ],
+            
+            // Perak
+            8: [
+                { id: 116, name: 'Ipoh' },
+                { id: 117, name: 'Taiping' },
+                { id: 118, name: 'Batu Gajah' },
+                { id: 119, name: 'Teluk Intan' },
+                { id: 120, name: 'Kuala Kangsar' },
+                { id: 121, name: 'Seri Iskandar' },
+                { id: 122, name: 'Lumut' },
+                { id: 123, name: 'Sitiawan' },
+                { id: 124, name: 'Parit Buntar' },
+                { id: 125, name: 'Kampar' },
+                { id: 126, name: 'Tapah' },
+                { id: 127, name: 'Tanjung Malim' },
+                { id: 128, name: 'Manjung' },
+                { id: 129, name: 'Ayer Tawar' },
+                { id: 130, name: 'Pantai Remis' },
+                { id: 131, name: 'Simpang Pulai' },
+                { id: 132, name: 'Bagan Serai' },
+                { id: 133, name: 'Slim River' },
+                { id: 134, name: 'Tronoh' }
+            ],
+            
+            // Perlis
+            9: [
+                { id: 135, name: 'Kangar' },
+                { id: 136, name: 'Arau' },
+                { id: 137, name: 'Kuala Perlis' }
+            ],
+            
+            // Selangor
+            10: [
+                { id: 138, name: 'Shah Alam' },
+                { id: 139, name: 'Petaling Jaya' },
+                { id: 140, name: 'Subang Jaya' },
+                { id: 141, name: 'Selayang' },
+                { id: 142, name: 'Kajang' },
+                { id: 143, name: 'Sepang' },
+                { id: 144, name: 'Klang' },
+                { id: 145, name: 'Puchong' },
+                { id: 146, name: 'Ampang' },
+                { id: 147, name: 'Rawang' },
+                { id: 148, name: 'Batu Caves' },
+                { id: 149, name: 'Bandar Baru Bangi' },
+                { id: 150, name: 'Seri Kembangan' },
+                { id: 151, name: 'Hulu Langat' },
+                { id: 152, name: 'Bukit Beruntung' },
+                { id: 153, name: 'Sungai Buloh' },
+                { id: 154, name: 'Tanjung Karang' },
+                { id: 155, name: 'Meru' },
+                { id: 156, name: 'Kapar' },
+                { id: 157, name: 'Bestari Jaya' }
+            ],
+            
+            // Terengganu
+            11: [
+                { id: 158, name: 'Kuala Terengganu' },
+                { id: 159, name: 'Dungun' },
+                { id: 160, name: 'Kemaman' },
+                { id: 161, name: 'Marang' },
+                { id: 162, name: 'Chukai' },
+                { id: 163, name: 'Kijal' },
+                { id: 164, name: 'Besut' },
+                { id: 165, name: 'Permaisuri' },
+                { id: 166, name: 'Setiu' },
+                { id: 167, name: 'Paka' }
+            ],
+            
+            // Sabah
+            12: [
+                { id: 168, name: 'Kota Kinabalu' },
+                { id: 169, name: 'Sandakan' },
+                { id: 170, name: 'Tawau' },
+                { id: 171, name: 'Lahad Datu' },
+                { id: 172, name: 'Keningau' },
+                { id: 173, name: 'Semporna' },
+                { id: 174, name: 'Kudat' },
+                { id: 175, name: 'Beaufort' },
+                { id: 176, name: 'Papar' },
+                { id: 177, name: 'Tuaran' },
+                { id: 178, name: 'Kota Belud' },
+                { id: 179, name: 'Ranau' },
+                { id: 180, name: 'Sipitang' },
+                { id: 181, name: 'Tenom' },
+                { id: 182, name: 'Tambunan' },
+                { id: 183, name: 'Kunak' },
+                { id: 184, name: 'Pitas' },
+                { id: 185, name: 'Kota Marudu' },
+                { id: 186, name: 'Nabawan' },
+                { id: 187, name: 'Kuala Penyu' }
+            ],
+            
+            // Sarawak
+            13: [
+                { id: 188, name: 'Kuching' },
+                { id: 189, name: 'Miri' },
+                { id: 190, name: 'Sibu' },
+                { id: 191, name: 'Bintulu' },
+                { id: 192, name: 'Samarahan' },
+                { id: 193, name: 'Serian' },
+                { id: 194, name: 'Mukah' },
+                { id: 195, name: 'Kapit' },
+                { id: 196, name: 'Limbang' },
+                { id: 197, name: 'Marudi' },
+                { id: 198, name: 'Belaga' },
+                { id: 199, name: 'Sri Aman' },
+                { id: 200, name: 'Asajaya' },
+                { id: 201, name: 'Batang Ai' },
+                { id: 202, name: 'Tebedu' },
+                { id: 203, name: 'Bekenu' },
+                { id: 204, name: 'Tatau' },
+                { id: 205, name: 'Lawas' },
+                { id: 206, name: 'Pusa' },
+                { id: 207, name: 'Julau' }
+            ],
+            
+            // Wilayah Persekutuan Kuala Lumpur
+            14: [
+                { id: 208, name: 'Kuala Lumpur' },
+                { id: 209, name: 'Bukit Bintang' },
+                { id: 210, name: 'KLCC' },
+                { id: 211, name: 'Chinatown' },
+                { id: 212, name: 'Sri Hartamas' },
+                { id: 213, name: 'Taman Tun Dr. Ismail' },
+                { id: 214, name: 'Mont Kiara' },
+                { id: 215, name: 'Damansara' }
+            ],
+            
+            // Wilayah Persekutuan Labuan
+            15: [
+                { id: 216, name: 'Labuan' },
+                { id: 217, name: 'Victoria' },
+                { id: 218, name: 'Rancha-Rancha' },
+                { id: 219, name: 'Kampung Sungai Pagar' },
+                { id: 220, name: 'Kampung Layang-Layang' }
+            ],
+            
+            // Wilayah Persekutuan Putrajaya
+            16: [
+                { id: 221, name: 'Putrajaya' },
+                { id: 222, name: 'Presidential Palace' },
+                { id: 223, name: 'Putra Square' },
+                { id: 224, name: 'Putrajaya Lake' }
+            ]
         };
-    }
-    
-    // Initialize the form
-    if (typeof debugLog === 'function') {
-        debugLog('Location coverage selection initialized');
-    } else {
-        console.log('Location coverage selection initialized');
-    }
-});
+
+        // Map state IDs to names for easier access
+        const stateNames = {
+            1: 'Johor',
+            2: 'Kedah',
+            3: 'Kelantan',
+            4: 'Melaka',
+            5: 'Negeri Sembilan',
+            6: 'Pahang',
+            7: 'Pulau Pinang',
+            8: 'Perak',
+            9: 'Perlis',
+            10: 'Selangor',
+            11: 'Terengganu',
+            12: 'Sabah',
+            13: 'Sarawak',
+            14: 'Wilayah Persekutuan Kuala Lumpur',
+            15: 'Wilayah Persekutuan Labuan',
+            16: 'Wilayah Persekutuan Putrajaya'
+        };
+
+        // Map state codes to state IDs
+        const stateCodes = {
+            '01': 1,
+            '02': 2,
+            '03': 3,
+            '04': 4,
+            '05': 5,
+            '06': 6,
+            '07': 7,
+            '08': 8,
+            '09': 9,
+            '10': 10,
+            '11': 11,
+            '12': 12,
+            '13': 13,
+            '14': 14,
+            '15': 15,
+            '16': 16
+        };
+
+        // Store selected coverage areas
+        const selectedCoverageAreas = [];
+
+        // Load cities based on selected state
+        function loadCities() {
+            const stateSelect = document.getElementById('stateSelect');
+            const citySelect = document.getElementById('citySelect');
+            const stateId = stateSelect.value;
+            
+            // Clear city dropdown
+            citySelect.innerHTML = '';
+            
+            if (!stateId) {
+                citySelect.innerHTML = '<option value="">Select a state first</option>';
+                citySelect.disabled = true;
+                return;
+            }
+            
+            // Enable city dropdown
+            citySelect.disabled = false;
+            
+            // Add default option
+            citySelect.innerHTML = '<option value="">Select a city</option>';
+            
+            // Add cities for selected state
+            const cities = malaysianCities[stateId] || [];
+            cities.forEach(city => {
+                const option = document.createElement('option');
+                option.value = city.id;
+                option.textContent = city.name;
+                citySelect.appendChild(option);
+            });
+            
+            // Log debug message
+            if (typeof debugLog === 'function') {
+                debugLog(`Loaded ${cities.length} cities for ${stateNames[stateId]}`);
+            } else {
+                console.log(`Loaded ${cities.length} cities for ${stateNames[stateId]}`);
+            }
+        }
+
+        // Add selected coverage area
+        function addCoverage() {
+            const stateSelect = document.getElementById('stateSelect');
+            const citySelect = document.getElementById('citySelect');
+            
+            const stateId = stateSelect.value;
+            const cityId = citySelect.value;
+            
+            if (!stateId) {
+                alert('Please select a state');
+                return;
+            }
+            
+            if (!cityId) {
+                alert('Please select a city');
+                return;
+            }
+            
+            const stateName = stateNames[stateId];
+            
+            // Find city object by ID across all states (in case city ID doesn't match index)
+            let cityObj = null;
+            const cities = malaysianCities[stateId] || [];
+            for (const city of cities) {
+                if (city.id == cityId) {
+                    cityObj = city;
+                    break;
+                }
+            }
+            
+            if (!cityObj) {
+                alert('Invalid city selected');
+                return;
+            }
+            
+            const cityName = cityObj.name;
+            
+            // Check if this area is already added
+            const isDuplicate = selectedCoverageAreas.some(area => 
+                area.stateId == stateId && area.cityId == cityId
+            );
+            
+            if (isDuplicate) {
+                alert(`${cityName}, ${stateName} is already in your coverage areas`);
+                return;
+            }
+            
+            // Add to selected areas
+            const coverageArea = {
+                stateId: stateId,
+                stateName: stateName,
+                cityId: cityId,
+                cityName: cityName
+            };
+            
+            selectedCoverageAreas.push(coverageArea);
+            
+            // Update the UI
+            updateCoverageList();
+            
+            // Reset selects
+            citySelect.value = '';
+            citySelect.disabled = true;
+            stateSelect.value = '';
+            
+            // Show success message
+            if (typeof debugLog === 'function') {
+                debugLog(`Added coverage area: ${cityName}, ${stateName}`);
+            } else {
+                console.log(`Added coverage area: ${cityName}, ${stateName}`);
+            }
+        }
+
+        // Remove a coverage area
+        function removeCoverage(index) {
+            selectedCoverageAreas.splice(index, 1);
+            updateCoverageList();
+            
+            if (typeof debugLog === 'function') {
+                debugLog('Removed coverage area');
+            } else {
+                console.log('Removed coverage area');
+            }
+        }
+
+        // Update the coverage list in the UI
+        function updateCoverageList() {
+            const coverageList = document.getElementById('coverageList');
+            const noCoverageRow = document.getElementById('noCoverageRow');
+            const coverageAreasInput = document.getElementById('coverageAreasInput');
+            
+            // Create new no coverage row if it doesn't exist
+            let noRow = noCoverageRow;
+            if (!noRow) {
+                noRow = document.createElement('tr');
+                noRow.id = 'noCoverageRow';
+                noRow.innerHTML = '<td colspan="3" class="text-center text-muted py-4">No coverage areas selected yet</td>';
+            }
+            
+            // Clear the list
+            coverageList.innerHTML = '';
+            
+            // Show or hide the "no coverage" message
+            if (selectedCoverageAreas.length === 0) {
+                coverageList.appendChild(noRow);
+            } else {
+                // Add each coverage area to the list
+                selectedCoverageAreas.forEach((area, index) => {
+                    const row = document.createElement('tr');
+                    
+                    const stateCell = document.createElement('td');
+                    stateCell.textContent = area.stateName;
+                    
+                    const cityCell = document.createElement('td');
+                    cityCell.textContent = area.cityName;
+                    
+                    const actionCell = document.createElement('td');
+                    const removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.className = 'btn btn-sm btn-danger';
+                    removeButton.innerHTML = '<i class="bi bi-trash"></i>';
+                    removeButton.onclick = function() { removeCoverage(index); };
+                    
+                    actionCell.appendChild(removeButton);
+                    
+                    row.appendChild(stateCell);
+                    row.appendChild(cityCell);
+                    row.appendChild(actionCell);
+                    
+                    coverageList.appendChild(row);
+                });
+            }
+            
+            // Update the hidden input with the JSON data
+            coverageAreasInput.value = JSON.stringify(selectedCoverageAreas);
+        }
+
+        // Add validation for coverage areas
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('providerRegistrationForm');
+            
+            if (form) {
+                // Store original submit handler if it exists
+                const originalSubmitHandler = form.onsubmit;
+                
+                // Override form submission
+                form.onsubmit = function(e) {
+                    // Validate that at least one coverage area is selected
+                    if (selectedCoverageAreas.length === 0) {
+                        alert('Please select at least one coverage area');
+                        e.preventDefault();
+                        return false;
+                    }
+                    
+                    // Make sure the hidden input is updated with the latest data
+                    document.getElementById('coverageAreasInput').value = JSON.stringify(selectedCoverageAreas);
+                    
+                    // Call the original submit handler if it exists
+                    if (typeof originalSubmitHandler === 'function') {
+                        return originalSubmitHandler.call(this, e);
+                    }
+                };
+            }
+            
+            // Initialize the form
+            if (typeof debugLog === 'function') {
+                debugLog('Location coverage selection initialized');
+            } else {
+                console.log('Location coverage selection initialized');
+            }
+        });
+
+        // Add initial service field if script is loaded after DOM
+        if (document.readyState === 'complete') {
+            addService();
+        }
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

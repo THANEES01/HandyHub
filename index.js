@@ -30,44 +30,55 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
-// For Desktop uploads path (based on your console log)
-// const desktopUploadsPath = 'C:\\Users\\ASUS\\OneDrive\\Desktop\\public\\uploads';
-// app.use('/uploads', express.static(desktopUploadsPath));
-
 // For common image placeholders
 app.use('/img', express.static(path.join(__dirname, 'public/img')));
-
-// Log the static serving paths to verify
-// console.log('Static serving paths:');
-// console.log('- Main public:', path.join(__dirname, 'public'));
-// console.log('- Standard uploads:', path.join(__dirname, 'public/uploads'));
-// console.log('- Alternative uploads:', path.join(__dirname, '../public/uploads'));
-// console.log('- Desktop uploads:', desktopUploadsPath);
 
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Session setup
+// ===== FIXED SESSION CONFIGURATION =====
 app.use(session({
     secret: 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
+    resave: true, // Changed to true to ensure session is saved even if unchanged
+    saveUninitialized: true, // Changed to true to save new but unmodified sessions
     cookie: { 
         secure: process.env.NODE_ENV === 'production', // Only use secure cookies in production
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
 
-// Flash message middleware
+// ===== IMPROVED FLASH MESSAGE MIDDLEWARE =====
 app.use((req, res, next) => {
-    res.locals.user = req.session.user || null;
-    res.locals.success = req.session.success || null;
-    res.locals.error = req.session.error || null;
+    // Make sure session exists before accessing it
+    if (req.session) {
+        // Set locals for views
+        res.locals.user = req.session.user || null;
+        res.locals.success = req.session.success || null;
+        res.locals.error = req.session.error || null;
+        
+        // Log messages for debugging
+        if (req.session.success || req.session.error) {
+            console.log('Session messages found:', {
+                success: req.session.success,
+                error: req.session.error
+            });
+        }
+        
+        // IMPORTANT: Don't delete the messages here
+        // They will be deleted in the controller functions after rendering
+    }
     
-    // Clear flash messages after displaying them
-    delete req.session.success;
-    delete req.session.error;
+    // Custom flash function for setting messages
+    req.flash = function(type, message) {
+        if (!req.session) return;
+        
+        if (type === 'success') {
+            req.session.success = message;
+        } else if (type === 'error') {
+            req.session.error = message;
+        }
+    };
     
     next();
 });
@@ -84,6 +95,30 @@ app.use('/customer', paymentRoutes);
 app.get('/', (req, res) => {
     res.render('home', { 
         title: 'HandyHub - Professional Home Services'
+    });
+});
+
+// ===== DEBUGGING ROUTE =====
+// Add this temporary route to test sessions
+app.get('/test-session', (req, res) => {
+    // Set test messages
+    req.session.success = 'This is a test success message';
+    req.session.error = 'This is a test error message';
+    
+    console.log('Test messages set in session:', {
+        success: req.session.success,
+        error: req.session.error
+    });
+    
+    // Save session explicitly
+    req.session.save((err) => {
+        if (err) {
+            console.error('Session save error:', err);
+            return res.status(500).send('Session save error');
+        }
+        
+        // Redirect to a page to see if messages appear
+        res.redirect('/auth/customer-login');
     });
 });
 

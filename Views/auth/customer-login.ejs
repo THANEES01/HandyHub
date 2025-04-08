@@ -139,20 +139,19 @@
                 <button onclick="window.location='/auth/provider-login'">Service Provider</button>
                 <button onclick="window.location='/auth/admin-login'">Admin</button>
             </div>
-
-             <!-- Add error and success messages -->
-             <% if (locals.error) { %>
+            
+            <!-- IMPROVED MESSAGE DISPLAY - ADD THIS TO ALL TEMPLATES -->
+            <% if (error) { %>
                 <div class="alert alert-danger" role="alert">
                     <%= error %>
                 </div>
             <% } %>
-
-            <% if (locals.success) { %>
+            
+            <% if (success) { %>
                 <div class="alert alert-success" role="alert">
                     <%= success %>
                 </div>
             <% } %>
-
             <form action="/auth/customer-login" method="POST">
                 <div class="mb-3">
                     <input 

@@ -21,6 +21,72 @@ const isCustomerAuth = (req, res, next) => {
     }
 };
 
+// Category normalization function
+const normalizeCategories = (categories) => {
+    // Map of similar category names to be consolidated
+    const categoryMapping = {
+        'cleaning': 'home_cleaning',
+        'home cleaning': 'home_cleaning',
+        'homecleaning': 'home_cleaning',
+        'house cleaning': 'home_cleaning',
+        
+        'plumbing': 'plumbing',
+        'plumber': 'plumbing',
+        
+        'appliance service': 'appliance_service',
+        'appliance repair': 'appliance_service',
+        'appliance': 'appliance_service',
+        
+        'pest control': 'pest_control',
+        'pest management': 'pest_control'
+        
+        // Add more mappings as needed
+    };
+    
+    // Map of standardized category names to display names
+    const displayNames = {
+        'home_cleaning': 'Home Cleaning',
+        'plumbing': 'Plumbing',
+        'appliance_service': 'Appliance Service',
+        'pest_control': 'Pest Control',
+        'landscaping': 'Landscaping',
+        'electrical': 'Electrical Repairs',
+        'ac_service': 'AC Services',
+        'carpentry': 'Carpentry Services',
+        'roofing': 'Roof Repairs'
+        // Add more display names as needed
+    };
+    
+    // Create a new array for normalized categories
+    const normalizedCategories = [];
+    const processedCategories = new Set();
+    
+    categories.forEach(category => {
+        // Get the category name and convert to lowercase for comparison
+        const categoryName = category.category_name.toLowerCase();
+        
+        // Find the normalized key for this category
+        let normalizedKey = categoryMapping[categoryName] || categoryName;
+        
+        // Skip if we've already processed this normalized category
+        if (processedCategories.has(normalizedKey)) {
+            return;
+        }
+        
+        // Mark this category as processed
+        processedCategories.add(normalizedKey);
+        
+        // Create a new normalized category object
+        normalizedCategories.push({
+            category_name: normalizedKey,
+            display_name: displayNames[normalizedKey] || 
+                          (categoryName.charAt(0).toUpperCase() + categoryName.slice(1))
+        });
+    });
+    
+    return normalizedCategories;
+};
+
 // Add more routes as needed
 router.get('/', isAuthenticated, (req, res) => {
     res.redirect('/customer/dashboard');
@@ -48,7 +114,13 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
             ORDER BY category_name
         `);
         
-        // Render dashboard with statistics and categories
+        // Normalize categories to prevent duplicates
+        const normalizedCategories = normalizeCategories(categoriesResult.rows);
+        
+        console.log('Original categories:', categoriesResult.rows);
+        console.log('Normalized categories:', normalizedCategories);
+        
+        // Render dashboard with statistics and normalized categories
         res.render('customer/customer-dashboard', {
             title: 'Customer Dashboard',
             user: req.session.user,
@@ -56,7 +128,7 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
             activeServices: statsResult.rows[0].active_services || 0,
             completedBookings: statsResult.rows[0].completed_bookings || 0,
             totalSpent: statsResult.rows[0].total_spent || 0,
-            categories: categoriesResult.rows
+            categories: normalizedCategories
         });
     } catch (error) {
         console.error('Error loading dashboard:', error);
@@ -91,7 +163,36 @@ router.get('/categories', isCustomerAuth, async (req, res) => {
 // View service providers by category with optional location filtering
 router.get('/category/:categoryName', isCustomerAuth, async (req, res) => {
     try {
-        const categoryName = req.params.categoryName;
+        let categoryName = req.params.categoryName;
+        
+        // Define a mapping to handle normalized category names
+        const categoryMapping = {
+            'home_cleaning': ['cleaning', 'home cleaning', 'homecleaning', 'house cleaning'],
+            'appliance_service': ['appliance', 'appliance service', 'appliance repair'],
+            'pest_control': ['pest control', 'pest management']
+            // Add more mappings as needed
+        };
+        
+        // Find all variations of the category name to include in the query
+        let categoryVariations = [categoryName];
+        
+        // Check if this category has variations defined in our mapping
+        for (const [normalized, variations] of Object.entries(categoryMapping)) {
+            if (normalized === categoryName) {
+                // Use all variations for this normalized category
+                categoryVariations = variations;
+                break;
+            }
+            
+            // Also check if the provided category is one of the variations
+            if (variations.includes(categoryName.toLowerCase())) {
+                // Use the normalized name and its variations
+                categoryName = normalized; // Update to normalized version
+                categoryVariations = variations;
+                break;
+            }
+        }
+        
         const stateId = req.query.state || null;
         const cityId = req.query.city || null;
         
@@ -113,38 +214,48 @@ router.get('/category/:categoryName', isCustomerAuth, async (req, res) => {
             `, [stateId]);
         }
         
-        // Build the query for providers based on filters
+        // Build the query for providers based on filters and category variations
         let providersQuery = `
             SELECT DISTINCT sp.id, sp.business_name, sp.phone_number, 
-                   u.email, sp.is_verified, sc.base_fee, sc.fee_type
+                   u.email, sp.is_verified, sc.base_fee, sc.fee_type, sc.category_name
             FROM service_providers sp
             JOIN users u ON sp.user_id = u.id
             JOIN service_categories sc ON sp.id = sc.provider_id
-            WHERE sc.category_name = $1 AND sp.is_verified = true
+            WHERE (
         `;
         
-        const queryParams = [categoryName];
+        // Add each category variation as an OR condition
+        const queryParams = [];
+        categoryVariations.forEach((variation, index) => {
+            if (index > 0) {
+                providersQuery += ' OR ';
+            }
+            queryParams.push(variation);
+            providersQuery += `LOWER(sc.category_name) = LOWER($${queryParams.length})`;
+        });
+        
+        providersQuery += `) AND sp.is_verified = true`;
         
         // Add location filter if specified
         if (cityId) {
+            queryParams.push(cityId);
             providersQuery += `
                 AND sp.id IN (
                     SELECT provider_id
                     FROM provider_coverage
-                    WHERE city_id = $2
+                    WHERE city_id = $${queryParams.length}
                 )
             `;
-            queryParams.push(cityId);
         } else if (stateId) {
+            queryParams.push(stateId);
             providersQuery += `
                 AND sp.id IN (
                     SELECT provider_id
                     FROM provider_coverage pc
                     JOIN cities c ON pc.city_id = c.id
-                    WHERE c.state_id = $2
+                    WHERE c.state_id = $${queryParams.length}
                 )
             `;
-            queryParams.push(stateId);
         }
         
         providersQuery += ` ORDER BY sp.business_name ASC`;
@@ -154,13 +265,27 @@ router.get('/category/:categoryName', isCustomerAuth, async (req, res) => {
         // For each provider, get their services in this category
         const providers = [];
         for (const provider of providersResult.rows) {
-            // Get services offered by this provider in this category
-            const servicesResult = await pool.query(`
+            // Get services offered by this provider in any of the category variations
+            let servicesQuery = `
                 SELECT so.service_name
                 FROM services_offered so
                 JOIN service_categories sc ON so.provider_id = sc.provider_id
-                WHERE so.provider_id = $1 AND sc.category_name = $2
-            `, [provider.id, categoryName]);
+                WHERE so.provider_id = $1 AND (
+            `;
+            
+            // Add each category variation as an OR condition
+            const serviceQueryParams = [provider.id];
+            categoryVariations.forEach((variation, index) => {
+                if (index > 0) {
+                    servicesQuery += ' OR ';
+                }
+                serviceQueryParams.push(variation);
+                servicesQuery += `LOWER(sc.category_name) = LOWER($${serviceQueryParams.length})`;
+            });
+            
+            servicesQuery += `)`;
+            
+            const servicesResult = await pool.query(servicesQuery, serviceQueryParams);
             
             // Get coverage areas for this provider
             const coverageResult = await pool.query(`
@@ -179,10 +304,27 @@ router.get('/category/:categoryName', isCustomerAuth, async (req, res) => {
             });
         }
         
+        // Get display name for the category
+        const displayNames = {
+            'home_cleaning': 'Home Cleaning',
+            'plumbing': 'Plumbing',
+            'appliance_service': 'Appliance Service',
+            'pest_control': 'Pest Control',
+            'landscaping': 'Landscaping',
+            'electrical': 'Electrical Repairs',
+            'ac_service': 'AC Services',
+            'carpentry': 'Carpentry Services',
+            'roofing': 'Roof Repairs'
+        };
+        
+        const categoryDisplayName = displayNames[categoryName] || 
+            (categoryName.charAt(0).toUpperCase() + categoryName.slice(1));
+        
         res.render('customer/providers-by-category', { 
-            title: `${categoryName} Service Providers`,
+            title: `${categoryDisplayName} Service Providers`,
             user: req.session.user,
             category: categoryName,
+            categoryDisplay: categoryDisplayName,
             providers: providers,
             states: statesResult.rows,
             cities: citiesResult.rows,

@@ -104,25 +104,57 @@ const isProvider = (req, res, next) => {
 
 // ====== Controllers ======
 const showCustomerLogin = (req, res) => {
-    // Get messages from session
+     // Get messages from session
     const error = req.session.error;
     const success = req.session.success;
     
-    // Clear messages from session
+    console.log('Rendering customer login with messages before clearing:', { 
+        error: error, 
+        success: success 
+    });
+    
+    // Clear messages from session AFTER saving them
     delete req.session.error;
     delete req.session.success;
     
+    // Force session save
+    req.session.save((err) => {
+        if (err) console.error('Session save error in customer login page:', err);
+    });
+    
+    // Always pass the error and success, even if null
     res.render('auth/customer-login', {
+        title: 'Customer Login',
         error: error,
         success: success
     });
 };
 
 const showCustomerRegister = (req, res) => {
-    res.render('auth/customer-register', {
-        error: req.session.error,
-        success: req.session.success
-    });
+     // Get messages from session
+     const error = req.session.error;
+     const success = req.session.success;
+     
+     console.log('Rendering customer register with messages before clearing:', { 
+         error: error, 
+         success: success 
+     });
+     
+     // Clear messages from session AFTER saving them
+     delete req.session.error;
+     delete req.session.success;
+     
+     // Force session save
+     req.session.save((err) => {
+         if (err) console.error('Session save error in customer register page:', err);
+     });
+     
+     // Always pass the error and success, even if null
+     res.render('auth/customer-register', {
+         title: 'Customer Registration',
+         error: error,
+         success: success
+     });
 };
 
 // Customer Registration
@@ -141,7 +173,12 @@ const customerRegister = async (req, res) => {
 
         if (existingUser.rows.length) {
             req.session.error = 'Email already registered';
-            return res.redirect('/auth/customer-register');
+            
+            // Explicitly save session before redirect
+            return req.session.save((err) => {
+                if (err) console.error('Session save error:', err);
+                return res.redirect('/auth/customer-register');
+            });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -160,13 +197,23 @@ const customerRegister = async (req, res) => {
 
         await client.query('COMMIT');
         req.session.success = 'Registration successful! Please login.';
-        res.redirect('/auth/customer-login');
+        
+        // Explicitly save session before redirect
+        return req.session.save((err) => {
+            if (err) console.error('Session save error:', err);
+            return res.redirect('/auth/customer-login');
+        });
 
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Customer registration error:', err);
         req.session.error = 'Registration failed. Please try again.';
-        res.redirect('/auth/customer-register');
+        
+        // Explicitly save session before redirect
+        return req.session.save((err) => {
+            if (err) console.error('Session save error:', err);
+            return res.redirect('/auth/customer-register');
+        });
     } finally {
         client.release();
     }
@@ -234,7 +281,12 @@ const customerLogin = async (req, res) => {
     } catch (err) {
         console.error('Login error:', err);
         req.session.error = 'Login failed. Please try again.';
-        res.redirect('/auth/customer-login');
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+            }
+            res.redirect('/auth/customer-login');
+        });
     }
 };
 
@@ -257,29 +309,59 @@ const logout = (req, res) => {
     });
 };
 
-// Service Provider Authentication
 // Show provider login page
 const showProviderLogin = (req, res) => {
-    // Get messages from session
-    const error = req.session.error;
-    const success = req.session.success;
-    
-    // Clear messages from session
-    delete req.session.error;
-    delete req.session.success;
-    
-    // Render page with messages
-    res.render('auth/provider-login', {
-        error: error,
-        success: success
-    });
+   // Get messages from session
+   const error = req.session.error;
+   const success = req.session.success;
+   
+   console.log('Rendering provider login with messages before clearing:', { 
+       error: error, 
+       success: success 
+   });
+   
+   // Clear messages from session AFTER saving them
+   delete req.session.error;
+   delete req.session.success;
+   
+   // Force session save
+   req.session.save((err) => {
+       if (err) console.error('Session save error in provider login page:', err);
+   });
+   
+   // Render page with messages
+   res.render('auth/provider-login', {
+       title: 'Service Provider Login',
+       error: error,
+       success: success
+   });
 };
 
 // Show provider registration page
 const showProviderRegister = (req, res) => {
+    // Get messages from session
+    const error = req.session.error;
+    const success = req.session.success;
+    
+    console.log('Rendering provider register with messages before clearing:', { 
+        error: error, 
+        success: success 
+    });
+    
+    // Clear messages from session AFTER saving them
+    delete req.session.error;
+    delete req.session.success;
+    
+    // Force session save
+    req.session.save((err) => {
+        if (err) console.error('Session save error in provider register page:', err);
+    });
+    
+    // Render page with messages
     res.render('auth/provider-register', {
-        error: req.session.error,
-        success: req.session.success
+        title: 'Service Provider Registration',
+        error: error,
+        success: success
     });
 };
 
@@ -287,21 +369,27 @@ const showProviderRegister = (req, res) => {
 const providerRegister = async (req, res) => {
     const client = await pool.connect();
     try {
+        // Log full request body for debugging
+        console.log("Full request body:", req.body);
+        console.log("Request body structure:", Object.keys(req.body));
+
         const {
             businessName,
             email,
             phoneNumber,
-            serviceCategories,
-            services,
             password,
-            coverageAreas  // New field for coverage areas
+            services,
+            coverageAreas
         } = req.body;
+
+        // Get the serviceCategories from the request body, which might be a single value or an array
+        const serviceCategories = req.body.serviceCategories;
 
         console.log("Registration data:", {
             businessName,
             email,
             phoneNumber,
-            serviceCategories: Array.isArray(serviceCategories) ? serviceCategories.length : "1 category",
+            serviceCategories: Array.isArray(serviceCategories) ? serviceCategories.length + " categories" : "1 category",
             servicesCount: services ? JSON.parse(services).length : 0,
             coverageAreas: coverageAreas ? JSON.parse(coverageAreas).length : 0
         });
@@ -337,38 +425,110 @@ const providerRegister = async (req, res) => {
 
         const providerId = newProvider.rows[0].id;
 
-        // Extract fee data from the form
+        // Improved extractCategoryData function with better error handling
         function extractCategoryData(body, category) {
-            const feeField = `categoryFees[${category}]`;
-            const feeTypeField = `feeTypes[${category}]`;
-            
-            return {
-                fee: body[feeField] ? parseFloat(body[feeField]) : 0,
-                feeType: body[feeTypeField] || 'per visit'
-            };
+            try {
+                // Ensure we have a string key for accessing the form data
+                const categoryKey = String(category);
+                
+                // Define field names
+                const feeField = `categoryFees[${categoryKey}]`;
+                const feeTypeField = `feeTypes[${categoryKey}]`;
+                
+                console.log(`Looking for fee data: ${feeField}, ${feeTypeField}`);
+                
+                // Access the fee data safely
+                let fee = 0;
+                
+                // Handle different ways the categoryFees might be structured
+                if (body.categoryFees && body.categoryFees[categoryKey]) {
+                    const rawFee = body.categoryFees[categoryKey];
+                    fee = parseFloat(rawFee) || 0;
+                    console.log(`Extracted fee ${fee} from body.categoryFees[${categoryKey}]`);
+                } else if (body[feeField]) {
+                    const rawFee = body[feeField];
+                    fee = parseFloat(rawFee) || 0;
+                    console.log(`Extracted fee ${fee} from body[${feeField}]`);
+                }
+                
+                // Ensure fee is a number
+                if (isNaN(fee)) {
+                    console.log(`Fee is NaN, setting to 0`);
+                    fee = 0;
+                }
+                
+                // Handle different ways the feeTypes might be structured
+                let feeType = 'per visit'; // Default value
+                
+                if (body.feeTypes && body.feeTypes[categoryKey]) {
+                    feeType = body.feeTypes[categoryKey];
+                    console.log(`Extracted feeType ${feeType} from body.feeTypes[${categoryKey}]`);
+                } else if (body[feeTypeField]) {
+                    feeType = body[feeTypeField];
+                    console.log(`Extracted feeType ${feeType} from body[${feeTypeField}]`);
+                }
+                
+                console.log(`Final extracted data for ${category}: ${fee} (${feeType})`);
+                
+                return {
+                    fee: fee,
+                    feeType: feeType
+                };
+            } catch (e) {
+                console.error(`Error extracting category data for ${category}:`, e);
+                return {
+                    fee: 0,
+                    feeType: 'per visit'
+                };
+            }
         }
 
-        // Insert service categories with base fees
+        // Insert service categories with base fees with improved error handling
+        console.log("Beginning service categories insertion");
+        
         if (Array.isArray(serviceCategories)) {
+            console.log(`Processing ${serviceCategories.length} categories`);
+            
             for (const category of serviceCategories) {
-                // Extract fee data using the helper function
-                const { fee, feeType } = extractCategoryData(req.body, category);
+                try {
+                    console.log(`Processing category: ${category}`);
+                    
+                    // Extract fee data using the helper function
+                    const { fee, feeType } = extractCategoryData(req.body, category);
+                    
+                    console.log(`Adding category ${category} with fee ${fee} (${feeType})`);
+                    
+                    await client.query(
+                        'INSERT INTO service_categories (provider_id, category_name, base_fee, fee_type) VALUES ($1, $2, $3, $4)',
+                        [providerId, category, fee, feeType]
+                    );
+                    
+                    console.log(`Successfully inserted category: ${category}`);
+                } catch (error) {
+                    console.error(`Error inserting category ${category}:`, error);
+                    // Continue with other categories instead of failing the entire transaction
+                }
+            }
+        } else if (serviceCategories) {
+            try {
+                console.log(`Processing single category: ${serviceCategories}`);
                 
-                console.log(`Adding category ${category} with fee ${fee} (${feeType})`);
+                // Handle single category case
+                const { fee, feeType } = extractCategoryData(req.body, serviceCategories);
+                
+                console.log(`Adding single category ${serviceCategories} with fee ${fee} (${feeType})`);
                 
                 await client.query(
                     'INSERT INTO service_categories (provider_id, category_name, base_fee, fee_type) VALUES ($1, $2, $3, $4)',
-                    [providerId, category, fee, feeType]
+                    [providerId, serviceCategories, fee, feeType]
                 );
+                
+                console.log(`Successfully inserted single category: ${serviceCategories}`);
+            } catch (error) {
+                console.error(`Error inserting single category ${serviceCategories}:`, error);
             }
-        } else if (serviceCategories) {
-            // Handle single category case
-            const { fee, feeType } = extractCategoryData(req.body, serviceCategories);
-            
-            await client.query(
-                'INSERT INTO service_categories (provider_id, category_name, base_fee, fee_type) VALUES ($1, $2, $3, $4)',
-                [providerId, serviceCategories, fee, feeType]
-            );
+        } else {
+            console.log("No service categories found");
         }
 
         // Insert provider availability
@@ -397,13 +557,15 @@ const providerRegister = async (req, res) => {
         }
 
         // Insert services
-        const servicesArray = JSON.parse(services);
-        if (Array.isArray(servicesArray)) {
-            for (const service of servicesArray) {
-                await client.query(
-                    'INSERT INTO services_offered (provider_id, service_name) VALUES ($1, $2)',
-                    [providerId, service]
-                );
+        if (services) {
+            const servicesArray = JSON.parse(services);
+            if (Array.isArray(servicesArray)) {
+                for (const service of servicesArray) {
+                    await client.query(
+                        'INSERT INTO services_offered (provider_id, service_name) VALUES ($1, $2)',
+                        [providerId, service]
+                    );
+                }
             }
         }
 
@@ -462,16 +624,26 @@ const providerRegister = async (req, res) => {
         }
 
         await client.query('COMMIT');
-        req.session.success = 'Registration successful! Please login to continue.';
-        req.session.save(() => {
+        
+        // Set success message and explicitly save session before redirecting
+        req.session.success = 'Registration successful! Please login to continue. Your account will be verified by our admin team shortly.';
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+            }
             res.redirect('/auth/provider-login');
         });
 
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Provider registration error:', err);
-        req.session.error = 'Registration failed. Please try again.';
-        req.session.save(() => {
+        
+        // Set error message and explicitly save session before redirecting
+        req.session.error = 'Registration failed. Please check your information and try again.';
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+            }
             res.redirect('/auth/provider-register');
         });
     } finally {
@@ -519,6 +691,12 @@ const providerLogin = async (req, res) => {
         }
 
         const provider = providerResult.rows[0];
+        
+        // Check if provider is verified
+        if (!provider.is_verified) {
+            req.session.error = 'Your account is pending verification by our admin. Please check back later.';
+            return res.redirect('/auth/provider-login');
+        }
 
         // Set session data
         req.session.user = {
@@ -547,7 +725,12 @@ const providerLogin = async (req, res) => {
     } catch (err) {
         console.error('Provider login error:', err);
         req.session.error = 'Login failed. Please try again.';
-        res.redirect('/auth/provider-login');
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+            }
+            res.redirect('/auth/provider-login');
+        });
     }
 };
 
@@ -555,20 +738,21 @@ const adminLogin = async (req, res) => {
     try {
         const { username, password } = req.body;
         
-        const result = await pool.query(`
-            SELECT u.*, a.id as admin_id 
-            FROM users u
-            JOIN admins a ON u.id = a.user_id
-            WHERE u.email = 'admin@handyhub.com'
-        `);
- 
-        if (result.rows.length === 0) {
-            req.session.error = 'Invalid credentials';
-            return res.redirect('/auth/admin-login');
-        }
- 
-        const admin = result.rows[0];
+        // Simple admin login check
         if (username === 'admin' && password === 'admin123') {
+            const result = await pool.query(`
+                SELECT u.*, a.id as admin_id 
+                FROM users u
+                JOIN admins a ON u.id = a.user_id
+                WHERE u.email = 'admin@handyhub.com'
+            `);
+     
+            if (result.rows.length === 0) {
+                req.session.error = 'Admin account not configured. Please contact system administrator.';
+                return res.redirect('/auth/admin-login');
+            }
+     
+            const admin = result.rows[0];
             req.session.user = {
                 id: admin.id,
                 email: admin.email,
@@ -586,13 +770,23 @@ const adminLogin = async (req, res) => {
                 return res.redirect('/admin/dashboard');
             });
         } else {
-            req.session.error = 'Invalid credentials';
-            res.redirect('/auth/admin-login');
+            req.session.error = 'Invalid username or password';
+            req.session.save((err) => {
+                if (err) {
+                    console.error('Session save error:', err);
+                }
+                res.redirect('/auth/admin-login');
+            });
         }
     } catch (err) {
-        console.error(err);
-        req.session.error = 'Login failed';
-        res.redirect('/auth/admin-login');
+        console.error('Admin login error:', err);
+        req.session.error = 'Login failed. Please try again.';
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+            }
+            res.redirect('/auth/admin-login');
+        });
     }
 };
 
@@ -621,17 +815,32 @@ router.post('/provider-register', upload.single('certification'), providerRegist
 
 // Admin routes
 router.get('/admin-login', isGuest, (req, res) => {
+    // Get messages from session
     const error = req.session.error;
     const success = req.session.success;
     
+    console.log('Rendering admin login with messages before clearing:', { 
+        error: error, 
+        success: success 
+    });
+    
+    // Clear messages from session AFTER saving them
     delete req.session.error;
     delete req.session.success;
     
+    // Force session save
+    req.session.save((err) => {
+        if (err) console.error('Session save error in admin login page:', err);
+    });
+    
+    // Always pass the error and success, even if null
     res.render('auth/admin-login', {
+        title: 'Admin Login',
         error: error,
         success: success
     });
 });
+
 router.post('/admin-login', adminLogin);
 
 export default router;

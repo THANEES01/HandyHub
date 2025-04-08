@@ -300,6 +300,18 @@
             background-color: #d4edda;
             color: #155724;
         }
+
+        /* Add these styles to your existing styles */
+        .total-row {
+        background-color: #f8f9fa;
+    }
+    
+    .total-row td {
+        padding-top: 12px !important;
+        padding-bottom: 12px !important;
+        border-top: 1px solid #dee2e6 !important;
+        border-bottom: 1px solid #dee2e6 !important;
+    }
     </style>
 </head>
 <body>
@@ -427,9 +439,15 @@
                                             </tr>
                                         <% }); %>
                                         <tr class="total-row">
-                                            <td colspan="6" class="text-end">Total Platform Earnings:</td>
-                                            <td colspan="3">RM <%= displayTotalEarnings ? parseFloat(displayTotalEarnings).toFixed(2) : '0.00' %></td>
+                                            <td colspan="6" style="text-align: right; font-weight: bold; padding-right: 30px;">
+                                                Total Earnings:
+                                            </td>
+                                            <td style="font-weight: bold;">
+                                                RM <%= displayTotalEarnings ? parseFloat(displayTotalEarnings).toFixed(2) : '0.00' %>
+                                            </td>
+                                            <td colspan="2"></td>
                                         </tr>
+                                        
                                     </tbody>
                                 </table>
                             <% } else { %>
@@ -443,6 +461,7 @@
                                     <% } %>
                                 </div>
                             <% } %>
+                            
                         </div>
                     </div>
                 </div>

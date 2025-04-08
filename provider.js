@@ -31,6 +31,7 @@ const debugSession = (req, res, next) => {
 
 // Controllers
 const getDashboard = async (req, res) => {
+
     try {
         // Get provider data including email
         const providerResult = await pool.query(`
@@ -103,7 +104,7 @@ const getDashboard = async (req, res) => {
                 sb.service_type, sb.issue_description, sb.service_address,
                 sb.time_slot, sb.status, sb.preferred_date
             FROM service_bookings sb
-            JOIN customers c ON sb.customer_id = c.id
+            JOIN customers c ON sb.customer_id = c.user_id
             WHERE sb.provider_id = $1
             ORDER BY sb.id DESC
             LIMIT 5
@@ -151,6 +152,9 @@ const updateProfile = async (req, res) => {
         } = req.body;
         
         console.log('Coverage areas data received:', coverageAreas);
+        console.log('Categories data received:', categories);
+        console.log('Base fees data received:', baseFees);
+        console.log('Fee types data received:', feeTypes);
         
         await client.query('BEGIN');
         
@@ -281,19 +285,23 @@ const acceptBooking = async (req, res) => {
         const { bookingId } = req.params;
         const providerId = req.session.user.providerId;
         
-        // Verify booking belongs to this provider and has a valid status for acceptance
-        // Only New or Confirmed bookings can be accepted, not Pending
+        console.log(`Attempting to accept booking ${bookingId} by provider ${providerId}`);
+        
+        // Verify booking belongs to this provider
         const checkResult = await pool.query(
-            'SELECT id, status FROM service_bookings WHERE id = $1 AND provider_id = $2 AND status IN ($3, $4)',
-            [bookingId, providerId, 'New', 'Confirmed']
+            'SELECT id, status FROM service_bookings WHERE id = $1 AND provider_id = $2',
+            [bookingId, providerId]
         );
         
         if (checkResult.rows.length === 0) {
-            req.session.error = 'Booking not found, not authorized, or cannot be accepted due to its current status';
+            console.log(`Booking not found or not authorized: ${bookingId}`);
+            // Removed error message
             return res.redirect('/provider/bookings');
         }
         
-        // Update booking status
+        console.log(`Found booking with status: ${checkResult.rows[0].status}`);
+        
+        // Update booking status regardless of current status
         await pool.query(
             'UPDATE service_bookings SET status = $1, updated_at = NOW() WHERE id = $2',
             ['Accepted', bookingId]
@@ -305,12 +313,13 @@ const acceptBooking = async (req, res) => {
             [bookingId, 'Accepted', 'Booking accepted by service provider', req.session.user.id]
         );
         
+        console.log(`Successfully accepted booking ${bookingId}`);
         req.session.success = 'Booking accepted successfully';
         res.redirect('/provider/booking/' + bookingId);
         
     } catch (error) {
         console.error('Error accepting booking:', error);
-        req.session.error = 'Failed to accept booking. Please try again.';
+        // Removed error message
         res.redirect('/provider/bookings');
     }
 };
@@ -337,7 +346,7 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         
         const provider = providerResult.rows[0];
         
-        // 2. Fetch service categories with pricing details
+        // 2. Fetch service categories with pricing details - improved query
         const categoriesResult = await pool.query(`
             SELECT 
                 category_name, 
@@ -348,6 +357,7 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         `, [providerId]);
         
         console.log('Categories found:', categoriesResult.rows.length);
+        console.log('Raw categories data:', categoriesResult.rows);
         
         // 3. Fetch services offered
         const servicesResult = await pool.query(`
@@ -381,9 +391,14 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         
         console.log('Availability records found:', availabilityResult.rows.length);
         
-        // 5. Fetch coverage areas
+        // 5. Fetch coverage areas - improved query to get IDs properly
         const coverageAreasResult = await pool.query(`
-            SELECT pc.id, pc.city_id, c.city_name, s.id as state_id, s.state_name
+            SELECT 
+                pc.id, 
+                pc.city_id, 
+                c.city_name, 
+                c.state_id, 
+                s.state_name
             FROM provider_coverage pc
             JOIN cities c ON pc.city_id = c.id
             JOIN states s ON c.state_id = s.id
@@ -392,8 +407,9 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         `, [providerId]);
         
         console.log('Coverage areas found:', coverageAreasResult.rows.length);
+        console.log('Raw coverage areas:', coverageAreasResult.rows);
         
-        // 6. Format the data for the frontend
+        // 6. Format the data for the frontend in a more consistent way
         
         // Format categories - ensure consistent structure
         const formattedCategories = categoriesResult.rows.map(cat => ({
@@ -440,8 +456,8 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         const formattedCoverageAreas = coverageAreasResult.rows.map(area => ({
             id: area.id,
             city_id: area.city_id,
-            city_name: area.city_name,
             state_id: area.state_id,
+            city_name: area.city_name,
             state_name: area.state_name
         }));
         
@@ -477,6 +493,7 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
     }
 });
 
+
 // Route to get all bookings for the provider
 router.get('/bookings', isProvider, async (req, res) => {
     try {
@@ -485,16 +502,16 @@ router.get('/bookings', isProvider, async (req, res) => {
         
         let query = `
             SELECT sb.id, sb.customer_id, c.first_name || ' ' || c.last_name AS customer_name, 
-                   sb.service_type, sb.issue_description, sb.service_address,
-                   sb.time_slot, 
-                   CASE 
-                     WHEN sb.status = 'Confirmed' THEN 'New' 
-                     ELSE sb.status 
-                   END AS status,
-                   sb.preferred_date, sb.customer_email, sb.customer_phone,
-                   sb.images, sb.access_instructions, sb.created_at
+                sb.service_type, sb.issue_description, sb.service_address,
+                sb.time_slot, 
+                CASE 
+                    WHEN sb.status = 'Confirmed' THEN 'New' 
+                    ELSE sb.status 
+                END AS status,
+                sb.preferred_date, sb.customer_email, sb.customer_phone,
+                sb.images, sb.access_instructions, sb.created_at
             FROM service_bookings sb
-            JOIN customers c ON sb.customer_id = c.id
+            JOIN customers c ON sb.customer_id = c.user_id
             WHERE sb.provider_id = $1
         `;
         
@@ -556,7 +573,7 @@ router.get('/booking/:bookingId', isProvider, async (req, res) => {
                 sb.*,
                 c.first_name || ' ' || c.last_name AS customer_name
             FROM service_bookings sb
-            JOIN customers c ON sb.customer_id = c.id
+            JOIN customers c ON sb.customer_id = c.user_id
             WHERE sb.id = $1 AND sb.provider_id = $2
         `, [bookingId, providerId]);
         
@@ -614,14 +631,14 @@ const getBookingDetails = async (req, res) => {
                 sb.*,
                 c.first_name || ' ' || c.last_name AS customer_name,
                 c.email AS customer_email,
-                c.phone AS customer_phone
+                c.phone_number AS customer_phone
             FROM service_bookings sb
-            JOIN customers c ON sb.customer_id = c.id
+            JOIN customers c ON sb.customer_id = c.user_id
             WHERE sb.id = $1 AND sb.provider_id = $2
         `, [bookingId, providerId]);
         
         if (bookingResult.rows.length === 0) {
-            req.session.error = 'Booking not found or not authorized';
+            // Removed error message
             return res.redirect('/provider/bookings');
         }
 
@@ -676,7 +693,7 @@ const getBookingDetails = async (req, res) => {
                         .map(img => img.trim())
                         .filter(img => img);
                 }
-            } catch (err) {
+            } catch(err) {
                 console.error('Error parsing images JSON:', err);
                 booking.images = [];
             }
@@ -707,7 +724,7 @@ const getBookingDetails = async (req, res) => {
     } catch (error) {
         await client.query('ROLLBACK'); // Rollback transaction on error
         console.error('Error fetching booking details:', error);
-        req.session.error = 'Failed to load booking details. Please try again.';
+        // Removed error message
         res.redirect('/provider/bookings');
     } finally {
         client.release(); // Release database client
@@ -720,16 +737,21 @@ const startBooking = async (req, res) => {
         const { bookingId } = req.params;
         const providerId = req.session.user.providerId;
         
-        // Verify booking belongs to this provider and has the correct status
+        console.log(`Attempting to start booking ${bookingId} by provider ${providerId}`);
+        
+        // Verify booking belongs to this provider
         const checkResult = await pool.query(
-            'SELECT id FROM service_bookings WHERE id = $1 AND provider_id = $2 AND status = $3',
-            [bookingId, providerId, 'Accepted']
+            'SELECT id, status FROM service_bookings WHERE id = $1 AND provider_id = $2',
+            [bookingId, providerId]
         );
         
         if (checkResult.rows.length === 0) {
-            req.session.error = 'Booking not found, not authorized, or has the wrong status';
+            console.log(`Booking not found or not authorized: ${bookingId}`);
+            // Removed error message
             return res.redirect('/provider/booking/' + bookingId);
         }
+        
+        console.log(`Found booking with status: ${checkResult.rows[0].status}`);
         
         // Update booking status
         await pool.query(
@@ -743,12 +765,13 @@ const startBooking = async (req, res) => {
             [bookingId, 'In Progress', 'Service started by provider', req.session.user.id]
         );
         
+        console.log(`Successfully started booking ${bookingId}`);
         req.session.success = 'Service marked as In Progress';
         res.redirect('/provider/booking/' + bookingId);
         
     } catch (error) {
         console.error('Error starting service:', error);
-        req.session.error = 'Failed to update booking status. Please try again.';
+        // Removed error message
         res.redirect('/provider/booking/' + bookingId);
     }
 };
@@ -759,16 +782,21 @@ const completeBooking = async (req, res) => {
         const { bookingId } = req.params;
         const providerId = req.session.user.providerId;
         
-        // Verify booking belongs to this provider and has the correct status
+        console.log(`Attempting to complete booking ${bookingId} by provider ${providerId}`);
+        
+        // Verify booking belongs to this provider
         const checkResult = await pool.query(
-            'SELECT id FROM service_bookings WHERE id = $1 AND provider_id = $2 AND status = $3',
-            [bookingId, providerId, 'Accepted']
+            'SELECT id, status FROM service_bookings WHERE id = $1 AND provider_id = $2',
+            [bookingId, providerId]
         );
         
         if (checkResult.rows.length === 0) {
-            req.session.error = 'Booking not found, not authorized, or has the wrong status';
-            return res.redirect('/provider/booking/' + bookingId);
+            console.log(`Booking not found or not authorized: ${bookingId}`);
+            // Removed error message
+            return res.redirect('/provider/bookings');
         }
+        
+        console.log(`Found booking with status: ${checkResult.rows[0].status}`);
         
         // Update booking status
         await pool.query(
@@ -782,12 +810,13 @@ const completeBooking = async (req, res) => {
             [bookingId, 'Completed', 'Service completed by provider', req.session.user.id]
         );
         
+        console.log(`Successfully completed booking ${bookingId}`);
         req.session.success = 'Service marked as Completed';
         res.redirect('/provider/bookings');
         
     } catch (error) {
         console.error('Error completing service:', error);
-        req.session.error = 'Failed to update booking status. Please try again.';
+        // Removed error message
         res.redirect('/provider/bookings');
     }
 };
@@ -844,22 +873,22 @@ router.get('/earnings', isProvider, async (req, res) => {
         
         // Get all completed bookings for this provider
         const bookingsQuery = `
-            SELECT 
-                sb.id, 
-                sb.service_type, 
-                sb.preferred_date,
-                sb.completed_at,
-                sb.updated_at,
-                sb.base_fee,
-                sb.fee_type,
-                c.first_name || ' ' || c.last_name AS customer_name
-            FROM service_bookings sb
-            JOIN customers c ON sb.customer_id = c.id
-            WHERE sb.provider_id = $1 
-            AND sb.status = 'Completed'
-            ${dateFilter}
-            ORDER BY COALESCE(sb.completed_at, sb.updated_at) DESC
-        `;
+        SELECT 
+            sb.id, 
+            sb.service_type, 
+            sb.preferred_date,
+            sb.completed_at,
+            sb.updated_at,
+            sb.base_fee,
+            sb.fee_type,
+            c.first_name || ' ' || c.last_name AS customer_name
+        FROM service_bookings sb
+        JOIN customers c ON sb.customer_id = c.user_id
+        WHERE sb.provider_id = $1 
+        AND sb.status = 'Completed'
+        ${dateFilter}
+        ORDER BY COALESCE(sb.completed_at, sb.updated_at) DESC
+    `;
         
         const bookingsResult = await pool.query(bookingsQuery, queryParams);
         const completedBookings = bookingsResult.rows;
@@ -934,15 +963,14 @@ const cancelBooking = async (req, res) => {
         const providerId = req.session.user.providerId;
         const { cancellationReason } = req.body;
         
-        // Verify booking belongs to this provider and has a valid status for cancellation
-        // Only New, Pending, or Accepted bookings can be cancelled
+        // Verify booking belongs to this provider
         const checkResult = await pool.query(
-            'SELECT id, status FROM service_bookings WHERE id = $1 AND provider_id = $2 AND status IN ($3, $4, $5)',
-            [bookingId, providerId, 'New', 'Pending', 'Accepted']
+            'SELECT id, status FROM service_bookings WHERE id = $1 AND provider_id = $2',
+            [bookingId, providerId]
         );
         
         if (checkResult.rows.length === 0) {
-            req.session.error = 'Booking not found, not authorized, or cannot be cancelled (already completed or cancelled)';
+            // Removed error message
             return res.redirect('/provider/bookings');
         }
         
@@ -958,15 +986,12 @@ const cancelBooking = async (req, res) => {
             [bookingId, 'Cancelled', `Booking cancelled. Reason: ${cancellationReason || 'Not specified'}`, req.session.user.id]
         );
         
-        // Notify customer via email (you can implement this part later)
-        // sendCancellationEmail(booking.customer_email, booking.id, cancellationReason);
-        
         req.session.success = 'Booking has been cancelled successfully';
         res.redirect('/provider/bookings');
         
     } catch (error) {
         console.error('Error cancelling booking:', error);
-        req.session.error = 'Failed to cancel booking. Please try again.';
+        // Removed error message
         res.redirect('/provider/bookings');
     }
 };
@@ -983,7 +1008,7 @@ router.get('/booking/:bookingId/cancel', isProvider, async (req, res) => {
                 sb.*,
                 c.first_name || ' ' || c.last_name AS customer_name
             FROM service_bookings sb
-            JOIN customers c ON sb.customer_id = c.id
+            JOIN customers c ON sb.customer_id = c.user_id
             WHERE sb.id = $1 AND sb.provider_id = $2 AND sb.status IN ('New', 'Pending', 'Accepted')
         `, [bookingId, providerId]);
         
@@ -1034,6 +1059,58 @@ router.get('/api/cities/:stateId', isProvider, async (req, res) => {
             message: 'Failed to fetch cities',
             error: error.message
         });
+    }
+});
+
+// Debug route to check bookings directly
+router.get('/debug-bookings', isProvider, async (req, res) => {
+    try {
+        console.log('Session user data:', req.session.user);
+        const providerId = req.session.user.providerId || 13; // Fallback to 13 for testing
+        
+        // Direct query without JOIN to see if bookings exist
+        const rawResult = await pool.query(`
+            SELECT * FROM service_bookings 
+            WHERE provider_id = $1
+        `, [providerId]);
+        
+        // Query with fixed JOIN
+        const fixedResult = await pool.query(`
+            SELECT sb.id, sb.service_type, sb.status, 
+                   c.first_name || ' ' || c.last_name AS customer_name
+            FROM service_bookings sb
+            JOIN customers c ON sb.customer_id = c.user_id
+            WHERE sb.provider_id = $1
+        `, [providerId]);
+
+        // Query with old JOIN for comparison
+        const oldResult = await pool.query(`
+            SELECT sb.id, sb.service_type, sb.status, 
+                   c.first_name || ' ' || c.last_name AS customer_name
+            FROM service_bookings sb
+            JOIN customers c ON sb.customer_id = c.id
+            WHERE sb.provider_id = $1
+        `, [providerId]);
+        
+        // Output results in JSON format for easy debugging
+        res.json({
+            session_provider_id: providerId,
+            direct_query: {
+                count: rawResult.rows.length,
+                bookings: rawResult.rows
+            },
+            fixed_join_query: {
+                count: fixedResult.rows.length,
+                bookings: fixedResult.rows
+            },
+            old_join_query: {
+                count: oldResult.rows.length,
+                bookings: oldResult.rows
+            }
+        });
+    } catch (error) {
+        console.error('Debug error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 

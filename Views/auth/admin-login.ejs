@@ -118,23 +118,25 @@
                <h4>Admin Portal</h4>
            </div>
 
-           <div class="user-type-toggle">
-               <button onclick="window.location='/auth/customer-login'">Customer</button>
-               <button onclick="window.location='/auth/provider-login'">Service Provider</button>
-               <button class="active" onclick="window.location='/auth/admin-login'">Admin</button>
-           </div>
+           <!-- FOR ADMIN-LOGIN.EJS -->
+            <div class="user-type-toggle">
+                <button onclick="window.location='/auth/customer-login'">Customer</button>
+                <button onclick="window.location='/auth/provider-login'">Service Provider</button>
+                <button class="active" onclick="window.location='/auth/admin-login'">Admin</button>
+            </div>
 
-           <% if (locals.error) { %>
-               <div class="alert alert-danger" role="alert">
-                   <%= error %>
-               </div>
-           <% } %>
+            <!-- IMPROVED MESSAGE DISPLAY - ADD THIS TO ALL TEMPLATES -->
+            <% if (error) { %>
+                <div class="alert alert-danger" role="alert">
+                    <%= error %>
+                </div>
+            <% } %>
 
-           <% if (locals.success) { %>
-               <div class="alert alert-success" role="alert">
-                   <%= success %>
-               </div>
-           <% } %>
+            <% if (success) { %>
+                <div class="alert alert-success" role="alert">
+                    <%= success %>
+                </div>
+            <% } %>
 
            <form action="/auth/admin-login" method="POST">
                <div class="mb-3">

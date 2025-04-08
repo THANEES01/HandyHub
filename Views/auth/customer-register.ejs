@@ -121,15 +121,15 @@
                 <i class="bi bi-tools"></i>
                 <h4>Create Your Account</h4>
             </div>
-
-             <!-- Add error and success messages -->
-             <% if (locals.error) { %>
+            
+            <!-- IMPROVED MESSAGE DISPLAY - ADD THIS TO ALL TEMPLATES -->
+            <% if (error) { %>
                 <div class="alert alert-danger" role="alert">
                     <%= error %>
                 </div>
             <% } %>
-
-            <% if (locals.success) { %>
+            
+            <% if (success) { %>
                 <div class="alert alert-success" role="alert">
                     <%= success %>
                 </div>

@@ -636,6 +636,7 @@ const getBookingDetails = async (req, res) => {
         console.log('Fetching details for booking ID:', bookingId);
         
         // Updated query to join with payments table to get payment details
+        // Fixed the customers JOIN condition
         const bookingQuery = await pool.query(`
             SELECT 
                 b.id,
@@ -707,7 +708,7 @@ const getEarnings = async (req, res) => {
         
         console.log('Filter parameters:', { timeFilter, fromDate, toDate });
         
-        // Build the base query
+        // Build the base query - UPDATED QUERY TO FIX THE CUSTOMER JOIN
         let queryText = `
             SELECT 
                 p.id,
@@ -725,7 +726,7 @@ const getEarnings = async (req, res) => {
                 sp.business_name as provider_name
             FROM payments p
             JOIN service_bookings sb ON p.booking_id = sb.id
-            JOIN customers c ON p.customer_id = c.id
+            JOIN customers c ON p.customer_id = c.user_id
             JOIN service_providers sp ON sb.provider_id = sp.id
             WHERE p.status = 'Completed'
         `;
@@ -784,10 +785,13 @@ const getEarnings = async (req, res) => {
         console.log('Final query:', queryText);
         console.log('Query params:', queryParams);
         
-        // Execute the query
+        // Execute the query with debug logs
         const earningsResult = await pool.query(queryText, queryParams);
         
         console.log(`Found ${earningsResult.rows.length} earning records`);
+        if (earningsResult.rows.length > 0) {
+            console.log('Sample earning record:', earningsResult.rows[0]);
+        }
         
         // Calculate total earnings (sum of service charges) with proper null handling
         let displayTotalEarnings = 0;
@@ -799,17 +803,19 @@ const getEarnings = async (req, res) => {
             }
         });
         
-        // Get total earnings (all time)
+        // Get total earnings (all time) - FIXED QUERY
         const totalEarningsQuery = await pool.query(`
             SELECT COALESCE(SUM(service_charge), 0) as total_earnings, COUNT(*) as booking_count
             FROM payments
             WHERE status = 'Completed'
         `);
         
+        console.log('Total earnings query result:', totalEarningsQuery.rows[0]);
+        
         const totalEarnings = parseFloat(totalEarningsQuery.rows[0].total_earnings) || 0;
         const totalBookings = parseInt(totalEarningsQuery.rows[0].booking_count) || 0;
         
-        // Get current month earnings
+        // Get current month earnings - FIXED QUERY
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         
@@ -819,7 +825,17 @@ const getEarnings = async (req, res) => {
             WHERE status = 'Completed' AND created_at >= $1
         `, [firstDayOfMonth.toISOString()]);
         
+        console.log('Current month earnings query result:', currentMonthEarningsQuery.rows[0]);
+        
         const currentMonthEarnings = parseFloat(currentMonthEarningsQuery.rows[0].month_earnings) || 0;
+        
+        console.log('Data being sent to template:', {
+            earnings: earningsResult.rows.length,
+            displayTotalEarnings,
+            totalEarnings,
+            currentMonthEarnings,
+            totalBookings
+        });
         
         // Render the earnings page
         return res.render('admin/earnings', {
@@ -853,6 +869,73 @@ const getEarnings = async (req, res) => {
         });
     }
 };
+
+// Add a debug route to directly check the payments table
+router.get('/debug-earnings', isAdmin, async (req, res) => {
+    try {
+        // Direct query to get all payment records
+        const rawPaymentsQuery = await pool.query(`
+            SELECT * FROM payments
+            ORDER BY created_at DESC
+        `);
+        
+        // Query with the JOIN to verify the issue
+        const joinedPaymentsQuery = await pool.query(`
+            SELECT 
+                p.id, p.booking_id, p.customer_id, 
+                p.amount, p.service_charge,
+                c.id as customer_table_id, 
+                c.user_id as customer_user_id,
+                c.first_name, c.last_name
+            FROM payments p
+            LEFT JOIN customers c ON p.customer_id = c.id
+            ORDER BY p.created_at DESC
+        `);
+        
+        // Fixed query with the correct JOIN
+        const fixedPaymentsQuery = await pool.query(`
+            SELECT 
+                p.id, p.booking_id, p.customer_id, 
+                p.amount, p.service_charge,
+                c.id as customer_table_id, 
+                c.first_name, c.last_name
+            FROM payments p
+            LEFT JOIN customers c ON p.customer_id = c.user_id
+            ORDER BY p.created_at DESC
+        `);
+        
+        res.json({
+            raw_payments: {
+                count: rawPaymentsQuery.rows.length,
+                records: rawPaymentsQuery.rows
+            },
+            incorrect_join: {
+                count: joinedPaymentsQuery.rows.length,
+                records: joinedPaymentsQuery.rows.map(row => ({
+                    payment_id: row.id,
+                    booking_id: row.booking_id,
+                    customer_id: row.customer_id,
+                    customer_table_id: row.customer_table_id,
+                    customer_user_id: row.customer_user_id,
+                    customer_name: row.first_name ? `${row.first_name} ${row.last_name}` : null
+                }))
+            },
+            fixed_join: {
+                count: fixedPaymentsQuery.rows.length,
+                records: fixedPaymentsQuery.rows.map(row => ({
+                    payment_id: row.id,
+                    booking_id: row.booking_id,
+                    customer_id: row.customer_id,
+                    customer_table_id: row.customer_table_id,
+                    customer_name: row.first_name ? `${row.first_name} ${row.last_name}` : null
+                }))
+            }
+        });
+    } catch (error) {
+        console.error('Debug earnings error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // Admin logout route
 router.get('/logout', (req, res) => {
