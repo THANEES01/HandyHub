@@ -9,13 +9,138 @@
     <link rel="stylesheet" href="/css/style.css">
 
     <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+        
+        .page-header {
+            margin-bottom: 30px;
+        }
+        
+        .back-link {
+            color: #0d6efd;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            margin-bottom: 20px;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+        
+        .back-link i {
+            margin-right: 8px;
+        }
+        
+        .back-link:hover {
+            color: #0b5ed7;
+            text-decoration: underline;
+        }
+        
+        .category-title {
+            color: #0d3c61;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+        }
+        
+        .category-title i {
+            margin-right: 12px;
+        }
+        
+        /* Filter Section Styling */
+        .filter-container {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+        }
+        
+        .filter-heading {
+            color: #0d3c61;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .filter-label {
+            color: #495057;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+        
+        .custom-select-wrapper {
+            position: relative;
+        }
+        
+        .custom-select {
+            height: 48px;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            padding-right: 35px;
+            background-color: white;
+            color: #495057;
+            font-size: 1rem;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            cursor: pointer;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .custom-select:focus {
+            border-color: #0077be;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+        }
+        
+        .custom-select:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        
+        .select-arrow {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            pointer-events: none;
+        }
+        
+        .filter-btn {
+            height: 48px;
+            background-color: #0077be;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-btn:hover {
+            background-color: #0077be;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* Provider Card Styling */
         .provider-card {
-            border-radius: 15px;
+            border-radius: 12px;
             border: none;
             box-shadow: 0 4px 15px rgba(0,0,0,0.07);
             margin-bottom: 30px;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             overflow: hidden;
+            background-color: white;
         }
         
         .provider-card:hover {
@@ -24,7 +149,7 @@
         }
         
         .provider-header {
-            background-color: var(--primary-blue);
+            background-color: #0077be;
             color: white;
             padding: 20px;
         }
@@ -47,73 +172,205 @@
         
         .provider-info i {
             font-size: 1.2rem;
-            color: var(--primary-blue);
+            color: #0d6efd;
             margin-right: 10px;
             width: 24px;
         }
         
         .service-tag {
             display: inline-block;
-            background-color: var(--light-blue);
-            color: var(--dark-blue);
-            padding: 5px 12px;
+            background-color: #e9f2fe;
+            color: #0d6efd;
+            padding: 8px 15px;
             border-radius: 20px;
             margin-right: 10px;
             margin-bottom: 10px;
             font-size: 0.9rem;
+            border: 1px solid rgba(13, 110, 253, 0.1);
+            transition: all 0.2s ease;
+        }
+        
+        .service-tag:hover {
+            background-color: #d8e8fd;
+        }
+        
+        .location-tag {
+            display: inline-flex;
+            align-items: center;
+            background-color: #e8f4f8;
+            color: #0077be;
+            padding: 8px 15px;
+            border-radius: 50px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(2, 119, 189, 0.1);
+            transition: all 0.2s ease;
+        }
+        
+        .location-tag:hover {
+            background-color: #d1e9f3;
+            transform: translateY(-2px);
+        }
+        
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0d3c61;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title i {
+            margin-right: 8px;
         }
         
         .btn-view-profile {
-            background-color: var(--primary-blue);
+            background-color: #0d6efd;
             color: white;
             border: none;
             border-radius: 8px;
-            padding: 10px 20px;
+            padding: 12px 20px;
             font-weight: 500;
             transition: all 0.3s ease;
             width: 100%;
         }
         
         .btn-view-profile:hover {
-            background-color: var(--dark-blue);
+            background-color: #0b5ed7;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             color: white;
         }
         
-        .category-title {
-            color: var(--dark-blue);
-            margin-bottom: 30px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .back-link {
-            color: var(--primary-blue);
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .back-link i {
-            margin-right: 5px;
-        }
-        
-        .back-link:hover {
-            text-decoration: underline;
-        }
-        
+        /* No Providers Styling */
         .no-providers {
             text-align: center;
-            padding: 50px 0;
-            background-color: #f9f9f9;
-            border-radius: 10px;
+            padding: 50px 30px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
         
         .no-providers i {
             font-size: 3rem;
-            color: #ccc;
+            color: #adb5bd;
             margin-bottom: 20px;
-        } 
+        }
+        
+        .no-providers h4 {
+            color: #0d3c61;
+            margin-bottom: 15px;
+        }
+        
+        .btn-alt {
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-alt:hover {
+            background-color: #0b5ed7;
+            color: white;
+        }
+
+        /* Minimalist Filter Styling */
+    .filter-row {
+        margin-bottom: 30px;
+    }
+    
+    .search-container {
+        position: relative;
+    }
+    
+    .search-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+        z-index: 2;
+    }
+    
+    .search-input {
+        height: 46px;
+        border-radius: 50px;
+        padding-left: 40px;
+        padding-right: 15px;
+        border: 1px solid #dee2e6;
+        box-shadow: none;
+        transition: all 0.2s ease;
+    }
+    
+    .search-input:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    }
+
+    .filter-pills {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .filter-select {
+        height: 46px;
+        border-radius: 50px;
+        padding: 0 20px;
+        border: 1px solid #dee2e6;
+        min-width: 150px;
+        font-size: 0.95rem;
+        color: #495057;
+        background-position: right 15px center;
+    }
+
+    .filter-select:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    }
+
+    .filter-button {
+        height: 46px;
+        border-radius: 50px;
+        padding: 0 25px;
+        background-color: #0d6efd;
+        color: white;
+        border: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .filter-button:hover {
+        background-color: #0b5ed7;
+    }
+    
+    @media (max-width: 991px) {
+        .filter-pills {
+            justify-content: flex-start;
+            margin-top: 10px;
+        }
+    }
+    
+    @media (max-width: 767px) {
+        .filter-pills {
+            flex-wrap: wrap;
+        }
+        
+        .location-dropdown {
+            margin-bottom: 10px;
+            width: calc(50% - 10px);
+        }
+        
+        .filter-button {
+            width: 100%;
+            margin-top: 10px;
+        }
+    }
+
     </style>
 
 </head>
@@ -121,19 +378,16 @@
     <!-- Navbar -->
     <%- include('../partials/navbar') %>
 
-    <section class="container-card">
-    <div class="container mt-5 mb-5">
-        <a href="/customer/dashboard" class="back-link">
-            <i class="bi bi-arrow-left"></i> Back to Categories
-        </a>
-        
-        <div class="row mb-4">
-            <div class="col-12">
-                <h2 class="category-title">
-                    <i class="bi bi-search"></i> 
-                    <%= category.charAt(0).toUpperCase() + category.slice(1) %> Service Providers
-                </h2>
-            </div>
+    <div class="main-container mt-5 mb-5">
+        <div class="page-header">
+            <a href="/customer/dashboard" class="back-link">
+                <i class="bi bi-arrow-left"></i> Back to Categories
+            </a>
+            
+            <h2 class="category-title">
+                <i class="bi bi-search"></i> 
+                <%= category.charAt(0).toUpperCase() + category.slice(1) %> Service Providers
+            </h2>
         </div>
 
         <% if (locals.error) { %>
@@ -142,14 +396,67 @@
             </div>
         <% } %>
         
+        <!-- Updated Filter Section -->
+        <div class="filter-row mb-4">
+            <div class="row g-3 align-items-center">
+                <div class="col-lg-5 col-md-6">
+                    <div class="search-container">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" id="searchProviders" class="form-control search-input" placeholder="Search providers...">
+                    </div>
+                </div>
+                <div class="col-lg-7 col-md-6">
+                    <form id="filterForm" action="/customer/category/<%= category %>" method="GET">
+                        <div class="filter-pills">
+                            <div class="dropdown location-dropdown me-2">
+                                <select id="state" name="state" class="form-select filter-select">
+                                    <option value="">All States</option>
+                                    <% if (states && states.length > 0) { %>
+                                        <% states.forEach(state => { %>
+                                            <option value="<%= state.id %>" <%= (selectedState == state.id) ? 'selected' : '' %>>
+                                                <%= state.state_name %>
+                                            </option>
+                                        <% }); %>
+                                    <% } %>
+                                </select>
+                            </div>
+                            
+                            <div class="dropdown location-dropdown me-2">
+                                <select id="city" name="city" class="form-select filter-select" <%= !cities || cities.length === 0 ? 'disabled' : '' %>>
+                                    <option value="">All Cities</option>
+                                    <% if (cities && cities.length > 0) { %>
+                                        <% cities.forEach(city => { %>
+                                            <option value="<%= city.id %>" <%= (selectedCity == city.id) ? 'selected' : '' %>>
+                                                <%= city.city_name %>
+                                            </option>
+                                        <% }); %>
+                                    <% } %>
+                                </select>
+                            </div>
+                            
+                            <% if (locationFilterActive) { %>
+                                <button type="button" id="clearButton" class="btn filter-button">Clear</button>
+                            <% } else { %>
+                                <button type="submit" class="btn filter-button">Filter</button>
+                            <% } %>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
         <div class="row">
             <% if (providers.length === 0) { %>
                 <div class="col-12">
                     <div class="no-providers">
                         <i class="bi bi-emoji-frown"></i>
                         <h4>No Service Providers Found</h4>
-                        <p class="text-muted">We couldn't find any verified service providers for this category.</p>
-                        <a href="/customer/categories" class="btn btn-primary mt-3">Browse Other Categories</a>
+                        <p class="text-muted mb-4">We couldn't find any verified service providers for this category<%= locationFilterActive ? ' in the selected location' : '' %>.</p>
+                        <% if (locationFilterActive) { %>
+                            <a href="/customer/category/<%= category %>" class="btn btn-alt">Clear Filters</a>
+                        <% } else { %>
+                            <a href="/customer/categories" class="btn btn-alt">Browse Other Categories</a>
+                        <% } %>
                     </div>
                 </div>
             <% } else { %>
@@ -180,8 +487,28 @@
                                     </span>
                                 </div>
                                 
-                                <div class="mt-3 mb-3">
-                                    <h5>Services Offered:</h5>
+                                <!-- Add coverage area information -->
+                                <div class="mt-4 mb-3">
+                                    <h5 class="section-title">
+                                        <i class="bi bi-geo-alt"></i> Coverage Areas
+                                    </h5>
+                                    <div>
+                                        <% if (provider.coverage && provider.coverage.length > 0) { %>
+                                            <% provider.coverage.forEach(area => { %>
+                                                <span class="location-tag">
+                                                    <%= area.city_name %>, <%= area.state_name %>
+                                                </span>
+                                            <% }); %>
+                                        <% } else { %>
+                                            <p class="text-muted">No specific coverage areas listed</p>
+                                        <% } %>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4 mb-3">
+                                    <h5 class="section-title">
+                                        <i class="bi bi-tools"></i> Services Offered
+                                    </h5>
                                     <div>
                                         <% if (provider.services && provider.services.length > 0) { %>
                                             <% provider.services.forEach(service => { %>
@@ -193,7 +520,7 @@
                                     </div>
                                 </div>
                                 
-                                <a href="/customer/provider/<%= provider.id %>?category=<%= category %>" class="btn btn-view-profile mt-2">
+                                <a href="/customer/provider/<%= provider.id %>?category=<%= category %>" class="btn btn-view-profile mt-3">
                                     View Full Profile
                                 </a>
                             </div>
@@ -202,14 +529,84 @@
                 <% }); %>
             <% } %>
         </div>
-        </section>
+    </div>
 
-            <div class="contact">
-                <!-- Footer -->
-                <%- include('../partials/footer') %>
-            </div>
-        
+    <div id="contact">
+        <!-- Footer -->
+        <%- include('../partials/footer') %>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+        const stateSelect = document.getElementById('state');
+        const citySelect = document.getElementById('city');
+        const clearButton = document.getElementById('clearButton');
+        const searchInput = document.getElementById('searchProviders');
+        
+        // Handle state change
+        if (stateSelect && citySelect) {
+            stateSelect.addEventListener('change', function() {
+                const stateId = this.value;
+                
+                // Clear and disable city dropdown if no state is selected
+                if (!stateId) {
+                    citySelect.innerHTML = '<option value="">All Cities</option>';
+                    citySelect.disabled = true;
+                    return;
+                }
+                
+                // Fetch cities for the selected state
+                fetch(`/api/cities?state_id=${stateId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        citySelect.innerHTML = '<option value="">All Cities</option>';
+                        
+                        if (data && data.length > 0) {
+                            data.forEach(city => {
+                                const option = document.createElement('option');
+                                option.value = city.id;
+                                option.textContent = city.city_name;
+                                citySelect.appendChild(option);
+                            });
+                            citySelect.disabled = false;
+                        } else {
+                            citySelect.disabled = true;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching cities:', error);
+                        citySelect.disabled = true;
+                    });
+            });
+        }
+        
+        // Handle clear button click
+        if (clearButton) {
+            clearButton.addEventListener('click', function() {
+                window.location.href = '/customer/category/<%= category %>';
+            });
+        }
+        
+        // Handle search input
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                const searchText = this.value.toLowerCase();
+                const providerCards = document.querySelectorAll('.provider-card');
+                
+                providerCards.forEach(card => {
+                    const providerName = card.querySelector('.provider-name').textContent.toLowerCase();
+                    const services = Array.from(card.querySelectorAll('.service-tag')).map(tag => tag.textContent.toLowerCase());
+                    
+                    // Check if provider name or any service contains the search text
+                    const matchesSearch = providerName.includes(searchText) || 
+                                         services.some(service => service.includes(searchText));
+                    
+                    card.closest('.col-lg-6').style.display = matchesSearch ? 'block' : 'none';
+                });
+            });
+        }
+    });
+    </script>
 </body>
 </html>

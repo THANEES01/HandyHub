@@ -23,7 +23,7 @@ const isCustomerAuth = (req, res, next) => {
 
 // Add more routes as needed
 router.get('/', isAuthenticated, (req, res) => {
-    res.redirect('/customer/customer-dashboard');
+    res.redirect('/customer/dashboard');
 });
 
 router.get('/dashboard', isAuthenticated, async (req, res) => {
@@ -88,21 +88,68 @@ router.get('/categories', isCustomerAuth, async (req, res) => {
     }
 });
 
-// View service providers by category
+// View service providers by category with optional location filtering
 router.get('/category/:categoryName', isCustomerAuth, async (req, res) => {
     try {
         const categoryName = req.params.categoryName;
+        const stateId = req.query.state || null;
+        const cityId = req.query.city || null;
         
-        // Get all service providers that offer services in this category with pricing info
-        const providersResult = await pool.query(`
+        // Fetch all states for the filter dropdown
+        const statesResult = await pool.query(`
+            SELECT id, state_name
+            FROM states
+            ORDER BY state_name ASC
+        `);
+        
+        // Fetch cities for the selected state (if a state is selected)
+        let citiesResult = { rows: [] };
+        if (stateId) {
+            citiesResult = await pool.query(`
+                SELECT id, city_name
+                FROM cities
+                WHERE state_id = $1
+                ORDER BY city_name ASC
+            `, [stateId]);
+        }
+        
+        // Build the query for providers based on filters
+        let providersQuery = `
             SELECT DISTINCT sp.id, sp.business_name, sp.phone_number, 
                    u.email, sp.is_verified, sc.base_fee, sc.fee_type
             FROM service_providers sp
             JOIN users u ON sp.user_id = u.id
             JOIN service_categories sc ON sp.id = sc.provider_id
             WHERE sc.category_name = $1 AND sp.is_verified = true
-            ORDER BY sp.business_name ASC
-        `, [categoryName]);
+        `;
+        
+        const queryParams = [categoryName];
+        
+        // Add location filter if specified
+        if (cityId) {
+            providersQuery += `
+                AND sp.id IN (
+                    SELECT provider_id
+                    FROM provider_coverage
+                    WHERE city_id = $2
+                )
+            `;
+            queryParams.push(cityId);
+        } else if (stateId) {
+            providersQuery += `
+                AND sp.id IN (
+                    SELECT provider_id
+                    FROM provider_coverage pc
+                    JOIN cities c ON pc.city_id = c.id
+                    WHERE c.state_id = $2
+                )
+            `;
+            queryParams.push(stateId);
+        }
+        
+        providersQuery += ` ORDER BY sp.business_name ASC`;
+        
+        const providersResult = await pool.query(providersQuery, queryParams);
         
         // For each provider, get their services in this category
         const providers = [];
@@ -115,9 +162,20 @@ router.get('/category/:categoryName', isCustomerAuth, async (req, res) => {
                 WHERE so.provider_id = $1 AND sc.category_name = $2
             `, [provider.id, categoryName]);
             
+            // Get coverage areas for this provider
+            const coverageResult = await pool.query(`
+                SELECT c.city_name, s.state_name
+                FROM provider_coverage pc
+                JOIN cities c ON pc.city_id = c.id
+                JOIN states s ON c.state_id = s.id
+                WHERE pc.provider_id = $1
+                ORDER BY s.state_name, c.city_name
+            `, [provider.id]);
+            
             providers.push({
                 ...provider,
-                services: servicesResult.rows
+                services: servicesResult.rows,
+                coverage: coverageResult.rows
             });
         }
         
@@ -125,12 +183,40 @@ router.get('/category/:categoryName', isCustomerAuth, async (req, res) => {
             title: `${categoryName} Service Providers`,
             user: req.session.user,
             category: categoryName,
-            providers: providers
+            providers: providers,
+            states: statesResult.rows,
+            cities: citiesResult.rows,
+            selectedState: stateId,
+            selectedCity: cityId,
+            locationFilterActive: !!(stateId || cityId)
         });
     } catch (error) {
         console.error('Error fetching providers by category:', error);
         req.session.error = 'Failed to load service providers';
         res.redirect('/customer/categories');
+    }
+});
+
+// API endpoint to get cities by state_id
+router.get('/api/cities', isCustomerAuth, async (req, res) => {
+    try {
+        const stateId = req.query.state_id;
+        
+        if (!stateId) {
+            return res.status(400).json({ error: 'State ID is required' });
+        }
+        
+        const citiesResult = await pool.query(`
+            SELECT id, city_name
+            FROM cities
+            WHERE state_id = $1
+            ORDER BY city_name ASC
+        `, [stateId]);
+        
+        res.json(citiesResult.rows);
+    } catch (error) {
+        console.error('Error fetching cities:', error);
+        res.status(500).json({ error: 'Failed to fetch cities' });
     }
 });
 
@@ -172,6 +258,16 @@ router.get('/provider/:providerId', isCustomerAuth, async (req, res) => {
             ORDER BY service_name ASC
         `, [providerId]);
         
+        // Get coverage areas for this provider
+        const coverageResult = await pool.query(`
+            SELECT c.city_name, s.state_name
+            FROM provider_coverage pc
+            JOIN cities c ON pc.city_id = c.id
+            JOIN states s ON c.state_id = s.id
+            WHERE pc.provider_id = $1
+            ORDER BY s.state_name, c.city_name
+        `, [providerId]);
+        
         // Find the selected category from the query parameter
         let selectedCategory = null;
         
@@ -186,18 +282,14 @@ router.get('/provider/:providerId', isCustomerAuth, async (req, res) => {
             selectedCategory = categoriesResult.rows[0];
         }
         
-        // For debugging
-        console.log('Provider ID:', providerId);
-        console.log('Selected Category Object:', selectedCategory);
-        console.log('Categories for this provider:', categoriesResult.rows);
-        
         res.render('customer/provider-details', { 
             title: provider.business_name,
             user: req.session.user,
             provider: provider,
             categories: categoriesResult.rows,
-            selectedCategory: selectedCategory, // Pass the category object, not just the name
-            services: servicesResult.rows
+            selectedCategory: selectedCategory,
+            services: servicesResult.rows,
+            coverage: coverageResult.rows
         });
     } catch (error) {
         console.error('Error fetching provider details:', error);

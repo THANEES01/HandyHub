@@ -111,8 +111,9 @@
         
         .booking-section {
             background-color: #f9f9f9;
-            border-radius: 10px;
+            border-radius: 15px;
             padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
         
         .btn-book-service {
@@ -178,6 +179,51 @@
             margin-right: 10px;
             width: 24px;
         }
+
+        /* Updated styles for coverage area section */
+        .coverage-card {
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+        
+        .coverage-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .location-pill {
+            display: inline-flex;
+            align-items: center;
+            background-color: #e8f4f8;
+            color: #0277bd;
+            padding: 10px 18px;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(2, 119, 189, 0.1);
+        }
+        
+        .location-pill:hover {
+            background-color: #d1e9f3;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Message Provider Button Style */
+        .btn-message {
+            background-color: white;
+            color: var(--primary-blue);
+            border: 1px solid var(--primary-blue);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-message:hover {
+            background-color: #f0f7ff;
+            color: var(--dark-blue);
+        }
     </style>
 </head>
 <body>
@@ -204,7 +250,6 @@
                 <% } %>
                 
                 <h2><%= provider.business_name %></h2>
-        
             </div>
             
             <div class="profile-content">
@@ -237,6 +282,27 @@
                                     <% } %>
                                 </div>
                             <% } %>
+                        </div>
+                        
+                        <!-- Coverage Area Section -->
+                        <div class="card coverage-card">
+                            <div class="card-body p-4">
+                                <h5 class="mb-3">
+                                    <i class="bi bi-geo-alt me-2"></i>Coverage Areas
+                                </h5>
+                                
+                                <% if (coverage && coverage.length > 0) { %>
+                                    <div class="coverage-tags">
+                                        <% coverage.forEach(area => { %>
+                                            <span class="location-pill">
+                                                <%= area.city_name %>, <%= area.state_name %>
+                                            </span>
+                                        <% }); %>
+                                    </div>
+                                <% } else { %>
+                                    <p class="text-muted">No specific coverage areas listed for this provider.</p>
+                                <% } %>
+                            </div>
                         </div>
                         
                         <div class="profile-section">
@@ -281,7 +347,7 @@
                                 </a>
                             <% } %>
                             
-                            <a href="#" class="btn btn-outline-primary w-100">
+                            <a href="#" class="btn btn-message w-100">
                                 <i class="bi bi-chat-dots"></i> Message Provider
                             </a>
                         </div>
@@ -379,47 +445,47 @@
         // Set minimum date for booking to today
         document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('bookingDate')) {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('bookingDate').min = today;
-    }
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('bookingDate').min = today;
+            }
 
-    // Load the categories from the server-side data
-    const categories = <%- JSON.stringify(categories || []) %>;
-    const selectedCategory = <%- JSON.stringify(selectedCategory || null) %>;
+            // Load the categories from the server-side data
+            const categories = <%- JSON.stringify(categories || []) %>;
+            const selectedCategory = <%- JSON.stringify(selectedCategory || null) %>;
 
-    if (selectedCategory) {
-        const categoryInfo = `
-            <div class="provider-info">
-                <i class="bi bi-cash-coin"></i>
-                <span>
-                    <strong>Base Fee:</strong> RM ${parseFloat(selectedCategory.base_fee).toFixed(2).replace(/\.00$/, '')}
-                    <span class="badge bg-info text-dark">${selectedCategory.fee_type}</span>
-                </span>
-            </div>
-        `;
-        document.getElementById('category-info').innerHTML = categoryInfo;
-    } else if (categories && categories.length > 0) {
-        const categoryInfo = `
-            <div class="provider-info">
-                <i class="bi bi-cash-coin"></i>
-                <span>
-                    <strong>Base Fee:</strong> RM ${parseFloat(categories[0].base_fee).toFixed(2).replace(/\.00$/, '')}
-                    <span class="badge bg-info text-dark">${categories[0].fee_type}</span>
-                </span>
-            </div>
-        `;
-        document.getElementById('category-info').innerHTML = categoryInfo;
-    } else {
-        document.getElementById('category-info').innerHTML = `
-            <div class="provider-info">
-                <i class="bi bi-cash-coin"></i>
-                <span>
-                    <strong>Base Fee:</strong> Not available
-                </span>
-            </div>
-        `;
-    }
-});
+            if (selectedCategory) {
+                const categoryInfo = `
+                    <div class="provider-info">
+                        <i class="bi bi-cash-coin"></i>
+                        <span>
+                            <strong>Base Fee:</strong> RM ${parseFloat(selectedCategory.base_fee).toFixed(2).replace(/\.00$/, '')}
+                            <span class="badge bg-info text-dark">${selectedCategory.fee_type}</span>
+                        </span>
+                    </div>
+                `;
+                document.getElementById('category-info').innerHTML = categoryInfo;
+            } else if (categories && categories.length > 0) {
+                const categoryInfo = `
+                    <div class="provider-info">
+                        <i class="bi bi-cash-coin"></i>
+                        <span>
+                            <strong>Base Fee:</strong> RM ${parseFloat(categories[0].base_fee).toFixed(2).replace(/\.00$/, '')}
+                            <span class="badge bg-info text-dark">${categories[0].fee_type}</span>
+                        </span>
+                    </div>
+                `;
+                document.getElementById('category-info').innerHTML = categoryInfo;
+            } else {
+                document.getElementById('category-info').innerHTML = `
+                    <div class="provider-info">
+                        <i class="bi bi-cash-coin"></i>
+                        <span>
+                            <strong>Base Fee:</strong> Not available
+                        </span>
+                    </div>
+                `;
+            }
+        });
     </script>
 </body>
 </html>
