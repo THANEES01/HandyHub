@@ -493,18 +493,18 @@
             });
         }
         
-        // Pre-fill user information if available
-        if (typeof user !== 'undefined' && user) {
-            if (document.getElementById('fullName') && user.firstName && user.lastName) {
-                document.getElementById('fullName').value = user.firstName + ' ' + user.lastName;
-            }
-            if (document.getElementById('email') && user.email) {
-                document.getElementById('email').value = user.email;
-            }
-            if (document.getElementById('phoneNumber') && user.phoneNumber) {
-                document.getElementById('phoneNumber').value = user.phoneNumber;
-            }
-        }
+        // // Pre-fill user information if available
+        // if (typeof user !== 'undefined' && user) {
+        //     if (document.getElementById('fullName') && user.firstName && user.lastName) {
+        //         document.getElementById('fullName').value = user.firstName + ' ' + user.lastName;
+        //     }
+        //     if (document.getElementById('email') && user.email) {
+        //         document.getElementById('email').value = user.email;
+        //     }
+        //     if (document.getElementById('phoneNumber') && user.phoneNumber) {
+        //         document.getElementById('phoneNumber').value = user.phoneNumber;
+        //     }
+        // }
     });
     </script>
 </body>

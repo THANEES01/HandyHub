@@ -167,12 +167,19 @@ router.get('/category/:categoryName', isCustomerAuth, async (req, res) => {
         
         // Define a mapping to handle normalized category names
         const categoryMapping = {
-            'home_cleaning': ['cleaning', 'home cleaning', 'homecleaning', 'house cleaning'],
-            'appliance_service': ['appliance', 'appliance service', 'appliance repair'],
-            'pest_control': ['pest control', 'pest management']
+            'home_cleaning': ['cleaning', 'home cleaning', 'homecleaning', 'house cleaning', 'Home Cleaning'],
+            'appliance_service': ['appliance', 'appliance service', 'appliance repair', 'Appliance Service'],
+            'pest_control': ['pest control', 'pest management', 'Pest Control'],
+            'roofing': ['roof repairs', 'Roof Repairs', 'roofing', 'Roofing', 'roof repair'],
+            'plumbing': ['plumbing', 'Plumbing', 'plumber'],
+            'electrical': ['electrical', 'Electrical', 'electrical repairs'],
+            'ac_service': ['ac service', 'AC Service', 'ac_service'],
+            'carpentry': ['carpentry', 'Carpentry', 'carpentry services']
+            
             // Add more mappings as needed
         };
         
+
         // Find all variations of the category name to include in the query
         let categoryVariations = [categoryName];
         

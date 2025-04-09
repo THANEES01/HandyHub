@@ -133,116 +133,139 @@
         }
         
         /* Provider Card Styling */
-        .provider-card {
-            border-radius: 12px;
-            border: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.07);
-            margin-bottom: 30px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            overflow: hidden;
-            background-color: white;
-        }
-        
-        .provider-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        
-        .provider-header {
-            background-color: #0077be;
-            color: white;
-            padding: 20px;
-        }
-        
-        .provider-name {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 0;
-        }
-        
-        .provider-details {
-            padding: 20px;
-        }
-        
-        .provider-info {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .provider-info i {
-            font-size: 1.2rem;
-            color: #0d6efd;
-            margin-right: 10px;
-            width: 24px;
-        }
-        
-        .service-tag {
-            display: inline-block;
-            background-color: #e9f2fe;
-            color: #0d6efd;
-            padding: 8px 15px;
-            border-radius: 20px;
-            margin-right: 10px;
-            margin-bottom: 10px;
-            font-size: 0.9rem;
-            border: 1px solid rgba(13, 110, 253, 0.1);
-            transition: all 0.2s ease;
-        }
-        
-        .service-tag:hover {
-            background-color: #d8e8fd;
-        }
-        
-        .location-tag {
-            display: inline-flex;
-            align-items: center;
-            background-color: #e8f4f8;
-            color: #0077be;
-            padding: 8px 15px;
-            border-radius: 50px;
-            margin-right: 10px;
-            margin-bottom: 10px;
-            font-size: 0.9rem;
-            border: 1px solid rgba(2, 119, 189, 0.1);
-            transition: all 0.2s ease;
-        }
-        
-        .location-tag:hover {
-            background-color: #d1e9f3;
-            transform: translateY(-2px);
-        }
-        
-        .section-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #0d3c61;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-        }
-        
-        .section-title i {
-            margin-right: 8px;
-        }
-        
-        .btn-view-profile {
-            background-color: #0d6efd;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 12px 20px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            width: 100%;
-        }
-        
-        .btn-view-profile:hover {
-            background-color: #0b5ed7;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            color: white;
-        }
+        /* Provider Card Styling */
+.provider-card {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.07);
+    margin-bottom: 30px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    background-color: white;
+    height: 100%; /* Make cards fill their container height */
+    display: flex;
+    flex-direction: column;
+}
+
+.provider-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.provider-header {
+    background-color: #0077be;
+    color: white;
+    padding: 20px;
+}
+
+.provider-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.provider-details {
+    padding: 20px;
+    flex: 1; /* Allow details to expand and fill remaining space */
+    display: flex;
+    flex-direction: column;
+}
+
+.provider-info {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.provider-info i {
+    font-size: 1.2rem;
+    color: #0d6efd;
+    margin-right: 10px;
+    width: 24px;
+    flex-shrink: 0;
+}
+
+.provider-info span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.service-tags-container, .location-tags-container {
+    height: 100px; /* Fixed height for tags sections */
+    overflow-y: auto; /* Allow scrolling if content exceeds height */
+    margin-bottom: 15px;
+}
+
+.service-tag {
+    display: inline-block;
+    background-color: #e9f2fe;
+    color: #0d6efd;
+    padding: 8px 15px;
+    border-radius: 20px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    border: 1px solid rgba(13, 110, 253, 0.1);
+    transition: all 0.2s ease;
+}
+
+.service-tag:hover {
+    background-color: #d8e8fd;
+}
+
+.location-tag {
+    display: inline-flex;
+    align-items: center;
+    background-color: #e8f4f8;
+    color: #0077be;
+    padding: 8px 15px;
+    border-radius: 50px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    border: 1px solid rgba(2, 119, 189, 0.1);
+    transition: all 0.2s ease;
+}
+
+.location-tag:hover {
+    background-color: #d1e9f3;
+    transform: translateY(-2px);
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0d3c61;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.section-title i {
+    margin-right: 8px;
+}
+
+.btn-view-profile {
+    background-color: #0d6efd;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: auto; /* Push button to bottom of flex container */
+}
+
+.btn-view-profile:hover {
+    background-color: #0b5ed7;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    color: white;
+}
         
         /* No Providers Styling */
         .no-providers {
@@ -371,6 +394,24 @@
         }
     }
 
+    /* Add this to your CSS to ensure proper spacing */
+.provider-row {
+    margin-left: -15px;
+    margin-right: -15px;
+}
+
+@media (min-width: 992px) {
+    .provider-row {
+        margin-left: -20px;
+        margin-right: -20px;
+    }
+    
+    .provider-column {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+}
+
     </style>
 
 </head>
@@ -445,7 +486,7 @@
             </div>
         </div>
         
-        <div class="row">
+        <div class="row provider-row g-4">
             <% if (providers.length === 0) { %>
                 <div class="col-12">
                     <div class="no-providers">
@@ -461,7 +502,7 @@
                 </div>
             <% } else { %>
                 <% providers.forEach(provider => { %>
-                    <div class="col-lg-6 col-md-12">
+                    <div class="col-lg-6 col-md-12 provider-column">
                         <div class="card provider-card">
                             <div class="provider-header">
                                 <h3 class="provider-name"><%= provider.business_name %></h3>
@@ -492,7 +533,7 @@
                                     <h5 class="section-title">
                                         <i class="bi bi-geo-alt"></i> Coverage Areas
                                     </h5>
-                                    <div>
+                                    <div class="location-tags-container">
                                         <% if (provider.coverage && provider.coverage.length > 0) { %>
                                             <% provider.coverage.forEach(area => { %>
                                                 <span class="location-tag">
@@ -509,7 +550,7 @@
                                     <h5 class="section-title">
                                         <i class="bi bi-tools"></i> Services Offered
                                     </h5>
-                                    <div>
+                                    <div class="service-tags-container">
                                         <% if (provider.services && provider.services.length > 0) { %>
                                             <% provider.services.forEach(service => { %>
                                                 <span class="service-tag"><%= service.service_name %></span>
@@ -520,7 +561,7 @@
                                     </div>
                                 </div>
                                 
-                                <a href="/customer/provider/<%= provider.id %>?category=<%= category %>" class="btn btn-view-profile mt-3">
+                                <a href="/customer/provider/<%= provider.id %>?category=<%= category %>" class="btn btn-view-profile">
                                     View Full Profile
                                 </a>
                             </div>
@@ -530,7 +571,6 @@
             <% } %>
         </div>
     </div>
-
     <div id="contact">
         <!-- Footer -->
         <%- include('../partials/footer') %>

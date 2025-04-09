@@ -589,7 +589,7 @@
                                             </div>
                                         </div>
                                         <div class="col-md-9 time-slots">
-                                            <div class="row g-3" id="<%= day.toLowerCase() %>TimeSlots" style="<%= dayData.is_available ? '' : 'opacity: 0.5;' %>">
+                                            <div class="row g-3" id="<%= day.toLowerCase() %>TimeSlots">
                                                 <div class="col-md-5">
                                                     <label class="form-label small mb-1">Start Time</label>
                                                     <select class="form-select" name="startTime_<%= day %>" <%= dayData.is_available ? '' : 'disabled' %>>
@@ -679,190 +679,173 @@
     data-coverage-areas="<%= encodeURIComponent(JSON.stringify(provider.coverageAreas || [])) %>">
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
+    // Global variable for coverage areas
+    let selectedCoverageAreas = [];
 
-        document.addEventListener('DOMContentLoaded', function() {
-    console.log("=== DEBUGGING TIME VALUES ===");
-    
-    // 1. Debug all time select elements
-    const timeSelects = document.querySelectorAll('select[name^="startTime_"], select[name^="endTime_"]');
-    
-    console.log(`Found ${timeSelects.length} time select elements`);
-    
-    timeSelects.forEach(select => {
-        console.log(`${select.name}: Current value = ${select.value}`);
-        console.log(`Options count: ${select.options.length}`);
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("=== DEBUGGING TIME VALUES ===");
         
-        // Log all available options
-        let availableOptions = [];
-        for(let i = 0; i < select.options.length; i++) {
-            availableOptions.push({
-                index: i,
-                value: select.options[i].value,
-                text: select.options[i].text
-            });
-        }
-        console.table(availableOptions);
-    });
-    
-    // 2. Debug provider data
-    try {
-        const providerDataEl = document.getElementById('providerData');
-        if (providerDataEl) {
-            console.log("Provider data element found");
+        // 1. Debug all time select elements
+        const timeSelects = document.querySelectorAll('select[name^="startTime_"], select[name^="endTime_"]');
+        
+        console.log(`Found ${timeSelects.length} time select elements`);
+        
+        timeSelects.forEach(select => {
+            console.log(`${select.name}: Current value = ${select.value}`);
+            console.log(`Options count: ${select.options.length}`);
             
-            try {
-                const availabilityData = JSON.parse(decodeURIComponent(providerDataEl.dataset.availability || '[]'));
-                console.log("Availability data from dataset:", availabilityData);
+            // Log all available options
+            let availableOptions = [];
+            for(let i = 0; i < select.options.length; i++) {
+                availableOptions.push({
+                    index: i,
+                    value: select.options[i].value,
+                    text: select.options[i].text
+                });
+            }
+            console.table(availableOptions);
+        });
+        
+        // 2. Debug provider data
+        try {
+            const providerDataEl = document.getElementById('providerData');
+            if (providerDataEl) {
+                console.log("Provider data element found");
                 
-                // Check if data matches what we expect
-                if (availabilityData && availabilityData.length > 0) {
-                    console.log("Sample day data:", availabilityData[0]);
-                    console.log("Start time type:", typeof availabilityData[0].start_time);
-                    console.log("Start time value:", availabilityData[0].start_time);
+                try {
+                    const availabilityData = JSON.parse(decodeURIComponent(providerDataEl.dataset.availability || '[]'));
+                    console.log("Availability data from dataset:", availabilityData);
+                    
+                    // Check if data matches what we expect
+                    if (availabilityData && availabilityData.length > 0) {
+                        console.log("Sample day data:", availabilityData[0]);
+                        console.log("Start time type:", typeof availabilityData[0].start_time);
+                        console.log("Start time value:", availabilityData[0].start_time);
+                    }
+                } catch (e) {
+                    console.error("Error parsing availability data:", e);
                 }
-            } catch (e) {
-                console.error("Error parsing availability data:", e);
+            } else {
+                console.error("Provider data element not found!");
             }
-        } else {
-            console.error("Provider data element not found!");
-        }
-    } catch (e) {
-        console.error("Error accessing provider data:", e);
-    }
-    
-    // 3. Manual fix - directly set all time selects to the correct values from database
-    setTimeout(function() {
-        console.log("Applying manual time fix...");
-        
-        const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        
-        daysOfWeek.forEach(day => {
-            const startSelect = document.querySelector(`select[name="startTime_${day}"]`);
-            const endSelect = document.querySelector(`select[name="endTime_${day}"]`);
-            
-            if (startSelect) {
-                // Set to 09:00 AM (database value)
-                console.log(`Setting ${day} start time to 09:00 AM`);
-                setSelectValueByTime(startSelect, "09:00");
-            }
-            
-            if (endSelect) {
-                // Set to 17:00 (5:00 PM) (database value)
-                console.log(`Setting ${day} end time to 17:00 (5:00 PM)`);
-                setSelectValueByTime(endSelect, "17:00");
-            }
-        });
-    }, 500); // Short delay to ensure the page is fully loaded
-    
-    // Helper function to set select to a specific time
-    function setSelectValueByTime(selectElement, timeStr) {
-        // First try direct match
-        for (let i = 0; i < selectElement.options.length; i++) {
-            if (selectElement.options[i].value === timeStr) {
-                selectElement.selectedIndex = i;
-                console.log(`Direct match found for ${timeStr} at index ${i}`);
-                return true;
-            }
+        } catch (e) {
+            console.error("Error accessing provider data:", e);
         }
         
-        // Try matching the hour
-        const hourToMatch = parseInt(timeStr.split(':')[0], 10);
-        
-        for (let i = 0; i < selectElement.options.length; i++) {
-            const optionHour = parseInt(selectElement.options[i].value.split(':')[0], 10);
+        // 3. Manual fix - directly set all time selects to the correct values from database
+        setTimeout(function() {
+            console.log("Applying manual time fix...");
             
-            if (optionHour === hourToMatch) {
-                selectElement.selectedIndex = i;
-                console.log(`Hour match found for ${hourToMatch} at index ${i}, value ${selectElement.options[i].value}`);
-                return true;
-            }
-        }
-        
-        // Last resort - set direct value
-        selectElement.value = timeStr;
-        console.log(`Direct value set to ${timeStr}`);
-        
-        return false;
-    }
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Get provider data from hidden input
-    const providerData = getProviderData();
-    console.log('Provider data loaded:', providerData);
-    
-    // Initialize form components with provider data
-    initializeBusinessProfile(providerData);
-    initializeCategories(providerData.categories);
-    initializeServices(providerData.services);
-    initializeAvailability(providerData.availability);
-    
-    // Initialize coverage areas from provider data
-    if (providerData.coverageAreas && providerData.coverageAreas.length > 0) {
-        // Add each coverage area to our array
-        selectedCoverageAreas = [];
-        providerData.coverageAreas.forEach(area => {
-            selectedCoverageAreas.push({
-                stateId: parseInt(area.state_id),
-                stateName: area.state_name,
-                cityId: parseInt(area.city_id),
-                cityName: area.city_name
+            const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            
+            daysOfWeek.forEach(day => {
+                const startSelect = document.querySelector(`select[name="startTime_${day}"]`);
+                const endSelect = document.querySelector(`select[name="endTime_${day}"]`);
+                
+                if (startSelect) {
+                    // Set to 09:00 AM (database value)
+                    console.log(`Setting ${day} start time to 09:00 AM`);
+                    setSelectValueByTime(startSelect, "09:00");
+                }
+                
+                if (endSelect) {
+                    // Set to 17:00 (5:00 PM) (database value)
+                    console.log(`Setting ${day} end time to 17:00 (5:00 PM)`);
+                    setSelectValueByTime(endSelect, "17:00");
+                }
             });
-        });
+        }, 500); // Short delay to ensure the page is fully loaded
         
-        // Update the UI
-        updateCoverageAreasList();
-        
-        // Update the hidden input value
-        const coverageAreasInput = document.getElementById('coverageAreasInput');
-        if (coverageAreasInput) {
-            coverageAreasInput.value = JSON.stringify(selectedCoverageAreas);
+        // Helper function to set select to a specific time
+        function setSelectValueByTime(selectElement, timeStr) {
+            // First try direct match
+            for (let i = 0; i < selectElement.options.length; i++) {
+                if (selectElement.options[i].value === timeStr) {
+                    selectElement.selectedIndex = i;
+                    console.log(`Direct match found for ${timeStr} at index ${i}`);
+                    return true;
+                }
+            }
+            
+            // Try matching the hour
+            const hourToMatch = parseInt(timeStr.split(':')[0], 10);
+            
+            for (let i = 0; i < selectElement.options.length; i++) {
+                const optionHour = parseInt(selectElement.options[i].value.split(':')[0], 10);
+                
+                if (optionHour === hourToMatch) {
+                    selectElement.selectedIndex = i;
+                    console.log(`Hour match found for ${hourToMatch} at index ${i}, value ${selectElement.options[i].value}`);
+                    return true;
+                }
+            }
+            
+            // Last resort - set direct value
+            selectElement.value = timeStr;
+            console.log(`Direct value set to ${timeStr}`);
+            
+            return false;
         }
-    }
-    
-    // Set up event listeners for form interactions
-    setupEventListeners();
-    
-    // Auto-dismiss alerts after 5 seconds
-    setupAlertDismissal();
-});
+    });
 
-// Function to retrieve provider data from hidden input
-function getProviderData() {
-    try {
-        const providerDataEl = document.getElementById('providerData');
-        if (!providerDataEl) {
-            console.error('Provider data element not found');
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get provider data from hidden input
+        const providerData = getProviderData();
+        console.log('Provider data loaded:', providerData);
+        
+        // Initialize form components with provider data
+        initializeBusinessProfile(providerData);
+        initializeCategories(providerData.categories);
+        initializeServices(providerData.services);
+        initializeAvailability(providerData.availability);
+        
+        // Initialize coverage areas from provider data - call our new function
+        loadCoverageAreasFromData();
+        
+        // Set up event listeners for form interactions
+        setupEventListeners();
+        
+        // Auto-dismiss alerts after 5 seconds
+        setupAlertDismissal();
+    });
+
+    // Function to retrieve provider data from hidden input
+    function getProviderData() {
+        try {
+            const providerDataEl = document.getElementById('providerData');
+            if (!providerDataEl) {
+                console.error('Provider data element not found');
+                return { categories: [], services: [], availability: [], coverageAreas: [] };
+            }
+            
+            // Get and parse all data attributes
+            const categories = JSON.parse(decodeURIComponent(providerDataEl.dataset.categories || '[]'));
+            const services = JSON.parse(decodeURIComponent(providerDataEl.dataset.services || '[]'));
+            const availability = JSON.parse(decodeURIComponent(providerDataEl.dataset.availability || '[]'));
+            const coverageAreas = JSON.parse(decodeURIComponent(providerDataEl.dataset.coverageAreas || '[]'));
+            
+            // Debug logging
+            console.log('Raw provider data:');
+            console.log('Categories:', categories);
+            console.log('Services:', services);
+            console.log('Availability:', availability);
+            console.log('Coverage Areas:', coverageAreas);
+            
+            return {
+                categories: categories,
+                services: services,
+                availability: availability,
+                coverageAreas: coverageAreas
+            };
+        } catch (error) {
+            console.error('Error parsing provider data:', error);
             return { categories: [], services: [], availability: [], coverageAreas: [] };
         }
-        
-        // Get and parse all data attributes
-        const categories = JSON.parse(decodeURIComponent(providerDataEl.dataset.categories || '[]'));
-        const services = JSON.parse(decodeURIComponent(providerDataEl.dataset.services || '[]'));
-        const availability = JSON.parse(decodeURIComponent(providerDataEl.dataset.availability || '[]'));
-        const coverageAreas = JSON.parse(decodeURIComponent(providerDataEl.dataset.coverageAreas || '[]'));
-        
-        // Debug logging
-        console.log('Raw provider data:');
-        console.log('Categories:', categories);
-        console.log('Services:', services);
-        console.log('Availability:', availability);
-        console.log('Coverage Areas:', coverageAreas);
-        
-        return {
-            categories: categories,
-            services: services,
-            availability: availability,
-            coverageAreas: coverageAreas
-        };
-    } catch (error) {
-        console.error('Error parsing provider data:', error);
-        return { categories: [], services: [], availability: [], coverageAreas: [] };
     }
-}
 
-// Initialize business profile section (name, phone, email)
+    // Initialize business profile section (name, phone, email)
 function initializeBusinessProfile(providerData) {
     if (!providerData) return;
     
@@ -1254,32 +1237,32 @@ function updatePricingSection(providerCategories) {
     pricingContainer.innerHTML = pricingHTML;
 }
 
-// Set up event listeners
-function setupEventListeners() {
-    // Category checkbox change
-    const categoryCheckboxes = document.querySelectorAll('.category-checkbox');
-    categoryCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            // Get provider data
-            const providerData = getProviderData();
-            updatePricingSection(providerData.categories);
+    // Set up event listeners
+    function setupEventListeners() {
+        // Category checkbox change
+        const categoryCheckboxes = document.querySelectorAll('.category-checkbox');
+        categoryCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                // Get provider data
+                const providerData = getProviderData();
+                updatePricingSection(providerData.categories);
+            });
         });
-    });
-    
-    // Availability toggle change
-    const availabilityToggles = document.querySelectorAll('.availability-toggle');
-    availabilityToggles.forEach(toggle => {
-        toggle.addEventListener('change', function() {
-            const day = this.value.toLowerCase();
-            updateDayAvailability(day, this.checked);
+        
+        // Availability toggle change
+        const availabilityToggles = document.querySelectorAll('.availability-toggle');
+        availabilityToggles.forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const day = this.value.toLowerCase();
+                updateDayAvailability(day, this.checked);
+            });
         });
-    });
-    
-    // Initialize coverage areas UI
-    updateCoverageAreasList();
-}
+        
+        // Initialize coverage areas UI
+        updateCoverageAreasList();
+    }
 
-// Auto-dismiss alerts
+    // Auto-dismiss alerts
 function setupAlertDismissal() {
     setTimeout(function() {
         const alerts = document.querySelectorAll('.alert');
@@ -1319,43 +1302,75 @@ window.debugAvailability = function() {
     }
 };
 
-let selectedCoverageAreas = [];
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Get provider data from hidden input
-    const providerDataEl = document.getElementById('providerData');
-    
-    try {
-        // First, attempt to parse coverage areas from the data attribute
-        const coverageAreasData = JSON.parse(decodeURIComponent(providerDataEl.dataset.coverageAreas || '[]'));
-        
-        console.log('Raw coverage areas data from dataset:', coverageAreasData);
-        
-        // Reset selectedCoverageAreas
-        selectedCoverageAreas = [];
-        
-        // Transform and add coverage areas
-        if (Array.isArray(coverageAreasData) && coverageAreasData.length > 0) {
-            selectedCoverageAreas = coverageAreasData.map(area => ({
-                stateId: parseInt(area.state_id || area.stateId),
-                stateName: area.state_name || area.stateName,
-                cityId: parseInt(area.city_id || area.cityId),
-                cityName: area.city_name || area.cityName
-            }));
+    // NEW FUNCTION: Load coverage areas from provider data
+    function loadCoverageAreasFromData() {
+        try {
+            console.log("Loading coverage areas from provider data...");
+            const providerDataEl = document.getElementById('providerData');
+            if (!providerDataEl) {
+                console.error('Provider data element not found');
+                return;
+            }
             
-            console.log('Processed coverage areas:', selectedCoverageAreas);
+            // Get coverage areas data - ensure we use the correct attribute name
+            const coverageAreasStr = providerDataEl.dataset.coverageAreas;
+            if (!coverageAreasStr) {
+                console.error('Coverage areas data attribute not found in:', providerDataEl.dataset);
+                return;
+            }
             
-            // Update the UI and hidden input
-            updateCoverageAreasList();
+            // Parse the coverage areas data
+            const coverageAreasData = JSON.parse(decodeURIComponent(coverageAreasStr));
+            console.log('Parsed coverage areas data:', coverageAreasData);
+            
+            // Reset selectedCoverageAreas array
+            selectedCoverageAreas = [];
+            
+            // Process each coverage area
+            if (Array.isArray(coverageAreasData) && coverageAreasData.length > 0) {
+                coverageAreasData.forEach(area => {
+                    // Extract data with fallbacks for different property names
+                    const stateId = parseInt(area.state_id || area.stateId || 0);
+                    const stateName = area.state_name || area.stateName || '';
+                    const cityId = parseInt(area.city_id || area.cityId || 0);
+                    const cityName = area.city_name || area.cityName || '';
+                    
+                    // Only add if we have valid data
+                    if (stateId && cityId && stateName && cityName) {
+                        selectedCoverageAreas.push({
+                            stateId: stateId,
+                            stateName: stateName,
+                            cityId: cityId,
+                            cityName: cityName
+                        });
+                        
+                        console.log(`Added coverage area: ${cityName}, ${stateName} (IDs: ${cityId}, ${stateId})`);
+                    }
+                });
+                
+                // Update the UI with the loaded coverage areas
+                updateCoverageAreasList();
+                
+                // Update the hidden input
+                const coverageAreasInput = document.getElementById('coverageAreasInput');
+                if (coverageAreasInput) {
+                    coverageAreasInput.value = JSON.stringify(selectedCoverageAreas);
+                }
+                
+                console.log('Loaded coverage areas:', selectedCoverageAreas);
+            } else {
+                console.log('No coverage areas found in data');
+                // Make sure the UI shows no coverage areas
+                updateCoverageAreasList();
+            }
+        } catch (error) {
+            console.error('Error loading coverage areas:', error);
         }
-    } catch (error) {
-        console.error('Error parsing coverage areas:', error);
     }
-});
 
-// Malaysian cities data structure
-const malaysianCities = {
-    // (Keep the existing cities data from the original script)
+    // Malaysian cities data structure
+    const malaysianCities = {
+        // (Keep the existing cities data from the original script)
     // Johor
     1: [
         { id: 1, name: 'Johor Bahru' },
@@ -1643,83 +1658,93 @@ const malaysianCities = {
         { id: 223, name: 'Putra Square' },
         { id: 224, name: 'Putrajaya Lake' }
     ]
-};
+    };
 
-// Map of state IDs to names
-const stateNames = {
-    1: 'Johor',
-    2: 'Kedah',
-    3: 'Kelantan',
-    4: 'Melaka',
-    5: 'Negeri Sembilan',
-    6: 'Pahang',
-    7: 'Pulau Pinang',
-    8: 'Perak',
-    9: 'Perlis',
-    10: 'Selangor',
-    11: 'Terengganu',
-    12: 'Sabah',
-    13: 'Sarawak',
-    14: 'Wilayah Persekutuan Kuala Lumpur',
-    15: 'Wilayah Persekutuan Labuan',
-    16: 'Wilayah Persekutuan Putrajaya'
-};
+    // Map of state IDs to names
+    const stateNames = {
+        1: 'Johor',
+        2: 'Kedah',
+        3: 'Kelantan',
+        4: 'Melaka',
+        5: 'Negeri Sembilan',
+        6: 'Pahang',
+        7: 'Pulau Pinang',
+        8: 'Perak',
+        9: 'Perlis',
+        10: 'Selangor',
+        11: 'Terengganu',
+        12: 'Sabah',
+        13: 'Sarawak',
+        14: 'Wilayah Persekutuan Kuala Lumpur',
+        15: 'Wilayah Persekutuan Labuan',
+        16: 'Wilayah Persekutuan Putrajaya'
+    };
 
-// Update coverage areas list function
-function updateCoverageAreasList() {
-    const coverageList = document.getElementById('coverageAreasList');
-    const coverageAreasInput = document.getElementById('coverageAreasInput');
-    
-    // Clear existing list
-    coverageList.innerHTML = '';
-    
-    // If no coverage areas
-    if (selectedCoverageAreas.length === 0) {
-        const noRow = document.createElement('tr');
-        noRow.id = 'noCoverageRow';
-        noRow.innerHTML = '<td colspan="3" class="text-center text-muted py-4">No coverage areas selected yet</td>';
-        coverageList.appendChild(noRow);
-    } else {
-        // Add each coverage area
-        selectedCoverageAreas.forEach((area, index) => {
-            const row = document.createElement('tr');
-            
-            const stateCell = document.createElement('td');
-            stateCell.textContent = area.stateName || 'Unknown State';
-            
-            const cityCell = document.createElement('td');
-            cityCell.textContent = area.cityName || 'Unknown City';
-            
-            const actionCell = document.createElement('td');
-            actionCell.className = 'text-center';
-            
-            const removeButton = document.createElement('button');
-            removeButton.type = 'button';
-            removeButton.className = 'btn btn-sm btn-danger';
-            removeButton.innerHTML = '<i class="bi bi-trash"></i>';
-            removeButton.onclick = function() { 
-                // Remove the area from the list
-                selectedCoverageAreas.splice(index, 1);
+    // Update coverage areas list function - ENSURE THIS IS WORKING CORRECTLY
+    function updateCoverageAreasList() {
+        console.log("Updating coverage areas list with:", selectedCoverageAreas);
+        const coverageList = document.getElementById('coverageAreasList');
+        const coverageAreasInput = document.getElementById('coverageAreasInput');
+        
+        if (!coverageList) {
+            console.error('Coverage areas list element not found');
+            return;
+        }
+        
+        // Clear existing list
+        coverageList.innerHTML = '';
+        
+        // If no coverage areas
+        if (!selectedCoverageAreas || selectedCoverageAreas.length === 0) {
+            const noRow = document.createElement('tr');
+            noRow.id = 'noCoverageRow';
+            noRow.innerHTML = '<td colspan="3" class="text-center text-muted py-4">No coverage areas selected yet</td>';
+            coverageList.appendChild(noRow);
+        } else {
+            // Add each coverage area
+            selectedCoverageAreas.forEach((area, index) => {
+                const row = document.createElement('tr');
                 
-                // Update the UI
-                updateCoverageAreasList();
-            };
-            
-            actionCell.appendChild(removeButton);
-            
-            row.appendChild(stateCell);
-            row.appendChild(cityCell);
-            row.appendChild(actionCell);
-            
-            coverageList.appendChild(row);
-        });
+                const stateCell = document.createElement('td');
+                stateCell.textContent = area.stateName || 'Unknown State';
+                
+                const cityCell = document.createElement('td');
+                cityCell.textContent = area.cityName || 'Unknown City';
+                
+                const actionCell = document.createElement('td');
+                actionCell.className = 'text-center';
+                
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'btn btn-sm btn-danger';
+                removeButton.innerHTML = '<i class="bi bi-trash"></i>';
+                removeButton.onclick = function() { 
+                    // Remove the area from the list
+                    selectedCoverageAreas.splice(index, 1);
+                    
+                    // Update the UI
+                    updateCoverageAreasList();
+                };
+                
+                actionCell.appendChild(removeButton);
+                
+                row.appendChild(stateCell);
+                row.appendChild(cityCell);
+                row.appendChild(actionCell);
+                
+                coverageList.appendChild(row);
+            });
+        }
+        
+        // Update the hidden input with current coverage areas
+        if (coverageAreasInput) {
+            coverageAreasInput.value = JSON.stringify(selectedCoverageAreas);
+        } else {
+            console.error('Coverage areas input element not found');
+        }
     }
-    
-    // Update the hidden input with current coverage areas
-    coverageAreasInput.value = JSON.stringify(selectedCoverageAreas);
-}
 
-// Load cities based on selected state
+    // Load cities based on selected state
 function loadCities() {
     const stateSelect = document.getElementById('stateSelect');
     const citySelect = document.getElementById('citySelect');
@@ -1808,28 +1833,168 @@ function addCoverageArea() {
     stateSelect.value = '';
 }
 
-// Attach event listeners
+    // Attach event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        const stateSelect = document.getElementById('stateSelect');
+        const addCoverageBtn = document.querySelector('.add-field-btn');
+        
+        if (stateSelect) {
+            stateSelect.addEventListener('change', loadCities);
+        }
+        
+        if (addCoverageBtn) {
+            addCoverageBtn.addEventListener('click', addCoverageArea);
+        }
+        
+        // Auto-dismiss alerts
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    });
+
+    // Direct fix for coverage areas
 document.addEventListener('DOMContentLoaded', function() {
-    const stateSelect = document.getElementById('stateSelect');
-    const addCoverageBtn = document.querySelector('.add-field-btn');
-    
-    if (stateSelect) {
-        stateSelect.addEventListener('change', loadCities);
-    }
-    
-    if (addCoverageBtn) {
-        addCoverageBtn.addEventListener('click', addCoverageArea);
-    }
-    
-    // Auto-dismiss alerts
     setTimeout(function() {
-        const alerts = document.querySelectorAll('.alert');
-        alerts.forEach(function(alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        });
-    }, 5000);
+        console.log("Running emergency coverage areas fix...");
+        
+        // Get coverage areas from provider data
+        const providerDataEl = document.getElementById('providerData');
+        if (!providerDataEl) {
+            console.error("Provider data element not found!");
+            return;
+        }
+        
+        // Try to extract coverage areas data
+        try {
+            // Log all available data attributes for debugging
+            console.log("Provider data attributes:", providerDataEl.dataset);
+            
+            // Get coverage areas from data attribute
+            let coverageAreasStr = providerDataEl.dataset.coverageAreas;
+            if (!coverageAreasStr) {
+                console.warn("Coverage areas attribute not found, trying alternative format...");
+                // Try alternative attribute format
+                coverageAreasStr = providerDataEl.getAttribute('data-coverage-areas');
+            }
+            
+            if (!coverageAreasStr) {
+                console.error("No coverage areas data found in attributes!");
+                return;
+            }
+            
+            // Parse the coverage areas data
+            const coverageAreasData = JSON.parse(decodeURIComponent(coverageAreasStr));
+            console.log("Parsed coverage areas:", coverageAreasData);
+            
+            if (!Array.isArray(coverageAreasData) || coverageAreasData.length === 0) {
+                console.warn("Coverage areas is empty or not an array");
+                return;
+            }
+            
+            // Clear existing coverage areas
+            window.selectedCoverageAreas = [];
+            
+            // Add each coverage area to the array
+            coverageAreasData.forEach(area => {
+                window.selectedCoverageAreas.push({
+                    stateId: parseInt(area.state_id),
+                    stateName: area.state_name,
+                    cityId: parseInt(area.city_id),
+                    cityName: area.city_name
+                });
+                
+                console.log(`Added coverage area: ${area.city_name}, ${area.state_name}`);
+            });
+            
+            // Update the UI
+            const coverageList = document.getElementById('coverageAreasList');
+            const coverageAreasInput = document.getElementById('coverageAreasInput');
+            
+            if (!coverageList) {
+                console.error("Coverage areas list element not found!");
+                return;
+            }
+            
+            // Clear existing list
+            coverageList.innerHTML = '';
+            
+            // Add each coverage area to the list
+            window.selectedCoverageAreas.forEach((area, index) => {
+                const row = document.createElement('tr');
+                
+                const stateCell = document.createElement('td');
+                stateCell.textContent = area.stateName;
+                
+                const cityCell = document.createElement('td');
+                cityCell.textContent = area.cityName;
+                
+                const actionCell = document.createElement('td');
+                actionCell.className = 'text-center';
+                
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'btn btn-sm btn-danger';
+                removeButton.innerHTML = '<i class="bi bi-trash"></i>';
+                removeButton.onclick = function() { 
+                    // Remove the area from the list
+                    window.selectedCoverageAreas.splice(index, 1);
+                    
+                    // Update the UI by calling this function again
+                    setTimeout(function() {
+                        document.dispatchEvent(new Event('DOMContentLoaded'));
+                    }, 10);
+                };
+                
+                actionCell.appendChild(removeButton);
+                
+                row.appendChild(stateCell);
+                row.appendChild(cityCell);
+                row.appendChild(actionCell);
+                
+                coverageList.appendChild(row);
+            });
+            
+            // Update the hidden input with current coverage areas
+            if (coverageAreasInput) {
+                coverageAreasInput.value = JSON.stringify(window.selectedCoverageAreas);
+            }
+            
+            console.log("Coverage areas successfully updated!");
+            
+        } catch (error) {
+            console.error("Error updating coverage areas:", error);
+        }
+    }, 1000); // Delay execution to ensure DOM is fully loaded
 });
-    </script>
+
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error("JavaScript error:", message);
+    console.error("Source:", source);
+    console.error("Line:", lineno);
+    console.error("Column:", colno);
+    console.error("Error object:", error);
+    return false;
+};
+
+console.log("coverageAreasList element:", document.getElementById('coverageAreasList'));
+console.log("coverageAreasInput element:", document.getElementById('coverageAreasInput'));
+
+// Check visibility
+setTimeout(function() {
+    const coverageList = document.getElementById('coverageAreasList');
+    if (coverageList) {
+        const style = window.getComputedStyle(coverageList);
+        console.log("Coverage list visibility:", style.display, style.visibility, style.opacity);
+        console.log("Coverage list dimensions:", style.width, style.height);
+        console.log("Coverage list position:", coverageList.getBoundingClientRect());
+    }
+}, 2000);
+
+
+</script>
 </body>
 </html>

@@ -1002,6 +1002,8 @@ router.get('/booking/:bookingId/cancel', isProvider, async (req, res) => {
         const { bookingId } = req.params;
         const providerId = req.session.user.providerId;
         
+        console.log(`Loading cancellation page for booking ${bookingId} by provider ${providerId}`);
+        
         // Get booking details
         const bookingResult = await pool.query(`
             SELECT 
@@ -1013,9 +1015,12 @@ router.get('/booking/:bookingId/cancel', isProvider, async (req, res) => {
         `, [bookingId, providerId]);
         
         if (bookingResult.rows.length === 0) {
-            req.session.error = 'Booking not found, not authorized, or cannot be cancelled';
+            console.error(`Booking ${bookingId} not found, not authorized, or cannot be cancelled`);
+            // req.session.error = 'Booking not found, not authorized, or cannot be cancelled';
             return res.redirect('/provider/bookings');
         }
+        
+        console.log(`Found cancellable booking:`, bookingResult.rows[0]);
         
         res.render('provider/cancel-booking', {
             title: 'Cancel Booking',
