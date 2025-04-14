@@ -182,6 +182,8 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             serviceType,
             baseFee,     // Get from hidden field
             feeType,     // Get from hidden field
+            bookingHours, // Add this new parameter
+            totalFee,    // Add this new parameter
             issueDescription,
             streetAddress,
             city,
@@ -205,8 +207,14 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             return res.redirect(`/customer/book-service/${providerId}`);
         }
         
+        // Add validation for hourly bookings
+        if (feeType === 'per hour' && (!bookingHours || bookingHours < 1)) {
+            req.session.error = 'Please specify how many hours you need for the service';
+            return res.redirect(`/customer/book-service/${providerId}`);
+        }
+        
         // Log the received values for debugging
-        console.log(`Booking received: ServiceType=${serviceType}, BaseFee=${baseFee}, FeeType=${feeType}`);
+        console.log(`Booking received: ServiceType=${serviceType}, BaseFee=${baseFee}, FeeType=${feeType}, Hours=${bookingHours}`);
         
         // If baseFee is not provided, retrieve it from the database
         let finalBaseFee = baseFee;
@@ -229,6 +237,13 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             } catch (error) {
                 console.error('Error retrieving fee information:', error);
             }
+        }
+        
+        // Calculate the final fee based on fee type
+        let calculatedFee = parseFloat(finalBaseFee) || 0;
+        if (finalFeeType === 'per hour' && bookingHours) {
+            calculatedFee = calculatedFee * parseInt(bookingHours);
+            console.log(`Calculated hourly fee: ${calculatedFee} (${finalBaseFee} × ${bookingHours} hours)`);
         }
         
         // Process uploaded files
@@ -261,8 +276,8 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             (customer_id, provider_id, service_type, issue_description, service_address, 
             access_instructions, preferred_date, time_slot, customer_name, 
             customer_phone, customer_email, status, created_at, images, 
-            base_fee, fee_type)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), $13, $14, $15)
+            base_fee, fee_type, booking_hours)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), $13, $14, $15, $16)
             RETURNING id
         `, [
             customerId, 
@@ -278,38 +293,41 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             email, 
             'Pending',
             imageFilesJson, // Store the stringified JSON
-            parseFloat(finalBaseFee) || 0, // Convert to number with fallback
-            finalFeeType || 'per visit'    // With fallback
+            calculatedFee, // Store the calculated fee
+            finalFeeType || 'per visit',
+            finalFeeType === 'per hour' ? parseInt(bookingHours) : null // Only store hours for hourly services
         ]);
                         
-                // If booking was successful, redirect to payment page
-                if (bookingResult.rows.length > 0) {
-                    const bookingId = bookingResult.rows[0].id;
-                    
-                    // Store in session for payment
-                    req.session.paymentInfo = {
-                        bookingId: bookingId,
-                        providerId: providerId,
-                        serviceType: serviceType,
-                        baseFee: parseFloat(finalBaseFee) || 0,
-                        feeType: finalFeeType || 'per visit',
-                        customerName: fullName,
-                        customerEmail: email
-                    };
-                    
-                    console.log('Payment info stored in session:', req.session.paymentInfo);
-                    
-                    // Redirect to payment page
-                    return res.redirect(`/customer/payment/${bookingId}`);
-                } else {
-                    throw new Error('Failed to create booking');
-                }
-            } catch (error) {
-                console.error('Error booking service:', error);
-                req.session.error = 'Failed to book service. Please try again later.';
-                return res.redirect(`/customer/book-service/${req.body.providerId}`);
-            }
-        });
+        // If booking was successful, redirect to payment page
+        if (bookingResult.rows.length > 0) {
+            const bookingId = bookingResult.rows[0].id;
+            
+            // Store in session for payment
+            req.session.paymentInfo = {
+                bookingId: bookingId,
+                providerId: providerId,
+                serviceType: serviceType,
+                baseFee: parseFloat(finalBaseFee) || 0,
+                calculatedFee: calculatedFee, // Add calculated fee to session
+                feeType: finalFeeType || 'per visit',
+                bookingHours: finalFeeType === 'per hour' ? parseInt(bookingHours) : null, // Add hours if relevant
+                customerName: fullName,
+                customerEmail: email
+            };
+            
+            console.log('Payment info stored in session:', req.session.paymentInfo);
+            
+            // Redirect to payment page
+            return res.redirect(`/customer/payment/${bookingId}`);
+        } else {
+            throw new Error('Failed to create booking');
+        }
+    } catch (error) {
+        console.error('Error booking service:', error);
+        req.session.error = 'Failed to book service. Please try again later.';
+        return res.redirect(`/customer/book-service/${req.body.providerId}`);
+    }
+});
 
 // View customer's bookings
 router.get('/customer/bookings', isCustomerAuth, async (req, res) => {

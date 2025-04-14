@@ -249,7 +249,24 @@
                                   </div>
                               <% } %>
                           </div>
+                          <!-- Add this after the service type selection section, inside the first form-section -->
+                            <div class="mb-3 hourly-booking-section" id="hourlyBookingSection" style="display: none;">
+                                <label for="bookingHours" class="form-label">Number of Hours</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="bookingHours" name="bookingHours" min="1" max="8" value="1">
+                                    <span class="input-group-text">hours</span>
+                                </div>
+                                <small class="text-muted">Please specify how many hours you need the service for.</small>
+                                <div class="mt-2">
+                                    <span class="fw-bold">Base Rate:</span> RM <span id="hourlyBaseRate">0.00</span> per hour
+                                </div>
+                                <div class="mt-2">
+                                    <span class="fw-bold">Total Fee:</span> RM <span id="totalFee">0.00</span>
+                                </div>
+                                <input type="hidden" name="totalFee" id="totalFeeInput" value="0">
+                            </div>
                          
+                        <!-- Issue Description-->
                           <div class="form-section">
                               <h3 class="form-section-title">2. Describe Your Issue</h3>
                               
@@ -369,143 +386,191 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-        // Set minimum date for booking to today
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('preferredDate').min = today;
-        
-        // Image preview functionality
-        const imageInput = document.getElementById('problemImages');
-        const previewContainer = document.getElementById('imagePreviewContainer');
-        
-        imageInput.addEventListener('change', function() {
-            previewContainer.innerHTML = ''; // Clear previous previews
+            // Set minimum date for booking to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('preferredDate').min = today;
             
-            if (this.files) {
-                Array.from(this.files).forEach(file => {
-                    if (file.type.match('image.*')) {
-                        const reader = new FileReader();
-                        
-                        reader.onload = function(e) {
-                            const img = document.createElement('img');
-                            img.classList.add('image-preview');
-                            img.src = e.target.result;
-                            previewContainer.appendChild(img);
+            // Image preview functionality
+            const imageInput = document.getElementById('problemImages');
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            
+            imageInput.addEventListener('change', function() {
+                previewContainer.innerHTML = ''; // Clear previous previews
+                
+                if (this.files) {
+                    Array.from(this.files).forEach(file => {
+                        if (file.type.match('image.*')) {
+                            const reader = new FileReader();
+                            
+                            reader.onload = function(e) {
+                                const img = document.createElement('img');
+                                img.classList.add('image-preview');
+                                img.src = e.target.result;
+                                previewContainer.appendChild(img);
+                            }
+                            
+                            reader.readAsDataURL(file);
                         }
-                        
-                        reader.readAsDataURL(file);
+                    });
+                }
+            });
+            
+            // Service type selection functionality and hourly booking section
+            const serviceTypeSelect = document.getElementById('serviceType');
+            const hourlyBookingSection = document.getElementById('hourlyBookingSection');
+            const bookingHoursInput = document.getElementById('bookingHours');
+            const hourlyBaseRateSpan = document.getElementById('hourlyBaseRate');
+            const totalFeeSpan = document.getElementById('totalFee');
+            const totalFeeInput = document.getElementById('totalFeeInput');
+            
+            // Function to update total fee calculation
+            function updateTotalFee() {
+                const hours = parseInt(bookingHoursInput.value) || 1;
+                const baseRate = parseFloat(hourlyBaseRateSpan.textContent) || 0;
+                const total = hours * baseRate;
+                totalFeeSpan.textContent = total.toFixed(2);
+                totalFeeInput.value = total;
+            }
+            
+            // Initialize with any existing values
+            if (bookingHoursInput) {
+                bookingHoursInput.addEventListener('change', updateTotalFee);
+                updateTotalFee(); // Initial calculation
+            }
+            
+            if (serviceTypeSelect) {
+                serviceTypeSelect.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const baseFee = selectedOption.getAttribute('data-fee');
+                    const feeType = selectedOption.getAttribute('data-fee-type');
+                    
+                    // Update hidden fields
+                    document.querySelector('input[name="baseFee"]').value = baseFee;
+                    document.querySelector('input[name="feeType"]').value = feeType;
+                    
+                    // Show/hide hourly booking section based on fee type
+                    if (feeType === 'per hour') {
+                        hourlyBookingSection.style.display = 'block';
+                        hourlyBaseRateSpan.textContent = parseFloat(baseFee).toFixed(2);
+                        updateTotalFee();
+                    } else {
+                        hourlyBookingSection.style.display = 'none';
+                    }
+                    
+                    console.log(`Updated service selection: ${this.value}, Fee: ${baseFee}, Type: ${feeType}`);
+                });
+                
+                // Trigger the change event initially to set correct state
+                if (serviceTypeSelect.value) {
+                    serviceTypeSelect.dispatchEvent(new Event('change'));
+                }
+            }
+            
+            // For pre-selected category
+            window.addEventListener('load', function() {
+                const preSelectedCategory = document.querySelector('input[name="serviceType"][type="hidden"]');
+                const feeType = document.querySelector('input[name="feeType"][type="hidden"]');
+                const baseFee = document.querySelector('input[name="baseFee"][type="hidden"]');
+                
+                if (preSelectedCategory && feeType && baseFee) {
+                    if (feeType.value === 'per hour') {
+                        hourlyBookingSection.style.display = 'block';
+                        hourlyBaseRateSpan.textContent = parseFloat(baseFee.value).toFixed(2);
+                        updateTotalFee();
+                    }
+                }
+            });
+            
+            // Enhanced date selection for availability
+            document.getElementById('preferredDate').addEventListener('change', function() {
+                const date = this.value;
+                const providerId = document.querySelector('input[name="providerId"]').value;
+                
+                if (date) {
+                    // Show loading state
+                    const timeSlotSelect = document.getElementById('timeSlot');
+                    timeSlotSelect.innerHTML = '<option value="" disabled selected>Loading available slots...</option>';
+                    timeSlotSelect.disabled = true;
+                    
+                    // Get day of week from selected date
+                    const selectedDate = new Date(date);
+                    const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
+                    
+                    // Fetch available time slots for this date and provider
+                    fetch(`/api/available-slots?providerId=${providerId}&date=${date}&dayOfWeek=${dayOfWeek}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            timeSlotSelect.innerHTML = ''; // Clear existing options
+                            timeSlotSelect.disabled = false;
+                            
+                            if (data.slots && data.slots.length > 0) {
+                                // Add a default option
+                                const defaultOption = document.createElement('option');
+                                defaultOption.value = "";
+                                defaultOption.textContent = "Select a time slot";
+                                defaultOption.disabled = true;
+                                defaultOption.selected = true;
+                                timeSlotSelect.appendChild(defaultOption);
+                                
+                                // Add each available slot
+                                data.slots.forEach(slot => {
+                                    const option = document.createElement('option');
+                                    option.value = slot;
+                                    option.textContent = slot;
+                                    timeSlotSelect.appendChild(option);
+                                });
+                            } else {
+                                const option = document.createElement('option');
+                                option.value = "";
+                                option.textContent = "No available slots for this date";
+                                option.disabled = true;
+                                option.selected = true;
+                                timeSlotSelect.appendChild(option);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching time slots:', error);
+                            timeSlotSelect.innerHTML = '<option value="" disabled selected>Error loading time slots</option>';
+                        });
+                } else {
+                    const timeSlotSelect = document.getElementById('timeSlot');
+                    timeSlotSelect.innerHTML = '<option value="" disabled selected>Please select a date first</option>';
+                    timeSlotSelect.disabled = true;
+                }
+            });
+            
+            // Form validation
+            const bookingForm = document.querySelector('form[action="/customer/book-service"]');
+            if (bookingForm) {
+                bookingForm.addEventListener('submit', function(e) {
+                    const timeSlot = document.getElementById('timeSlot').value;
+                    const date = document.getElementById('preferredDate').value;
+                    
+                    if (!date) {
+                        e.preventDefault();
+                        alert('Please select a preferred date for the service.');
+                        return false;
+                    }
+                    
+                    if (!timeSlot) {
+                        e.preventDefault();
+                        alert('Please select an available time slot.');
+                        return false;
+                    }
+                    
+                    // Add validation for hourly bookings
+                    const feeType = document.querySelector('input[name="feeType"]').value;
+                    if (feeType === 'per hour') {
+                        const hours = parseInt(document.getElementById('bookingHours').value);
+                        if (!hours || hours < 1) {
+                            e.preventDefault();
+                            alert('Please specify how many hours you need for the service.');
+                            return false;
+                        }
                     }
                 });
             }
         });
-        
-        // Service type selection functionality
-        const serviceTypeSelect = document.getElementById('serviceType');
-        if (serviceTypeSelect) {
-            serviceTypeSelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                const baseFee = selectedOption.getAttribute('data-fee');
-                const feeType = selectedOption.getAttribute('data-fee-type');
-                
-                // Update hidden fields
-                document.querySelector('input[name="baseFee"]').value = baseFee;
-                document.querySelector('input[name="feeType"]').value = feeType;
-                
-                console.log(`Updated service selection: ${this.value}, Fee: ${baseFee}, Type: ${feeType}`);
-            });
-        }
-        
-        // Enhanced date selection for availability
-        document.getElementById('preferredDate').addEventListener('change', function() {
-            const date = this.value;
-            const providerId = document.querySelector('input[name="providerId"]').value;
-            
-            if (date) {
-                // Show loading state
-                const timeSlotSelect = document.getElementById('timeSlot');
-                timeSlotSelect.innerHTML = '<option value="" disabled selected>Loading available slots...</option>';
-                timeSlotSelect.disabled = true;
-                
-                // Get day of week from selected date
-                const selectedDate = new Date(date);
-                const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
-                
-                // Fetch available time slots for this date and provider
-                fetch(`/api/available-slots?providerId=${providerId}&date=${date}&dayOfWeek=${dayOfWeek}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        timeSlotSelect.innerHTML = ''; // Clear existing options
-                        timeSlotSelect.disabled = false;
-                        
-                        if (data.slots && data.slots.length > 0) {
-                            // Add a default option
-                            const defaultOption = document.createElement('option');
-                            defaultOption.value = "";
-                            defaultOption.textContent = "Select a time slot";
-                            defaultOption.disabled = true;
-                            defaultOption.selected = true;
-                            timeSlotSelect.appendChild(defaultOption);
-                            
-                            // Add each available slot
-                            data.slots.forEach(slot => {
-                                const option = document.createElement('option');
-                                option.value = slot;
-                                option.textContent = slot;
-                                timeSlotSelect.appendChild(option);
-                            });
-                        } else {
-                            const option = document.createElement('option');
-                            option.value = "";
-                            option.textContent = "No available slots for this date";
-                            option.disabled = true;
-                            option.selected = true;
-                            timeSlotSelect.appendChild(option);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error fetching time slots:', error);
-                        timeSlotSelect.innerHTML = '<option value="" disabled selected>Error loading time slots</option>';
-                    });
-            } else {
-                const timeSlotSelect = document.getElementById('timeSlot');
-                timeSlotSelect.innerHTML = '<option value="" disabled selected>Please select a date first</option>';
-                timeSlotSelect.disabled = true;
-            }
-        });
-        
-        // Form validation
-        const bookingForm = document.querySelector('form[action="/customer/book-service"]');
-        if (bookingForm) {
-            bookingForm.addEventListener('submit', function(e) {
-                const timeSlot = document.getElementById('timeSlot').value;
-                const date = document.getElementById('preferredDate').value;
-                
-                if (!date) {
-                    e.preventDefault();
-                    alert('Please select a preferred date for the service.');
-                    return false;
-                }
-                
-                if (!timeSlot) {
-                    e.preventDefault();
-                    alert('Please select an available time slot.');
-                    return false;
-                }
-            });
-        }
-        
-        // // Pre-fill user information if available
-        // if (typeof user !== 'undefined' && user) {
-        //     if (document.getElementById('fullName') && user.firstName && user.lastName) {
-        //         document.getElementById('fullName').value = user.firstName + ' ' + user.lastName;
-        //     }
-        //     if (document.getElementById('email') && user.email) {
-        //         document.getElementById('email').value = user.email;
-        //     }
-        //     if (document.getElementById('phoneNumber') && user.phoneNumber) {
-        //         document.getElementById('phoneNumber').value = user.phoneNumber;
-        //     }
-        // }
-    });
     </script>
 </body>
 </html>

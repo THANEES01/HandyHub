@@ -1042,9 +1042,13 @@ router.get('/booking/:bookingId/cancel', isProvider, async (req, res) => {
 });
 
 // API endpoint to get cities by state ID
-router.get('/api/cities/:stateId', isProvider, async (req, res) => {
+router.get('/api/cities', isProvider, async (req, res) => {
     try {
-        const { stateId } = req.params;
+        const stateId = req.query.state_id;
+        
+        if (!stateId) {
+            return res.status(400).json({ error: 'State ID is required' });
+        }
         
         // Query to get cities for the given state
         const citiesResult = await pool.query(
@@ -1052,18 +1056,11 @@ router.get('/api/cities/:stateId', isProvider, async (req, res) => {
             [stateId]
         );
         
-        res.json({
-            success: true,
-            cities: citiesResult.rows
-        });
+        res.json(citiesResult.rows);
         
     } catch (error) {
         console.error('Error fetching cities:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch cities',
-            error: error.message
-        });
+        res.status(500).json({ error: 'Failed to fetch cities' });
     }
 });
 
