@@ -340,6 +340,30 @@
             color: #0c5460 !important;
         }
 
+         /* Button styles for the review button */
+        .btn-warning {
+            background-color: #ffc107;
+            border-color: #ffc107;
+            color: #212529;
+        }
+            
+        .btn-warning:hover {
+            background-color: #e0a800;
+            border-color: #d39e00;
+            color: #212529;
+        }
+            
+        /* Add a slight pulsing effect to the Leave Review button to draw attention */
+        @keyframes pulse-warning {
+            0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+            70% { box-shadow: 0 0 0 5px rgba(255, 193, 7, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+        }
+            
+        .btn-warning {
+            animation: pulse-warning 2s infinite;
+        }
+
     </style>
 </head>
 <body>
@@ -377,7 +401,6 @@
                     <div class="bookings-list">
                         <% bookings.forEach(booking => { %>
                             <div class="booking-card position-relative">
-                                
                                 <div class="booking-header">
                                     <div>
                                         <h3 class="booking-title"><%= booking.service_type %></h3>
@@ -445,8 +468,27 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <% if (booking.status === 'Completed') { %>
+                                        <div class="row mt-3">
+                                            <div class="col-12">
+                                                <% if (booking.has_review) { %>
+                                                    <div class="alert alert-success mb-0">
+                                                        <i class="bi bi-check-circle-fill me-2"></i>
+                                                        You have submitted a review for this service
+                                                    </div>
+                                                <% } else { %>
+                                                    <div class="alert alert-warning mb-0">
+                                                        <i class="bi bi-star me-2"></i>
+                                                        Don't forget to share your feedback about this service
+                                                    </div>
+                                                <% } %>
+                                            </div>
+                                        </div>
+                                    <% } %>
                                 </div>
                                 
+                                <!-- Modify the booking-footer section to include review button for completed bookings -->
                                 <div class="booking-footer">
                                     <div>
                                         <% 
@@ -486,6 +528,13 @@
                                                 <i class="bi bi-credit-card me-1"></i> Pay Now
                                             </a>
                                         <% } %>
+                                        
+                                        <% if (booking.status === 'Completed' && !booking.has_review) { %>
+                                            <a href="/customer/write-review/<%= booking.id %>" class="btn btn-sm btn-warning me-2">
+                                                <i class="bi bi-star me-1"></i> Leave Review
+                                            </a>
+                                        <% } %>
+                                        
                                         <% if (booking.status === 'Cancelled') { %>
                                             <a href="/customer/booking-cancelled/<%= booking.id %>" class="btn btn-view-details">
                                                 <i class="bi bi-eye me-1"></i> View Details

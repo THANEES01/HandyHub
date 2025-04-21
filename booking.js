@@ -334,20 +334,61 @@ router.get('/customer/bookings', isCustomerAuth, async (req, res) => {
     try {
         const customerId = req.session.user.id;
         
-        // Get all bookings for this customer - UPDATED QUERY
+        // Get all bookings for this customer with provider information
         const bookingsResult = await pool.query(`
-            SELECT sb.id, sb.service_type, sb.preferred_date, sb.time_slot, sb.status, 
-                   sb.payment_status, sb.created_at, sp.business_name as provider_name
+            SELECT 
+                sb.id, 
+                sb.service_type, 
+                sb.preferred_date, 
+                sb.time_slot, 
+                sb.status, 
+                sb.payment_status,
+                sb.cancellation_reason,
+                sb.base_fee,
+                sb.provider_id,
+                sp.business_name as provider_name
             FROM service_bookings sb
             JOIN service_providers sp ON sb.provider_id = sp.id
             WHERE sb.customer_id = $1
-            ORDER BY sb.preferred_date DESC
+            ORDER BY 
+                CASE 
+                    WHEN sb.status = 'Pending' THEN 1
+                    WHEN sb.status = 'Confirmed' THEN 2
+                    WHEN sb.status = 'In Progress' THEN 3
+                    WHEN sb.status = 'Completed' THEN 4
+                    WHEN sb.status = 'Cancelled' THEN 5
+                    ELSE 6
+                END,
+                sb.preferred_date DESC
         `, [customerId]);
+        
+        // For each booking, check if a review has been submitted
+        const bookings = bookingsResult.rows;
+        
+        // Get the list of booking IDs
+        const bookingIds = bookings.map(booking => booking.id);
+        
+        // If there are bookings, check which ones have reviews
+        if (bookingIds.length > 0) {
+            const reviewsResult = await pool.query(`
+                SELECT booking_id 
+                FROM provider_reviews 
+                WHERE booking_id = ANY($1)
+            `, [bookingIds]);
+            
+            // Create a Set of booking IDs that have reviews for quick lookup
+            const reviewedBookingIds = new Set(reviewsResult.rows.map(r => r.booking_id));
+            
+            // Add a has_review flag to each booking
+            bookings.forEach(booking => {
+                booking.has_review = reviewedBookingIds.has(booking.id);
+            });
+        }
         
         res.render('customer/view-bookings', {
             title: 'My Bookings',
+            bookings: bookings,
             user: req.session.user,
-            bookings: bookingsResult.rows,
             success: req.session.success,
             error: req.session.error
         });
@@ -359,6 +400,322 @@ router.get('/customer/bookings', isCustomerAuth, async (req, res) => {
         console.error('Error fetching bookings:', error);
         req.session.error = 'Failed to load your bookings';
         res.redirect('/customer/dashboard');
+    }
+});
+
+// View a specific provider with reviews
+router.get('/customer/provider/:providerId', isCustomerAuth, async (req, res) => {
+    try {
+        const providerId = req.params.providerId;
+        const categoryParam = req.query.category; // Get category from query param
+        
+        // Get provider details
+        const providerResult = await pool.query(`
+            SELECT sp.id, sp.business_name, sp.phone_number, u.email,
+                   sp.certification_url, sp.is_verified
+            FROM service_providers sp
+            JOIN users u ON sp.user_id = u.id
+            WHERE sp.id = $1 AND sp.is_verified = true
+        `, [providerId]);
+        
+        if (providerResult.rows.length === 0) {
+            req.session.error = 'Service provider not found';
+            return res.redirect('/customer/categories');
+        }
+        
+        const provider = providerResult.rows[0];
+        
+        // Get all categories offered by this provider
+        const categoriesResult = await pool.query(`
+            SELECT category_name, base_fee, fee_type
+            FROM service_categories
+            WHERE provider_id = $1
+            ORDER BY category_name ASC
+        `, [providerId]);
+        
+        // Get all services offered by this provider
+        const servicesResult = await pool.query(`
+            SELECT service_name
+            FROM services_offered
+            WHERE provider_id = $1
+            ORDER BY service_name ASC
+        `, [providerId]);
+        
+        // Get coverage areas for this provider
+        const coverageResult = await pool.query(`
+            SELECT c.city_name, s.state_name
+            FROM provider_coverage pc
+            JOIN cities c ON pc.city_id = c.id
+            JOIN states s ON c.state_id = s.id
+            WHERE pc.provider_id = $1
+            ORDER BY s.state_name, c.city_name
+        `, [providerId]);
+        
+        // Find the selected category from the query parameter
+        let selectedCategory = null;
+        
+        if (categoryParam && categoriesResult.rows.length > 0) {
+            selectedCategory = categoriesResult.rows.find(
+                cat => cat.category_name.toLowerCase() === categoryParam.toLowerCase()
+            );
+        }
+        
+        // If no match found or no parameter provided, use the first category
+        if (!selectedCategory && categoriesResult.rows.length > 0) {
+            selectedCategory = categoriesResult.rows[0];
+        }
+        
+        // Get reviews for this provider
+        const reviewsResult = await pool.query(`
+            SELECT 
+                pr.id, 
+                pr.rating, 
+                pr.review_text, 
+                pr.created_at,
+                c.first_name,
+                c.last_name
+            FROM provider_reviews pr
+            JOIN customers c ON pr.customer_id = c.id
+            WHERE pr.provider_id = $1
+            ORDER BY pr.created_at DESC
+            LIMIT 2  -- Just show the 2 most recent reviews
+        `, [providerId]);
+        
+        // Calculate average rating
+        const avgRatingResult = await pool.query(`
+            SELECT AVG(rating) as average_rating, COUNT(*) as review_count
+            FROM provider_reviews
+            WHERE provider_id = $1
+        `, [providerId]);
+        
+        const averageRating = avgRatingResult.rows[0].average_rating || 0;
+        const reviewCount = avgRatingResult.rows[0].review_count || 0;
+        
+        res.render('customer/provider-details', { 
+            title: provider.business_name,
+            user: req.session.user,
+            provider: provider,
+            categories: categoriesResult.rows,
+            selectedCategory: selectedCategory,
+            services: servicesResult.rows,
+            coverage: coverageResult.rows,
+            reviews: reviewsResult.rows,
+            averageRating: parseFloat(averageRating).toFixed(1),
+            reviewCount: reviewCount
+        });
+    } catch (error) {
+        console.error('Error fetching provider details:', error);
+        req.session.error = 'Failed to load provider details';
+        res.redirect('/customer/categories');
+    }
+});
+
+// Write a review form
+router.get('/customer/write-review/:bookingId', isCustomerAuth, async (req, res) => {
+    try {
+        const customerId = req.session.user.id;
+        const bookingId = req.params.bookingId;
+        
+        // Verify this is a valid booking for this customer and it's completed
+        const bookingResult = await pool.query(`
+            SELECT 
+                sb.id, 
+                sb.service_type, 
+                sb.preferred_date,
+                sb.provider_id,
+                sp.business_name as provider_name
+            FROM service_bookings sb
+            JOIN service_providers sp ON sb.provider_id = sp.id
+            WHERE sb.id = $1 AND sb.customer_id = $2 AND sb.status = 'Completed'
+        `, [bookingId, customerId]);
+        
+        if (bookingResult.rows.length === 0) {
+            req.session.error = 'Invalid booking or not eligible for review';
+            return res.redirect('/customer/bookings');
+        }
+        
+        const booking = bookingResult.rows[0];
+        
+        // Check if a review already exists for this booking
+        const existingReviewResult = await pool.query(`
+            SELECT id FROM provider_reviews WHERE booking_id = $1
+        `, [bookingId]);
+        
+        if (existingReviewResult.rows.length > 0) {
+            req.session.error = 'You have already submitted a review for this booking';
+            return res.redirect('/customer/bookings');
+        }
+        
+        res.render('customer/write-review', {
+            title: 'Write a Review',
+            user: req.session.user,
+            booking: booking
+        });
+        
+    } catch (error) {
+        console.error('Error loading review form:', error);
+        req.session.error = 'Failed to load review form';
+        res.redirect('/customer/bookings');
+    }
+});
+
+// Submit a review for a completed booking (POST)
+router.post('/customer/submit-review', isCustomerAuth, async (req, res) => {
+    try {
+        const customerId = req.session.user.id;
+        const { booking_id, provider_id, rating, review_text } = req.body;
+        
+        // Validate input
+        if (!booking_id || !provider_id || !rating) {
+            req.session.error = 'Missing required fields';
+            return res.redirect('/customer/bookings');
+        }
+        
+        // Verify this is a valid booking for this customer and it's completed
+        const bookingResult = await pool.query(`
+            SELECT sb.*
+            FROM service_bookings sb
+            WHERE sb.id = $1 AND sb.customer_id = $2 AND sb.status = 'Completed'
+        `, [booking_id, customerId]);
+        
+        if (bookingResult.rows.length === 0) {
+            req.session.error = 'Invalid booking or not eligible for review';
+            return res.redirect('/customer/bookings');
+        }
+        
+        // Check if a review already exists for this booking
+        const existingReviewResult = await pool.query(`
+            SELECT id FROM provider_reviews WHERE booking_id = $1
+        `, [booking_id]);
+        
+        if (existingReviewResult.rows.length > 0) {
+            req.session.error = 'You have already submitted a review for this booking';
+            return res.redirect('/customer/bookings');
+        }
+        
+        // Insert the review
+        await pool.query(`
+            INSERT INTO provider_reviews 
+            (provider_id, customer_id, booking_id, rating, review_text)
+            VALUES ($1, $2, $3, $4, $5)
+        `, [provider_id, customerId, booking_id, rating, review_text || null]);
+        
+        req.session.success = 'Thank you for your review!';
+        return res.redirect('/customer/bookings');
+        
+    } catch (error) {
+        console.error('Error submitting review:', error);
+        req.session.error = 'Failed to submit review';
+        res.redirect('/customer/bookings');
+    }
+});
+
+// View all reviews for a provider
+router.get('/customer/provider-reviews/:providerId', isCustomerAuth, async (req, res) => {
+    try {
+        const providerId = req.params.providerId;
+        
+        // Get provider details
+        const providerResult = await pool.query(`
+            SELECT sp.id, sp.business_name
+            FROM service_providers sp
+            WHERE sp.id = $1 AND sp.is_verified = true
+        `, [providerId]);
+        
+        if (providerResult.rows.length === 0) {
+            req.session.error = 'Service provider not found';
+            return res.redirect('/customer/categories');
+        }
+        
+        // Get all reviews for this provider with customer names
+        const reviewsResult = await pool.query(`
+            SELECT 
+                pr.id, 
+                pr.rating, 
+                pr.review_text, 
+                pr.created_at,
+                c.first_name,
+                c.last_name
+            FROM provider_reviews pr
+            JOIN customers c ON pr.customer_id = c.id
+            WHERE pr.provider_id = $1
+            ORDER BY pr.created_at DESC
+        `, [providerId]);
+        
+        // Calculate average rating
+        const avgRatingResult = await pool.query(`
+            SELECT AVG(rating) as average_rating, COUNT(*) as review_count
+            FROM provider_reviews
+            WHERE provider_id = $1
+        `, [providerId]);
+        
+        const averageRating = avgRatingResult.rows[0].average_rating || 0;
+        const reviewCount = avgRatingResult.rows[0].review_count || 0;
+        
+        res.render('customer/provider-reviews', {
+            title: `Reviews for ${providerResult.rows[0].business_name}`,
+            user: req.session.user,
+            provider: providerResult.rows[0],
+            reviews: reviewsResult.rows,
+            averageRating: parseFloat(averageRating).toFixed(1),
+            reviewCount: reviewCount
+        });
+        
+    } catch (error) {
+        console.error('Error fetching provider reviews:', error);
+        req.session.error = 'Failed to load provider reviews';
+        res.redirect('/customer/categories');
+    }
+});
+
+// Find eligible booking for review (completed booking without review)
+router.get('/customer/find-eligible-booking/:providerId', isCustomerAuth, async (req, res) => {
+    try {
+        const customerId = req.session.user.id;
+        const providerId = req.params.providerId;
+        
+        // Find completed bookings for this provider that don't have reviews yet
+        const bookingsResult = await pool.query(`
+            SELECT sb.id, sb.service_type, sb.preferred_date, sb.provider_id
+            FROM service_bookings sb
+            LEFT JOIN provider_reviews pr ON sb.id = pr.booking_id
+            WHERE sb.customer_id = $1 
+              AND sb.provider_id = $2 
+              AND sb.status = 'Completed'
+              AND pr.id IS NULL
+            ORDER BY sb.preferred_date DESC
+            LIMIT 1
+        `, [customerId, providerId]);
+        
+        if (bookingsResult.rows.length === 0) {
+            // No eligible bookings found, check if user has any completed bookings with this provider
+            const completedBookingsResult = await pool.query(`
+                SELECT COUNT(*) as count
+                FROM service_bookings
+                WHERE customer_id = $1 
+                  AND provider_id = $2 
+                  AND status = 'Completed'
+            `, [customerId, providerId]);
+            
+            const hasCompletedBookings = parseInt(completedBookingsResult.rows[0].count) > 0;
+            
+            if (hasCompletedBookings) {
+                req.session.error = 'You have already reviewed all your completed bookings with this provider.';
+            } else {
+                req.session.error = 'You need to complete a service with this provider before writing a review.';
+            }
+            
+            return res.redirect(`/customer/provider/${providerId}`);
+        }
+        
+        // Found an eligible booking, redirect to the review form
+        const booking = bookingsResult.rows[0];
+        res.redirect(`/customer/write-review/${booking.id}`);
+        
+    } catch (error) {
+        console.error('Error finding eligible booking:', error);
+        req.session.error = 'Failed to check eligible bookings for review.';
+        res.redirect(`/customer/provider/${req.params.providerId}`);
     }
 });
 

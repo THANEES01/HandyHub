@@ -1,0 +1,88 @@
+<!-- review-form.ejs - Include this as a partial -->
+<div class="review-form-container my-4">
+    <% if (booking.status === 'Completed' && !booking.has_review) { %>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-star me-2"></i>Rate Your Experience
+                </h5>
+            </div>
+            <div class="card-body">
+                <form action="/customer/submit-review" method="POST" id="reviewForm">
+                    <input type="hidden" name="booking_id" value="<%= booking.id %>">
+                    <input type="hidden" name="provider_id" value="<%= booking.provider_id %>">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">How would you rate this service?</label>
+                        <div class="rating-stars d-flex gap-1">
+                            <% for(let i=5; i>=1; i--) { %>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input visually-hidden" type="radio" name="rating" id="star<%= i %>" value="<%= i %>" required>
+                                    <label class="form-check-label star-label fs-3" for="star<%= i %>">
+                                        <i class="bi bi-star star-icon"></i>
+                                    </label>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reviewText" class="form-label">Share your experience (optional)</label>
+                        <textarea class="form-control" id="reviewText" name="review_text" rows="3" placeholder="Tell us about your experience with this service provider..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send me-1"></i> Submit Review
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <style>
+            .star-label {
+                cursor: pointer;
+                color: #ced4da;
+                transition: color 0.2s;
+            }
+            
+            .star-label:hover,
+            .star-label:hover ~ .star-label,
+            input[type="radio"]:checked ~ label .star-icon {
+                color: #ffc107;
+            }
+            
+            .form-check-inline {
+                margin-right: 0;
+            }
+        </style>
+        
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Handle star rating selection
+                const stars = document.querySelectorAll('.star-label');
+                
+                stars.forEach(star => {
+                    star.addEventListener('click', function() {
+                        const starValue = this.getAttribute('for').replace('star', '');
+                        
+                        // Reset all stars
+                        stars.forEach(s => s.querySelector('.star-icon').classList.replace('bi-star-fill', 'bi-star'));
+                        
+                        // Fill stars up to selected one
+                        stars.forEach(s => {
+                            const thisValue = s.getAttribute('for').replace('star', '');
+                            if (thisValue <= starValue) {
+                                s.querySelector('.star-icon').classList.replace('bi-star', 'bi-star-fill');
+                            }
+                        });
+                    });
+                });
+            });
+        </script>
+    <% } else if (booking.has_review) { %>
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle me-2"></i>
+            Thank you for submitting your review for this service!
+        </div>
+    <% } %>
+</div>

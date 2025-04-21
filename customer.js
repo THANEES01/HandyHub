@@ -447,4 +447,113 @@ router.get('/provider/:providerId', isCustomerAuth, async (req, res) => {
     }
 });
 
+// Submit a review for a completed booking
+router.post('/submit-review', isCustomerAuth, async (req, res) => {
+    try {
+        const customerId = req.session.user.id;
+        const { booking_id, provider_id, rating, review_text } = req.body;
+        
+        // Validate input
+        if (!booking_id || !provider_id || !rating) {
+            req.session.error = 'Missing required fields';
+            return res.redirect('/customer/bookings');
+        }
+        
+        // Verify this is a valid booking for this customer and it's completed
+        const bookingResult = await pool.query(`
+            SELECT sb.*
+            FROM service_bookings sb
+            WHERE sb.id = $1 AND sb.customer_id = $2 AND sb.status = 'Completed'
+        `, [booking_id, customerId]);
+        
+        if (bookingResult.rows.length === 0) {
+            req.session.error = 'Invalid booking or not eligible for review';
+            return res.redirect('/customer/bookings');
+        }
+        
+        // Check if a review already exists for this booking
+        const existingReviewResult = await pool.query(`
+            SELECT id FROM provider_reviews WHERE booking_id = $1
+        `, [booking_id]);
+        
+        if (existingReviewResult.rows.length > 0) {
+            req.session.error = 'You have already submitted a review for this booking';
+            return res.redirect('/customer/bookings');
+        }
+        
+        // Insert the review
+        await pool.query(`
+            INSERT INTO provider_reviews 
+            (provider_id, customer_id, booking_id, rating, review_text)
+            VALUES ($1, $2, $3, $4, $5)
+        `, [provider_id, customerId, booking_id, rating, review_text || null]);
+        
+        req.session.success = 'Thank you for your review!';
+        return res.redirect('/customer/bookings');
+        
+    } catch (error) {
+        console.error('Error submitting review:', error);
+        req.session.error = 'Failed to submit review';
+        res.redirect('/customer/bookings');
+    }
+});
+
+// View all reviews for a provider (separate page)
+router.get('/provider-reviews/:providerId', isCustomerAuth, async (req, res) => {
+    try {
+        const providerId = req.params.providerId;
+        
+        // Get provider details
+        const providerResult = await pool.query(`
+            SELECT sp.id, sp.business_name
+            FROM service_providers sp
+            WHERE sp.id = $1 AND sp.is_verified = true
+        `, [providerId]);
+        
+        if (providerResult.rows.length === 0) {
+            req.session.error = 'Service provider not found';
+            return res.redirect('/customer/categories');
+        }
+        
+        // Get all reviews for this provider with customer names
+        const reviewsResult = await pool.query(`
+            SELECT 
+                pr.id, 
+                pr.rating, 
+                pr.review_text, 
+                pr.created_at,
+                c.first_name,
+                c.last_name
+            FROM provider_reviews pr
+            JOIN customers c ON pr.customer_id = c.id
+            WHERE pr.provider_id = $1
+            ORDER BY pr.created_at DESC
+        `, [providerId]);
+        
+        // Calculate average rating
+        const avgRatingResult = await pool.query(`
+            SELECT AVG(rating) as average_rating, COUNT(*) as review_count
+            FROM provider_reviews
+            WHERE provider_id = $1
+        `, [providerId]);
+        
+        const averageRating = avgRatingResult.rows[0].average_rating || 0;
+        const reviewCount = avgRatingResult.rows[0].review_count || 0;
+        
+        res.render('customer/provider-reviews', {
+            title: `Reviews for ${providerResult.rows[0].business_name}`,
+            user: req.session.user,
+            provider: providerResult.rows[0],
+            reviews: reviewsResult.rows,
+            averageRating: parseFloat(averageRating).toFixed(1),
+            reviewCount: reviewCount
+        });
+        
+    } catch (error) {
+        console.error('Error fetching provider reviews:', error);
+        req.session.error = 'Failed to load provider reviews';
+        res.redirect('/customer/categories');
+    }
+});
+
 export default router;
