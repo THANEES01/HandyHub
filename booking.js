@@ -593,11 +593,11 @@ router.post('/customer/submit-review', isCustomerAuth, async (req, res) => {
             return res.redirect('/customer/bookings');
         }
         
-        // Insert the review
+        // Insert the review with booking_id included
         await pool.query(`
             INSERT INTO provider_reviews 
-            (provider_id, customer_id, booking_id, rating, review_text)
-            VALUES ($1, $2, $3, $4, $5)
+            (provider_id, customer_id, booking_id, rating, review_text, created_at)
+            VALUES ($1, $2, $3, $4, $5, NOW())
         `, [provider_id, customerId, booking_id, rating, review_text || null]);
         
         req.session.success = 'Thank you for your review!';
