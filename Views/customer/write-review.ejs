@@ -3,141 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Write a Review - <%= booking.provider_name %></title>
+    <title>Write a Review - HandyHub</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <style>
-        :root {
-            --primary-blue: #2E86AB;
-            --dark-blue: #1E5A75;
-            --light-blue: #E8F4F8;
-            --gold: #FFD700;
-            --gold-hover: #FFC107;
-            --gray-light: #F8F9FA;
-            --gray-medium: #E9ECEF;
-            --gray-dark: #6C757D;
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            overflow-x: hidden;
         }
         
         body {
-            background-color: var(--gray-light);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding-top: 10px;
+        }
+        
+        .content-wrapper {
+            flex: 1 0 auto;
+            width: 100%;
+            padding-top: 50px;
+        }
+        
+        .footer-wrapper {
+            flex-shrink: 0;
+            width: 100vw;
+            margin-top: auto;
+            left: 0;
+            right: 0;
+            max-width: none;
+            padding-left: 0;
+            padding-right: 0;
         }
         
         .review-container {
-            max-width: 750px;
-            margin: 0 auto;
+            max-width: 800px;
+            margin: 10px auto;
+            padding-top: 20px;
         }
         
         .review-header {
-            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
+            background-color: var(--primary-blue);
             color: white;
-            padding: 40px;
-            border-radius: 20px 20px 0 0;
-            text-align: center;
+            padding: 30px;
+            border-radius: 15px 15px 0 0;
+            margin-bottom: 0;
             position: relative;
             overflow: hidden;
         }
         
-        .review-header::before {
-            content: '';
+        .review-header .header-icon {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="rgba(255,255,255,0.1)"><polygon points="0,20 50,0 100,20 200,0 300,20 400,0 500,20 600,0 700,20 800,0 900,20 1000,0 1000,100 0,100"/></svg>') repeat-x;
-            background-size: 100px 100px;
-        }
-        
-        .review-header h2 {
-            position: relative;
-            z-index: 1;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-        
-        .review-header p {
-            position: relative;
-            z-index: 1;
-            opacity: 0.9;
+            right: -20px;
+            bottom: -20px;
+            font-size: 8rem;
+            opacity: 0.1;
+            transform: rotate(15deg);
         }
         
         .review-content {
             background-color: white;
-            padding: 40px;
-            border-radius: 0 0 20px 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
         }
         
-        .booking-info {
-            background: linear-gradient(135deg, var(--light-blue) 0%, #F0F8FF 100%);
-            padding: 25px;
-            border-radius: 15px;
-            margin-bottom: 40px;
-            border: 1px solid rgba(46, 134, 171, 0.1);
-            position: relative;
+        .booking-details {
+            margin-top: 30px;
         }
         
-        .booking-info::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary-blue), var(--gold));
-            border-radius: 15px 15px 0 0;
+        .details-section {
+            margin-bottom: 25px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eee;
         }
         
-        .booking-info h4 {
-            color: var(--dark-blue);
+        .details-section:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        
+        .details-heading {
+            font-size: 1.25rem;
+            color: var(--primary-blue);
             margin-bottom: 15px;
             font-weight: 600;
         }
         
-        .service-details p {
-            margin-bottom: 8px;
-            color: #495057;
+        .detail-item {
+            display: flex;
+            margin-bottom: 10px;
         }
         
-        .service-details strong {
+        .detail-label {
+            width: 180px;
+            font-weight: 500;
             color: var(--dark-blue);
-            font-weight: 600;
         }
         
-        /* Enhanced Star Rating */
-        .rating-section {
-            background: #FAFAFA;
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            border: 2px solid var(--gray-medium);
+        .detail-value {
+            flex-grow: 1;
+        }
+        
+        .action-buttons {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .action-buttons .btn {
+            flex: 1;
+            padding: 12px 15px;
+        }
+        
+        .btn-cancel {
+            background-color: #f8f9fa;
+            border: 1px solid #ced4da;
+            color: #6c757d;
+        }
+        
+        .btn-submit {
+            background-color: var(--primary-blue);
+            color: white;
+        }
+        
+        .btn-submit:hover {
+            background-color: var(--dark-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 119, 190, 0.3);
+        }
+        
+        .back-link {
+            color: var(--primary-blue);
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
             transition: all 0.3s ease;
         }
         
-        .rating-section:focus-within {
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 20px rgba(46, 134, 171, 0.1);
+        .back-link:hover {
+            color: var(--secondary-blue);
+            text-decoration: none;
+            transform: translateX(-5px);
         }
         
-        .rating-label {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--dark-blue);
-            margin-bottom: 15px;
+        /* Star Rating styles - keeping the original functionality */
+        .rating-container {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
             text-align: center;
+            border: 1px solid #e9ecef;
         }
         
-        .rating-guide {
+        .rating-title {
+            color: var(--dark-blue);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .rating-labels {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 20px;
-            padding: 0 15px;
+            margin-bottom: 15px;
+            padding: 0 20px;
         }
         
-        .rating-guide span {
+        .rating-labels span {
+            color: #6c757d;
             font-size: 0.85rem;
-            color: var(--gray-dark);
             font-weight: 500;
         }
         
@@ -145,8 +188,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 15px;
+            margin: 20px 0;
         }
         
         .star-rating input {
@@ -155,42 +198,40 @@
         
         .star-rating label {
             font-size: 3rem;
-            color: var(--gray-medium);
+            color: #e9ecef;
             cursor: pointer;
             transition: all 0.3s ease;
-            position: relative;
             padding: 5px;
         }
         
         .star-rating label:hover {
             transform: scale(1.2);
-            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));
+            color: #ffc107;
+            filter: drop-shadow(0 0 8px rgba(255, 193, 7, 0.5));
         }
         
-        .star-rating input:checked ~ label,
-        .star-rating label:hover,
-        .star-rating label:hover ~ label {
-            color: var(--gold);
-            animation: pulse 0.3s ease;
+        .star-rating label.selected {
+            color: #ffc107;
+            animation: starPulse 0.5s ease;
         }
         
-        @keyframes pulse {
+        @keyframes starPulse {
             0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+            50% { transform: scale(1.2); }
             100% { transform: scale(1); }
         }
         
         .rating-feedback {
-            text-align: center;
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
+            background: var(--primary-blue);
             color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
             font-weight: 600;
             opacity: 0;
             transform: translateY(10px);
             transition: all 0.3s ease;
+            display: inline-block;
+            margin-top: 15px;
         }
         
         .rating-feedback.show {
@@ -198,182 +239,89 @@
             transform: translateY(0);
         }
         
-        /* Form Elements */
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
         .form-label {
-            font-weight: 600;
             color: var(--dark-blue);
-            margin-bottom: 10px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
         }
         
-        .form-control, .form-select {
-            border: 2px solid var(--gray-medium);
-            border-radius: 10px;
+        .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
             padding: 12px 16px;
-            transition: all 0.3s ease;
-            font-size: 0.95rem;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
         }
         
-        .form-control:focus, .form-select:focus {
+        .form-control:focus {
             border-color: var(--primary-blue);
-            box-shadow: 0 0 0 0.2rem rgba(46, 134, 171, 0.25);
+            box-shadow: 0 0 0 3px rgba(0, 119, 190, 0.1);
+            outline: none;
+        }
+        
+        .char-counter {
+            text-align: right;
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .recommend-section {
+            background: #e6f2ff;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
         }
         
         .form-check {
-            background: var(--gray-light);
-            padding: 15px;
-            border-radius: 10px;
-            border: 1px solid var(--gray-medium);
-            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
         
-        .form-check:hover {
-            background: #FDFDFD;
-        }
-        
-        .form-check-input:checked {
-            background-color: var(--primary-blue);
-            border-color: var(--primary-blue);
+        .form-check-input {
+            width: 25px;
+            height: 25px;
         }
         
         .form-check-label {
             color: var(--dark-blue);
             font-weight: 500;
+            font-size: 1.1rem;
         }
         
-        /* Buttons */
-        .btn-submit-review {
-            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
-            color: white;
-            padding: 15px 35px;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1.05rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(46, 134, 171, 0.3);
-        }
-        
-        .btn-submit-review:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(46, 134, 171, 0.4);
-            color: white;
-        }
-        
-        .btn-outline-secondary {
-            border: 2px solid var(--gray-medium);
-            color: var(--gray-dark);
-            padding: 15px 35px;
-            border-radius: 12px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-outline-secondary:hover {
-            border-color: var(--primary-blue);
-            color: var(--primary-blue);
-            background: rgba(46, 134, 171, 0.05);
-        }
-        
-        .back-link {
-            color: var(--primary-blue);
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            margin-bottom: 30px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        
-        .back-link:hover {
-            text-decoration: none;
-            color: var(--dark-blue);
-            transform: translateX(-5px);
-        }
-        
-        .back-link i {
-            margin-right: 8px;
-            transition: all 0.3s ease;
-        }
-        
-        /* Review Tips */
-        .review-tip {
-            background: linear-gradient(135deg, #F8F9FA 0%, #E9ECEF 100%);
+        .review-tips {
+            background: #f8f9fa;
             padding: 25px;
-            border-radius: 15px;
+            border-radius: 12px;
             margin-top: 30px;
-            border-left: 5px solid var(--primary-blue);
-            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+            border-left: 4px solid var(--primary-blue);
         }
         
-        .review-tip h6 {
+        .review-tips h6 {
             color: var(--dark-blue);
-            margin-bottom: 15px;
             font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
-        .review-tip ul {
-            margin-bottom: 0;
+        .review-tips ul {
+            margin: 0;
             padding-left: 25px;
         }
         
-        .review-tip li {
-            color: #495057;
-            font-size: 0.9rem;
+        .review-tips li {
+            color: #6c757d;
+            font-size: 0.95rem;
             margin-bottom: 8px;
             line-height: 1.6;
-        }
-        
-        /* Character Counter */
-        .char-counter {
-            text-align: right;
-            font-size: 0.85rem;
-            margin-top: 5px;
-            transition: all 0.3s ease;
-        }
-        
-        .char-counter.success {
-            color: #28a745;
-        }
-        
-        .char-counter.warning {
-            color: #ffc107;
-        }
-        
-        .char-counter.error {
-            color: #dc3545;
-        }
-        
-        /* Animations */
-        .fade-in {
-            animation: fadeIn 0.5s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Mobile Responsiveness */
-        @media (max-width: 768px) {
-            .review-header {
-                padding: 30px 20px;
-            }
-            
-            .review-content {
-                padding: 30px 20px;
-            }
-            
-            .star-rating label {
-                font-size: 2.5rem;
-            }
-            
-            .rating-guide {
-                padding: 0 5px;
-            }
-            
-            .rating-guide span {
-                font-size: 0.75rem;
-            }
         }
     </style>
 </head>
@@ -381,119 +329,165 @@
     <!-- Navbar -->
     <%- include('../partials/navbar') %>
 
-    <div class="container mt-5 mb-5">
-        <a href="/customer/bookings" class="back-link">
-            <i class="bi bi-arrow-left"></i> Back to My Bookings
-        </a>
-        
-        <div class="review-container fade-in">
-            <% if (locals.error) { %>
-                <div class="alert alert-danger" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    <%= error %>
-                </div>
-            <% } %>
+    <div class="content-wrapper">
+        <div class="container mt-5 mb-5">
+            <a href="/customer/bookings" class="back-link">
+                <i class="bi bi-arrow-left"></i> Back to My Bookings
+            </a>
             
-            <div class="review-header">
-                <h2><i class="bi bi-star-fill me-2"></i>Write a Review</h2>
-                <p class="mb-0">Share your experience with this service provider</p>
-            </div>
-            
-            <div class="review-content">
-                <div class="booking-info">
-                    <h4><i class="bi bi-person-gear me-2"></i><%= booking.provider_name %></h4>
-                    <div class="service-details">
-                        <p><strong>Service Type:</strong> <%= booking.service_type %></p>
-                        <p><strong>Service Date:</strong> 
-                            <%= new Date(booking.preferred_date).toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                            }) %>
-                        </p>
-                        <p class="mb-0"><strong>Booking ID:</strong> #<%= booking.id %></p>
+            <div class="review-container">
+                <% if (locals.error) { %>
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <%= error %>
+                    </div>
+                <% } %>
+                
+                <div class="review-header">
+                    <h2><i class="bi bi-star-fill me-2"></i> Write a Review</h2>
+                    <p class="mb-0">Share your experience with this service provider</p>
+                    <div class="header-icon">
+                        <i class="bi bi-star-fill"></i>
                     </div>
                 </div>
                 
-                <form action="/customer/submit-review" method="POST" id="reviewForm">
-                    <input type="hidden" name="booking_id" value="<%= booking.id %>">
-                    <input type="hidden" name="provider_id" value="<%= booking.provider_id %>">
-                    
-                    <div class="rating-section">
-                        <div class="rating-label">How would you rate this service?</div>
-                        <div class="rating-guide">
-                            <span>Poor</span>
-                            <span>Fair</span>
-                            <span>Good</span>
-                            <span>Very Good</span>
-                            <span>Excellent</span>
+                <div class="review-content">
+                    <!-- Booking Info -->
+                    <div class="booking-details">
+                        <div class="details-section">
+                            <h3 class="details-heading">Service Details</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">Provider:</div>
+                                <div class="detail-value"><%= booking.provider_name %></div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Service Type:</div>
+                                <div class="detail-value"><%= booking.service_type %></div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Service Date:</div>
+                                <div class="detail-value">
+                                    <%= new Date(booking.preferred_date).toLocaleDateString('en-US', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                    }) %>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Booking ID:</div>
+                                <div class="detail-value">#<%= booking.id %></div>
+                            </div>
                         </div>
-                        <div class="star-rating">
-                            <input type="radio" id="star5" name="rating" value="5" required>
-                            <label for="star5" title="5 stars - Excellent" data-rating="Excellent"><i class="bi bi-star-fill"></i></label>
-                            
-                            <input type="radio" id="star4" name="rating" value="4">
-                            <label for="star4" title="4 stars - Very Good" data-rating="Very Good"><i class="bi bi-star-fill"></i></label>
-                            
-                            <input type="radio" id="star3" name="rating" value="3">
-                            <label for="star3" title="3 stars - Good" data-rating="Good"><i class="bi bi-star-fill"></i></label>
-                            
-                            <input type="radio" id="star2" name="rating" value="2">
-                            <label for="star2" title="2 stars - Fair" data-rating="Fair"><i class="bi bi-star-fill"></i></label>
-                            
-                            <input type="radio" id="star1" name="rating" value="1">
-                            <label for="star1" title="1 star - Poor" data-rating="Poor"><i class="bi bi-star-fill"></i></label>
+                    </div>
+                    
+                    <!-- Review Form -->
+                    <form action="/customer/submit-review" method="POST" id="reviewForm">
+                        <input type="hidden" name="booking_id" value="<%= booking.id %>">
+                        <input type="hidden" name="provider_id" value="<%= booking.provider_id %>">
+                        
+                        <!-- Star Rating -->
+                        <div class="rating-container">
+                            <div class="rating-title">How would you rate this service?</div>
+                            <div class="rating-labels">
+                                <span>Poor</span>
+                                <span>Fair</span>
+                                <span>Good</span>
+                                <span>Very Good</span>
+                                <span>Excellent</span>
+                            </div>
+                            <div class="star-rating">
+                                <input type="radio" id="star1" name="rating" value="1" required>
+                                <label for="star1" title="1 star - Poor" data-rating="Poor">
+                                    <i class="bi bi-star-fill"></i>
+                                </label>
+                                
+                                <input type="radio" id="star2" name="rating" value="2">
+                                <label for="star2" title="2 stars - Fair" data-rating="Fair">
+                                    <i class="bi bi-star-fill"></i>
+                                </label>
+                                
+                                <input type="radio" id="star3" name="rating" value="3">
+                                <label for="star3" title="3 stars - Good" data-rating="Good">
+                                    <i class="bi bi-star-fill"></i>
+                                </label>
+                                
+                                <input type="radio" id="star4" name="rating" value="4">
+                                <label for="star4" title="4 stars - Very Good" data-rating="Very Good">
+                                    <i class="bi bi-star-fill"></i>
+                                </label>
+                                
+                                <input type="radio" id="star5" name="rating" value="5">
+                                <label for="star5" title="5 stars - Excellent" data-rating="Excellent">
+                                    <i class="bi bi-star-fill"></i>
+                                </label>
+                            </div>
+                            <div class="rating-feedback" id="ratingFeedback"></div>
                         </div>
-                        <div class="rating-feedback" id="ratingFeedback"></div>
-                    </div>
+                        
+                        <!-- Review Text -->
+                        <div class="form-group">
+                            <label for="reviewText" class="form-label">Share your experience</label>
+                            <textarea 
+                                class="form-control" 
+                                id="reviewText" 
+                                name="review_text" 
+                                rows="5" 
+                                placeholder="Describe your experience with this service provider. How was the quality of work? Was the provider professional and on time? Would you recommend them to others?"></textarea>
+                            <div class="char-counter" id="charCounter">0 characters</div>
+                        </div>
+                        
+                        <!-- Recommendation -->
+                        <div class="recommend-section">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="recommend" name="recommend" value="1">
+                                <label class="form-check-label" for="recommend">
+                                    <i class="bi bi-hand-thumbs-up me-2"></i>
+                                    I would recommend this service provider to others
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Buttons -->
+                        <div class="action-buttons">
+                            <a href="/customer/bookings" class="btn btn-cancel">
+                                <i class="bi bi-x-lg me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-submit">
+                                <i class="bi bi-send me-1"></i>Submit Review
+                            </button>
+                        </div>
+                    </form>
                     
-                    <div class="mb-4">
-                        <label for="reviewText" class="form-label">Share your experience</label>
-                        <textarea class="form-control" id="reviewText" name="review_text" rows="5" 
-                                  placeholder="Describe your experience with this service provider. How was the quality of work? Was the provider professional and on time? Would you recommend them to others?"></textarea>
-                        <div class="char-counter" id="charCounter">0 characters</div>
+                    <!-- Review Tips -->
+                    <div class="review-tips">
+                        <h6>
+                            <i class="bi bi-lightbulb-fill"></i>
+                            Tips for writing a helpful review:
+                        </h6>
+                        <ul>
+                            <li>Be specific about what aspects of the service you liked or disliked</li>
+                            <li>Mention if the provider was punctual and professional</li>
+                            <li>Comment on the quality of work performed</li>
+                            <li>Share if the provider communicated well throughout the process</li>
+                            <li>Be honest and fair in your assessment</li>
+                        </ul>
                     </div>
-                    
-                    <div class="form-check mb-4">
-                        <input class="form-check-input" type="checkbox" id="recommend" name="recommend" value="1">
-                        <label class="form-check-label" for="recommend">
-                            <i class="bi bi-hand-thumbs-up me-2"></i>
-                            I would recommend this service provider to others
-                        </label>
-                    </div>
-                    
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="/customer/bookings" class="btn btn-outline-secondary me-md-2">
-                            <i class="bi bi-x-lg me-1"></i>Cancel
-                        </a>
-                        <button type="submit" class="btn btn-submit-review">
-                            <i class="bi bi-send me-1"></i>Submit Review
-                        </button>
-                    </div>
-                </form>
-                
-                <div class="review-tip">
-                    <h6><i class="bi bi-lightbulb-fill me-2"></i>Tips for writing a helpful review:</h6>
-                    <ul>
-                        <li>Be specific about what aspects of the service you liked or disliked</li>
-                        <li>Mention if the provider was punctual and professional</li>
-                        <li>Comment on the quality of work performed</li>
-                        <li>Share if the provider communicated well throughout the process</li>
-                        <li>Be honest and fair in your assessment</li>
-                    </ul>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <%- include('../partials/footer') %>
+    <div class="footer-wrapper">
+        <!-- Footer -->
+        <%- include('../partials/footer') %>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Enhanced star rating functionality
+            // Star rating functionality
             const stars = document.querySelectorAll('.star-rating label');
             const starInputs = document.querySelectorAll('.star-rating input');
             const ratingFeedback = document.getElementById('ratingFeedback');
@@ -501,23 +495,36 @@
             // Function to highlight stars up to a certain rating
             function highlightStars(rating) {
                 stars.forEach((star, index) => {
-                    const starValue = star.getAttribute('for').replace('star', '');
+                    const starValue = parseInt(star.getAttribute('for').replace('star', ''));
                     const starIcon = star.querySelector('i');
                     
+                    // Remove existing classes
+                    star.classList.remove('selected');
+                    
                     if (starValue <= rating) {
-                        starIcon.style.color = 'var(--gold)';
+                        starIcon.style.color = 'var(--accent-yellow, #ffc107)';
                         star.style.transform = 'scale(1.1)';
                     } else {
-                        starIcon.style.color = 'var(--gray-medium)';
+                        starIcon.style.color = 'var(--gray-medium, #e9ecef)';
                         star.style.transform = 'scale(1)';
                     }
+                });
+            }
+            
+            // Reset all stars
+            function resetStars() {
+                stars.forEach(star => {
+                    const starIcon = star.querySelector('i');
+                    starIcon.style.color = 'var(--gray-medium, #e9ecef)';
+                    star.style.transform = 'scale(1)';
+                    star.classList.remove('selected');
                 });
             }
             
             // Add event listeners for hover and click effects
             stars.forEach((star, index) => {
                 star.addEventListener('mouseenter', function() {
-                    const rating = this.getAttribute('for').replace('star', '');
+                    const rating = parseInt(this.getAttribute('for').replace('star', ''));
                     highlightStars(rating);
                     
                     // Show rating text
@@ -527,16 +534,21 @@
                 });
                 
                 star.addEventListener('click', function() {
-                    const rating = this.getAttribute('for').replace('star', '');
+                    const rating = parseInt(this.getAttribute('for').replace('star', ''));
                     const ratingText = this.getAttribute('data-rating');
+                    
+                    // Select the radio button
+                    document.getElementById(`star${rating}`).checked = true;
+                    
+                    // Visual feedback
+                    stars.forEach(s => s.classList.remove('selected'));
+                    for (let i = 1; i <= rating; i++) {
+                        document.querySelector(`label[for="star${i}"]`).classList.add('selected');
+                    }
                     
                     highlightStars(rating);
                     ratingFeedback.textContent = `You selected: ${ratingText}`;
                     ratingFeedback.classList.add('show');
-                    
-                    // Add selected effect
-                    stars.forEach(s => s.classList.remove('selected'));
-                    this.classList.add('selected');
                 });
             });
             
@@ -544,7 +556,7 @@
             document.querySelector('.star-rating').addEventListener('mouseleave', function() {
                 const checkedInput = document.querySelector('.star-rating input:checked');
                 if (checkedInput) {
-                    const rating = checkedInput.value;
+                    const rating = parseInt(checkedInput.value);
                     const selectedStar = document.querySelector(`label[for="star${rating}"]`);
                     const ratingText = selectedStar.getAttribute('data-rating');
                     
@@ -552,12 +564,12 @@
                     ratingFeedback.textContent = `You selected: ${ratingText}`;
                     ratingFeedback.classList.add('show');
                 } else {
-                    highlightStars(0);
+                    resetStars();
                     ratingFeedback.classList.remove('show');
                 }
             });
             
-            // Character counter for review text
+            // Character counter
             const reviewTextArea = document.getElementById('reviewText');
             const charCounter = document.getElementById('charCounter');
             
@@ -576,9 +588,9 @@
             }
             
             reviewTextArea.addEventListener('input', updateCharCount);
-            updateCharCount(); // Initial call
+            updateCharCount();
             
-            // Form validation with enhanced UX
+            // Form validation
             const reviewForm = document.getElementById('reviewForm');
             reviewForm.addEventListener('submit', function(e) {
                 const rating = document.querySelector('input[name="rating"]:checked');
@@ -586,15 +598,16 @@
                 
                 if (!rating) {
                     e.preventDefault();
-                    // Animate the rating section to draw attention
-                    const ratingSection = document.querySelector('.rating-section');
-                    ratingSection.style.borderColor = '#dc3545';
-                    ratingSection.style.animation = 'shake 0.5s ease';
+                    
+                    // Highlight the rating section
+                    const ratingContainer = document.querySelector('.rating-container');
+                    ratingContainer.style.animation = 'shake 0.5s ease';
+                    ratingContainer.style.borderColor = '#dc3545';
                     
                     setTimeout(() => {
-                        ratingSection.style.borderColor = '';
-                        ratingSection.style.animation = '';
-                    }, 500);
+                        ratingContainer.style.animation = '';
+                        ratingContainer.style.borderColor = '';
+                    }, 1000);
                     
                     alert('Please select a rating before submitting your review.');
                     return;
@@ -614,13 +627,21 @@
                 }
                 
                 // Show loading state
-                const submitBtn = document.querySelector('.btn-submit-review');
+                const submitBtn = document.querySelector('.btn-submit');
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...';
                 submitBtn.disabled = true;
+                
+                // Log form data for debugging
+                console.log('Submitting form with data:', {
+                    booking_id: document.querySelector('input[name="booking_id"]').value,
+                    provider_id: document.querySelector('input[name="provider_id"]').value,
+                    rating: rating.value,
+                    review_text: reviewText
+                });
             });
         });
         
-        // Add shake animation for error feedback
+        // Add shake animation
         const style = document.createElement('style');
         style.textContent = `
             @keyframes shake {
