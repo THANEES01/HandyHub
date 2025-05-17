@@ -354,86 +354,93 @@
                     </div>
                 </div>
                 
-                <!-- Reviews Section -->
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="profile-section">
-                            <h3>Customer Reviews</h3>
-                            
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <div class="d-flex align-items-center">
-                                    <div class="me-3">
-                                        <span class="fs-2 fw-bold text-primary">4.8</span>
-                                        <div class="text-muted">Average Rating</div>
-                                    </div>
-                                    <div>
-                                        <div class="rating-stars">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-half text-warning"></i>
-                                        </div>
-                                        <small class="text-muted">Based on 24 reviews</small>
-                                    </div>
-                                </div>
-                                
-                                <a href="/customer/write-review/<%= provider.id %>" class="btn btn-primary">
-                                    <i class="bi bi-pencil"></i> Write a Review
-                                </a>
-                            </div>
-                            
-                            <!-- Sample reviews - These would be populated from database -->
-                            <div class="card mb-3">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <div>
-                                            <strong>John D.</strong>
-                                            <div class="text-muted small">June 12, 2023</div>
-                                        </div>
-                                        <div class="rating-stars">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star text-warning"></i>
-                                        </div>
-                                    </div>
-                                    <p class="mb-0">Excellent service! The technician was very professional and fixed our issue quickly.</p>
-                                </div>
-                            </div>
-                            
-                            <div class="card mb-3">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <div>
-                                            <strong>Sarah M.</strong>
-                                            <div class="text-muted small">May 28, 2023</div>
-                                        </div>
-                                        <div class="rating-stars">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                        </div>
-                                    </div>
-                                    <p class="mb-0">I couldn't be happier with the service. They were prompt, courteous, and did excellent work at a fair price.</p>
-                                </div>
-                            </div>
-                            
-                            <!-- Placeholder for more reviews -->
-                            <div class="text-center mt-4">
-                                <a href="/customer/provider-reviews/<%= provider.id %>" class="btn btn-outline-primary">
-                                    View All Reviews
-                                </a>
-                            </div>
+         <!-- Reviews Section -->
+<!-- Reviews Section - Updated version for provider-details.ejs -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="profile-section">
+            <h3>Customer Reviews</h3>
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <span class="fs-2 fw-bold text-primary"><%= typeof averageRating !== 'undefined' ? averageRating : '0.0' %></span>
+                        <div class="text-muted">Average Rating</div>
+                    </div>
+                    <div>
+                        <div class="rating-stars">
+                            <% const rating = typeof averageRating !== 'undefined' ? parseFloat(averageRating) : 0; %>
+                            <% for(let i = 1; i <= 5; i++) { %>
+                                <% if (i <= Math.floor(rating)) { %>
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                <% } else if (i <= Math.floor(rating) + 0.5 && i > Math.floor(rating)) { %>
+                                    <i class="bi bi-star-half text-warning"></i>
+                                <% } else { %>
+                                    <i class="bi bi-star text-warning"></i>
+                                <% } %>
+                            <% } %>
                         </div>
+                        <small class="text-muted">Based on <%= typeof reviewCount !== 'undefined' ? reviewCount : 0 %> reviews</small>
                     </div>
                 </div>
+                
+                <a href="/customer/find-eligible-booking/<%= provider.id %>" class="btn btn-primary">
+                    <i class="bi bi-pencil"></i> Write a Review
+                </a>
             </div>
+            
+            <!-- Debug information - will help identify the issue -->
+            <% if (typeof reviews !== 'undefined') { %>
+                <div class="small text-muted mb-2">Debug: Found <%= reviews.length %> reviews</div>
+            <% } else { %>
+                <div class="small text-muted mb-2">Debug: Reviews variable is undefined</div>
+            <% } %>
+            
+            <!-- Display actual reviews from database -->
+            <% if (typeof reviews !== 'undefined' && reviews && reviews.length > 0) { %>
+                <% reviews.forEach(review => { %>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <div>
+                                    <strong><%= review.first_name %> <%= review.last_name ? review.last_name.charAt(0) + '.' : '' %></strong>
+                                    <div class="text-muted small"><%= new Date(review.created_at).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'}) %></div>
+                                </div>
+                                <div class="rating-stars">
+                                    <% for(let i = 1; i <= 5; i++) { %>
+                                        <% if (i <= review.rating) { %>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        <% } else { %>
+                                            <i class="bi bi-star text-warning"></i>
+                                        <% } %>
+                                    <% } %>
+                                </div>
+                            </div>
+                            <p class="mb-0"><%= review.review_text || 'No comment provided' %></p>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } else { %>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    No reviews yet for this service provider.
+                </div>
+            <% } %>
+            
+            <!-- Show "View All Reviews" button only if there are reviews -->
+            <% if (typeof reviews !== 'undefined' && reviews && reviews.length > 0) { %>
+                <div class="text-center mt-4">
+                    <a href="/customer/provider-reviews/<%= provider.id %>" class="btn btn-outline-primary">
+                        View All Reviews
+                    </a>
+                </div>
+            <% } %>
         </div>
     </div>
+</div>
+            </div><!-- Close profile-content -->
+        </div><!-- Close provider-profile -->
+    </div><!-- Close container -->
 
     <div id="contact">
         <!-- Footer  -->

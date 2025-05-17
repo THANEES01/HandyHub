@@ -375,6 +375,8 @@ router.get('/provider/:providerId', isCustomerAuth, async (req, res) => {
         const providerId = req.params.providerId;
         const categoryParam = req.query.category; // Get category from query param
         
+        console.log(`Loading provider details for provider ID: ${providerId}`);
+        
         // Get provider details
         const providerResult = await pool.query(`
             SELECT sp.id, sp.business_name, sp.phone_number, u.email,
@@ -417,6 +419,38 @@ router.get('/provider/:providerId', isCustomerAuth, async (req, res) => {
             ORDER BY s.state_name, c.city_name
         `, [providerId]);
         
+        // Get all reviews for this provider with customer names
+        const reviewsResult = await pool.query(`
+            SELECT 
+                pr.id, 
+                pr.rating, 
+                pr.review_text, 
+                pr.created_at,
+                c.first_name,
+                c.last_name
+            FROM booking_reviews pr
+            JOIN customers c ON pr.customer_id = c.id
+            WHERE pr.provider_id = $1
+            ORDER BY pr.created_at DESC
+            LIMIT 2  -- Just show the 2 most recent reviews
+        `, [providerId]);
+        
+        // Calculate average rating
+        const avgRatingResult = await pool.query(`
+            SELECT AVG(rating) as average_rating, COUNT(*) as review_count
+            FROM booking_reviews
+            WHERE provider_id = $1
+        `, [providerId]);
+        
+        const averageRating = avgRatingResult.rows[0].average_rating || 0;
+        const reviewCount = avgRatingResult.rows[0].review_count || 0;
+        
+        // Log reviews for debugging
+        console.log(`Found ${reviewsResult.rows.length} reviews for provider ID: ${providerId}`);
+        if (reviewsResult.rows.length > 0) {
+            console.log('First review:', JSON.stringify(reviewsResult.rows[0]));
+        }
+        
         // Find the selected category from the query parameter
         let selectedCategory = null;
         
@@ -438,7 +472,10 @@ router.get('/provider/:providerId', isCustomerAuth, async (req, res) => {
             categories: categoriesResult.rows,
             selectedCategory: selectedCategory,
             services: servicesResult.rows,
-            coverage: coverageResult.rows
+            coverage: coverageResult.rows,
+            reviews: reviewsResult.rows,
+            averageRating: parseFloat(averageRating).toFixed(1),
+            reviewCount: reviewCount
         });
     } catch (error) {
         console.error('Error fetching provider details:', error);
@@ -473,7 +510,7 @@ router.post('/submit-review', isCustomerAuth, async (req, res) => {
         
         // Check if a review already exists for this booking
         const existingReviewResult = await pool.query(`
-            SELECT id FROM provider_reviews WHERE booking_id = $1
+            SELECT id FROM booking_reviews WHERE booking_id = $1
         `, [booking_id]);
         
         if (existingReviewResult.rows.length > 0) {
@@ -483,7 +520,7 @@ router.post('/submit-review', isCustomerAuth, async (req, res) => {
         
         // Insert the review
         await pool.query(`
-            INSERT INTO provider_reviews 
+            INSERT INTO booking_reviews 
             (provider_id, customer_id, booking_id, rating, review_text)
             VALUES ($1, $2, $3, $4, $5)
         `, [provider_id, customerId, booking_id, rating, review_text || null]);
@@ -517,28 +554,30 @@ router.get('/provider-reviews/:providerId', isCustomerAuth, async (req, res) => 
         
         // Get all reviews for this provider with customer names
         const reviewsResult = await pool.query(`
-            SELECT 
-                pr.id, 
-                pr.rating, 
-                pr.review_text, 
-                pr.created_at,
-                c.first_name,
-                c.last_name
-            FROM provider_reviews pr
-            JOIN customers c ON pr.customer_id = c.id
-            WHERE pr.provider_id = $1
-            ORDER BY pr.created_at DESC
-        `, [providerId]);
+        SELECT 
+            pr.id, 
+            pr.rating, 
+            pr.review_text, 
+            pr.created_at,
+            c.first_name,
+            c.last_name
+        FROM booking_reviews pr
+        JOIN customers c ON pr.customer_id = c.id
+        WHERE pr.provider_id = $1
+        ORDER BY pr.created_at DESC
+        LIMIT 2  -- Just show the 2 most recent reviews
+    `, [providerId]);
         
         // Calculate average rating
         const avgRatingResult = await pool.query(`
             SELECT AVG(rating) as average_rating, COUNT(*) as review_count
-            FROM provider_reviews
+            FROM booking_reviews
             WHERE provider_id = $1
         `, [providerId]);
-        
+
         const averageRating = avgRatingResult.rows[0].average_rating || 0;
         const reviewCount = avgRatingResult.rows[0].review_count || 0;
+
         
         res.render('customer/provider-reviews', {
             title: `Reviews for ${providerResult.rows[0].business_name}`,

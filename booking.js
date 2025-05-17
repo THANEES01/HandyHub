@@ -513,13 +513,14 @@ router.get('/customer/write-review/:bookingId', isCustomerAuth, async (req, res)
 // Submit a review for a completed booking (POST)
 // Submit a review for a completed booking (POST)
 router.post('/customer/submit-review', isCustomerAuth, async (req, res) => {
-    try {
+   try {
         const userId = req.session.user.id; // This is the user_id from the session
         const { booking_id, provider_id, rating, review_text } = req.body;
         
         console.log('Review submission received:');
         console.log('User ID:', userId);
         console.log('Form data:', req.body);
+        console.log('Review text:', review_text);
         
         // Step 1: Find the correct customer_id that corresponds to this user_id
         const customerResult = await pool.query(`
@@ -569,14 +570,17 @@ router.post('/customer/submit-review', isCustomerAuth, async (req, res) => {
         
         // Step 5: Insert the review with the correct customer_id
         console.log('Inserting review with customer_id:', customerId);
-       const insertResult = await pool.query(`
+        console.log('Review text being inserted:', review_text || null);
+        
+        const insertResult = await pool.query(`
             INSERT INTO booking_reviews 
             (provider_id, customer_id, booking_id, rating, review_text, created_at)
             VALUES ($1, $2, $3, $4, $5, NOW())
-            RETURNING id
+            RETURNING id, review_text
         `, [provider_id, customerId, booking_id, rating, review_text || null]);
         
         console.log('Review inserted successfully, ID:', insertResult.rows[0].id);
+        console.log('Saved review_text:', insertResult.rows[0].review_text);
         
         req.session.success = 'Thank you for your review!';
         return res.redirect('/customer/bookings');
