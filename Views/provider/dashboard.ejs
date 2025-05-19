@@ -265,6 +265,11 @@
             <a class="nav-link <%= typeof currentPage !== 'undefined' && currentPage === 'bookings' ? 'active' : '' %>" href="/provider/bookings">
                 <i class="bi bi-calendar-check"></i> Bookings
             </a>
+            <!-- Add conversations link to sidebar -->
+            <a class="nav-link <%= typeof currentPage !== 'undefined' && currentPage === 'conversations' ? 'active' : '' %>" href="/provider/conversations">
+                <i class="bi bi-chat-dots"></i> Messages
+                <span id="sidebar-unread-badge" class="badge bg-danger rounded-pill" style="display: none;"></span>
+            </a>
             <a class="nav-link <%= typeof currentPage !== 'undefined' && currentPage === 'reviews' ? 'active' : '' %>" href="/provider/reviews">
                 <i class="bi bi-star"></i> Reviews & Ratings
             </a>
@@ -327,10 +332,17 @@
                     </div>
                 </div>
             </div>
+            <div class="d-flex">
+            <!-- Add message icon here -->
+            <a href="/provider/conversations" class="btn btn-primary me-2" title="Messages">
+                <i class="bi bi-chat-dots"></i>
+                <span id="topbar-unread-badge" class="badge bg-danger rounded-pill" style="display: none;"></span>
+            </a>
             <a href="/provider/profile" class="btn btn-edit">
                 <i class="bi bi-pencil"></i> Edit Profile
             </a>
         </div>
+    </div>
 
         <!-- Statistics Section -->
         <div class="row mb-4">
@@ -528,6 +540,54 @@
                 });
             }, 5000);
         });
+
+        // Auto-dismiss alerts after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+
+        // Function to check for unread messages
+        function checkUnreadMessages() {
+            fetch('/api/unread-count')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const sidebarUnreadBadge = document.getElementById('sidebar-unread-badge');
+                        const topbarUnreadBadge = document.getElementById('topbar-unread-badge');
+                        
+                        if (data.unreadCount > 0) {
+                            // Update badges
+                            if (sidebarUnreadBadge) {
+                                sidebarUnreadBadge.textContent = data.unreadCount;
+                                sidebarUnreadBadge.style.display = 'inline-block';
+                            }
+                            
+                            if (topbarUnreadBadge) {
+                                topbarUnreadBadge.textContent = data.unreadCount;
+                                topbarUnreadBadge.style.display = 'inline-block';
+                            }
+                        } else {
+                            if (sidebarUnreadBadge) sidebarUnreadBadge.style.display = 'none';
+                            if (topbarUnreadBadge) topbarUnreadBadge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking unread messages:', error);
+                });
+        }
+        
+        // Check for unread messages every 30 seconds
+        setInterval(checkUnreadMessages, 30000);
+        
+        // Initial check
+        checkUnreadMessages();
+    });
     </script>
 </body>
 </html>

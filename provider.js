@@ -1245,6 +1245,367 @@ router.get('/reviews', isProvider, async (req, res) => {
     }
 });
 
+// router.get('/conversations', isProvider, async (req, res) => {
+//     try {
+//         const providerId = req.session.user.providerId;
+        
+//         // Get all conversations for this provider
+//         const conversationsQuery = `
+//             SELECT 
+//                 cc.id as conversation_id,
+//                 cc.id,
+//                 cc.created_at,
+//                 cc.last_message_at as last_message_time,
+//                 cust.first_name || ' ' || cust.last_name AS customer_name,
+//                 COUNT(CASE WHEN cm.is_read = false AND cm.sender_type = 'customer' THEN 1 END) as unread_count,
+//                 (SELECT message_text FROM chat_messages 
+//                  WHERE conversation_id = cc.id 
+//                  ORDER BY created_at DESC LIMIT 1) as last_message
+//             FROM chat_conversations cc
+//             JOIN customers cust ON cc.customer_id = cust.user_id
+//             LEFT JOIN chat_messages cm ON cc.id = cm.conversation_id
+//             WHERE cc.provider_id = $1
+//             GROUP BY cc.id, cc.created_at, cc.last_message_at, cust.first_name, cust.last_name
+//             ORDER BY cc.last_message_at DESC NULLS LAST
+//         `;
+        
+//         const conversationsResult = await pool.query(conversationsQuery, [providerId]);
+//         const conversations = conversationsResult.rows;
+        
+//         res.render('provider/conversations', {
+//             title: 'Messages',
+//             conversations: conversations,
+//             currentPage: 'conversations',
+//             error: req.session.error,
+//             success: req.session.success
+//         });
+        
+//         // Clear session messages
+//         delete req.session.error;
+//         delete req.session.success;
+        
+//     } catch (error) {
+//         console.error('Error fetching conversations:', error);
+//         req.session.error = 'Failed to load messages. Please try again.';
+//         res.redirect('/provider/dashboard');
+//     }
+// });
+
+// // Get a specific chat
+// router.get('/chat/:conversationId', isProvider, async (req, res) => {
+//       try {
+//         const providerId = req.session.user.providerId;
+//         const { conversationId } = req.params;
+        
+//         // Get conversation details
+//         const conversationQuery = `
+//             SELECT 
+//                 cc.id,
+//                 cc.created_at,
+//                 cc.customer_id,
+//                 cust.first_name || ' ' || cust.last_name AS customer_name
+//             FROM chat_conversations cc
+//             JOIN customers cust ON cc.customer_id = cust.user_id
+//             WHERE cc.id = $1 AND cc.provider_id = $2
+//         `;
+        
+//         const conversationResult = await pool.query(conversationQuery, [conversationId, providerId]);
+        
+//         if (conversationResult.rows.length === 0) {
+//             req.session.error = 'Conversation not found or not authorized';
+//             return res.redirect('/provider/conversations');
+//         }
+        
+//         const conversation = conversationResult.rows[0];
+        
+//         // Get messages
+//         const messagesQuery = `
+//             SELECT *
+//             FROM chat_messages
+//             WHERE conversation_id = $1
+//             ORDER BY created_at ASC
+//         `;
+        
+//         const messagesResult = await pool.query(messagesQuery, [conversationId]);
+//         const messages = messagesResult.rows;
+        
+//         // Mark unread messages as read
+//         if (messages.some(m => m.sender_type === 'customer' && !m.is_read)) {
+//             await pool.query(`
+//                 UPDATE chat_messages
+//                 SET is_read = true
+//                 WHERE conversation_id = $1 AND sender_type = 'customer' AND is_read = false
+//             `, [conversationId]);
+//         }
+        
+//         res.render('provider/chat', {
+//             title: 'Chat',
+//             conversation: conversation,
+//             messages: messages,
+//             currentPage: 'conversations',
+//             error: req.session.error,
+//             success: req.session.success
+//         });
+        
+//         // Clear session messages
+//         delete req.session.error;
+//         delete req.session.success;
+        
+//     } catch (error) {
+//         console.error('Error fetching chat:', error);
+//         req.session.error = 'Failed to load chat. Please try again.';
+//         res.redirect('/provider/conversations');
+//     }
+// });
+
+// New combined route for integrated conversations and chat view
+router.get('/conversations', isProvider, async (req, res) => {
+    try {
+        const providerId = req.session.user.providerId;
+        const requestedConversationId = req.query.conversation;
+        
+        // Get all conversations for this provider
+        const conversationsQuery = `
+            SELECT 
+                cc.id as conversation_id,
+                cc.id,
+                cc.created_at,
+                cc.last_message_at as last_message_time,
+                cust.first_name || ' ' || cust.last_name AS customer_name,
+                COUNT(CASE WHEN cm.is_read = false AND cm.sender_type = 'customer' THEN 1 END) as unread_count,
+                (SELECT message_text FROM chat_messages 
+                 WHERE conversation_id = cc.id 
+                 ORDER BY created_at DESC LIMIT 1) as last_message
+            FROM chat_conversations cc
+            JOIN customers cust ON cc.customer_id = cust.user_id
+            LEFT JOIN chat_messages cm ON cc.id = cm.conversation_id
+            WHERE cc.provider_id = $1
+            GROUP BY cc.id, cc.created_at, cc.last_message_at, cust.first_name, cust.last_name
+            ORDER BY cc.last_message_at DESC NULLS LAST
+        `;
+        
+        const conversationsResult = await pool.query(conversationsQuery, [providerId]);
+        const conversations = conversationsResult.rows;
+        
+        // Variables for active conversation and messages
+        let activeConversation = null;
+        let messages = [];
+        
+        // If a conversation is requested, fetch its details and messages
+        if (requestedConversationId) {
+            // Get conversation details
+            const conversationQuery = `
+                SELECT 
+                    cc.id,
+                    cc.created_at,
+                    cc.customer_id,
+                    cust.first_name || ' ' || cust.last_name AS customer_name
+                FROM chat_conversations cc
+                JOIN customers cust ON cc.customer_id = cust.user_id
+                WHERE cc.id = $1 AND cc.provider_id = $2
+            `;
+            
+            const conversationResult = await pool.query(conversationQuery, [requestedConversationId, providerId]);
+            
+            if (conversationResult.rows.length > 0) {
+                activeConversation = conversationResult.rows[0];
+                
+                // Get messages
+                const messagesQuery = `
+                    SELECT *
+                    FROM chat_messages
+                    WHERE conversation_id = $1
+                    ORDER BY created_at ASC
+                `;
+                
+                const messagesResult = await pool.query(messagesQuery, [requestedConversationId]);
+                messages = messagesResult.rows;
+                
+                // Mark unread messages as read
+                if (messages.some(m => m.sender_type === 'customer' && !m.is_read)) {
+                    await pool.query(`
+                        UPDATE chat_messages
+                        SET is_read = true
+                        WHERE conversation_id = $1 AND sender_type = 'customer' AND is_read = false
+                    `, [requestedConversationId]);
+                    
+                    // Update the unread count for this conversation in our result set
+                    conversations.forEach(conv => {
+                        if (conv.conversation_id == requestedConversationId) {
+                            conv.unread_count = 0;
+                        }
+                    });
+                }
+            }
+        }
+        
+        // Render the integrated messaging template instead of the separate templates
+        res.render('provider/integrated-messaging', {
+            title: 'Messages',
+            conversations: conversations,
+            activeConversation: activeConversation,
+            messages: messages,
+            currentPage: 'conversations',
+            error: req.session.error,
+            success: req.session.success
+        });
+        
+        // Clear session messages
+        delete req.session.error;
+        delete req.session.success;
+        
+    } catch (error) {
+        console.error('Error fetching conversations:', error);
+        req.session.error = 'Failed to load messages. Please try again.';
+        res.redirect('/provider/dashboard');
+    }
+});
+
+// API endpoint to get unread message count
+router.get('/api/unread-count', isProvider, async (req, res) => {
+     try {
+        const providerId = req.session.user.providerId;
+        
+        // Get unread message count
+        const countQuery = `
+            SELECT COUNT(*) as unread_count
+            FROM chat_messages cm
+            JOIN chat_conversations cc ON cm.conversation_id = cc.id
+            WHERE cc.provider_id = $1 AND cm.sender_type = 'customer' AND cm.is_read = false
+        `;
+        
+        const countResult = await pool.query(countQuery, [providerId]);
+        const unreadCount = parseInt(countResult.rows[0].unread_count || 0);
+        
+        res.json({
+            success: true,
+            unreadCount: unreadCount
+        });
+        
+    } catch (error) {
+        console.error('Error fetching unread count:', error);
+        res.json({
+            success: false,
+            error: 'Failed to fetch unread count'
+        });
+    }
+});
+
+// API endpoint to get new messages
+router.get('/api/messages/:conversationId', isProvider, async (req, res) => {
+    try {
+        const { conversationId } = req.params;
+        const { lastMessageId } = req.query;
+        const providerId = req.session.user.providerId;
+        
+        // Verify the conversation belongs to this provider
+        const verifyQuery = `
+            SELECT id FROM chat_conversations
+            WHERE id = $1 AND provider_id = $2
+        `;
+        
+        const verifyResult = await pool.query(verifyQuery, [conversationId, providerId]);
+        
+        if (verifyResult.rows.length === 0) {
+            return res.json({
+                success: false,
+                error: 'Conversation not found or not authorized'
+            });
+        }
+        
+        // Get new messages
+        const messagesQuery = `
+            SELECT *
+            FROM chat_messages
+            WHERE conversation_id = $1 AND id > $2
+            ORDER BY created_at ASC
+        `;
+        
+        const messagesResult = await pool.query(messagesQuery, [conversationId, lastMessageId]);
+        const messages = messagesResult.rows;
+        
+        // Mark new messages as read
+        if (messages.some(m => m.sender_type === 'customer' && !m.is_read)) {
+            await pool.query(`
+                UPDATE chat_messages
+                SET is_read = true
+                WHERE conversation_id = $1 AND sender_type = 'customer' AND is_read = false
+            `, [conversationId]);
+        }
+        
+        res.json({
+            success: true,
+            messages: messages
+        });
+        
+    } catch (error) {
+        console.error('Error fetching new messages:', error);
+        res.json({
+            success: false,
+            error: 'Failed to fetch new messages'
+        });
+    }
+});
+
+// API endpoint to send a message
+router.post('/api/send-message', isProvider, async (req, res) => {
+      try {
+        const providerId = req.session.user.providerId;
+        const { conversationId, message } = req.body;
+        
+        if (!message || !conversationId) {
+            return res.json({
+                success: false,
+                error: 'Message and conversation ID are required'
+            });
+        }
+        
+        // Verify the conversation belongs to this provider
+        const verifyQuery = `
+            SELECT id FROM chat_conversations
+            WHERE id = $1 AND provider_id = $2
+        `;
+        
+        const verifyResult = await pool.query(verifyQuery, [conversationId, providerId]);
+        
+        if (verifyResult.rows.length === 0) {
+            return res.json({
+                success: false,
+                error: 'Conversation not found or not authorized'
+            });
+        }
+        
+        // Insert the message
+        const insertQuery = `
+            INSERT INTO chat_messages (conversation_id, sender_type, message_text, is_read)
+            VALUES ($1, 'provider', $2, false)
+            RETURNING *
+        `;
+        
+        const insertResult = await pool.query(insertQuery, [conversationId, message]);
+        const newMessage = insertResult.rows[0];
+        
+        // Update conversation timestamp only, without last_message field
+        await pool.query(`
+            UPDATE chat_conversations
+            SET last_message_at = $1
+            WHERE id = $2
+        `, [new Date(), conversationId]);
+        
+        res.json({
+            success: true,
+            message: newMessage
+        });
+        
+    } catch (error) {
+        console.error('Error sending message:', error);
+        res.json({
+            success: false,
+            error: 'Failed to send message'
+        });
+    }
+});
+
 // Route for viewing booking details
 router.get('/booking/:bookingId', isProvider, getBookingDetails);
 
