@@ -1116,6 +1116,135 @@ router.get('/debug-bookings', isProvider, async (req, res) => {
     }
 });
 
+// Route for viewing all reviews for a provider
+router.get('/reviews', isProvider, async (req, res) => {
+    try {
+        const providerId = req.session.user.providerId;
+        console.log('Loading reviews for provider ID:', providerId);
+        
+        // Get provider details
+        const providerResult = await pool.query(`
+            SELECT sp.*, u.email 
+            FROM service_providers sp
+            JOIN users u ON sp.user_id = u.id
+            WHERE sp.id = $1
+        `, [providerId]);
+        
+        if (providerResult.rows.length === 0) {
+            req.session.error = 'Provider profile not found';
+            return res.redirect('/provider/dashboard');
+        }
+        
+        // Get provider services for stats
+        const servicesResult = await pool.query(`
+            SELECT service_name 
+            FROM services_offered 
+            WHERE provider_id = $1
+        `, [providerResult.rows[0].id]);
+        
+        // Combine provider data with services
+        const provider = {
+            ...providerResult.rows[0],
+            services: servicesResult.rows
+        };
+        
+        // Get all reviews for this provider with customer names
+        const reviewsQuery = `
+            SELECT 
+                br.id, 
+                br.rating, 
+                br.review_text, 
+                br.created_at,
+                br.booking_id,
+                c.first_name,
+                c.last_name,
+                sb.service_type,
+                sb.preferred_date
+            FROM booking_reviews br
+            JOIN customers c ON br.customer_id = c.user_id
+            LEFT JOIN service_bookings sb ON br.booking_id = sb.id
+            WHERE br.provider_id = $1
+            ORDER BY br.created_at DESC
+        `;
+        
+        const reviewsResult = await pool.query(reviewsQuery, [providerId]);
+        console.log(`Found ${reviewsResult.rows.length} reviews for provider ID: ${providerId}`);
+        
+        // Calculate average rating
+        const avgRatingResult = await pool.query(`
+            SELECT AVG(rating) as average_rating, COUNT(*) as review_count
+            FROM booking_reviews
+            WHERE provider_id = $1
+        `, [providerId]);
+        
+        const averageRating = avgRatingResult.rows[0].average_rating || 0;
+        const reviewCount = parseInt(avgRatingResult.rows[0].review_count) || 0;
+        
+        // Calculate rating breakdown (count of each star rating)
+        const ratingBreakdownQuery = `
+            SELECT rating, COUNT(*) as count
+            FROM booking_reviews
+            WHERE provider_id = $1
+            GROUP BY rating
+            ORDER BY rating DESC
+        `;
+        
+        const ratingBreakdownResult = await pool.query(ratingBreakdownQuery, [providerId]);
+        
+        // Format the rating breakdown for easier display
+        const ratingBreakdown = Array(5).fill(0);
+        ratingBreakdownResult.rows.forEach(row => {
+            const ratingValue = parseInt(row.rating);
+            if (ratingValue >= 1 && ratingValue <= 5) {
+                ratingBreakdown[ratingValue - 1] = parseInt(row.count);
+            }
+        });
+        
+        // Calculate rating percentage for each star level
+        const ratingPercentages = ratingBreakdown.map(count => {
+            return reviewCount > 0 ? Math.round((count / reviewCount) * 100) : 0;
+        });
+        
+        // Get monthly review stats for chart
+        const monthlyStatsQuery = `
+            SELECT 
+                TO_CHAR(created_at, 'YYYY-MM') as month,
+                COUNT(*) as review_count,
+                AVG(rating) as average_rating
+            FROM booking_reviews
+            WHERE provider_id = $1
+            GROUP BY month
+            ORDER BY month ASC
+            LIMIT 12
+        `;
+        
+        const monthlyStatsResult = await pool.query(monthlyStatsQuery, [providerId]);
+        
+        res.render('provider/reviews', {
+            title: 'Reviews & Ratings',
+            provider: provider,
+            reviews: reviewsResult.rows,
+            averageRating: parseFloat(averageRating).toFixed(1),
+            reviewCount: reviewCount,
+            ratingBreakdown: ratingBreakdown,
+            ratingPercentages: ratingPercentages,
+            monthlyStats: monthlyStatsResult.rows,
+            currentPage: 'reviews',
+            error: req.session.error,
+            success: req.session.success
+        });
+        
+        // Clear session messages
+        delete req.session.error;
+        delete req.session.success;
+        
+    } catch (error) {
+        console.error('Error fetching provider reviews:', error);
+        req.session.error = 'Failed to load reviews';
+        res.redirect('/provider/dashboard');
+    }
+});
+
 // Route for viewing booking details
 router.get('/booking/:bookingId', isProvider, getBookingDetails);
 
