@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #0077be;
+            --secondary-blue: #00a2e8;
+            --dark-blue: #003366;
+            --light-blue: #e6f2ff;
+            --sidebar-width: 250px;
+        }
+    body {
+        min-height: 100vh;
+        background-color: #f8f9fa;
+    }
+
+    /* Sidebar Styling */
+    .sidebar {
+        width: var(--sidebar-width);
+        background-color: var(--dark-blue);
+        min-height: 100vh;
+        position: fixed;
+        left: 0;
+        top: 0;
+        padding-top: 20px;
+    }
+    
+    .sidebar-brand {
+        color: white;
+        font-size: 1.5rem;
+        padding: 20px;
+        text-decoration: none;
+        display: block;
+        margin-bottom: 20px;
+    }
+    
+    .nav-link {
+        color: rgba(255, 255, 255, 0.8);
+        padding: 12px 20px;
+        margin: 4px 0;
+        transition: all 0.3s ease;
+    }
+    
+    .nav-link:hover, .nav-link.active {
+        color: white;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .nav-link i {
+        margin-right: 10px;
+    }
+    
+    /* Main Content Styling */
+    .main-content {
+        margin-left: var(--sidebar-width);
+        padding: 30px;
+    }
+    
+    /* Conversation Card Styling */
+    .conversation-card {
+        background-color: white;
+        border-radius: 10px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .conversation-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .conversation-header {
+        padding: 15px;
+        border-bottom: 1px solid #f5f5f5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .customer-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .customer-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: var(--light-blue);
+        color: var(--dark-blue);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    
+    .customer-name {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: var(--dark-blue);
+    }
+    
+    .conversation-body {
+        padding: 15px;
+    }
+    
+    .last-message {
+        color: #666;
+        margin-bottom: 10px;
+        font-size: 0.95rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .message-time {
+        font-size: 0.8rem;
+        color: #999;
+    }
+    
+    .conversation-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 15px;
+        background-color: #f9f9f9;
+    }
+    
+    .btn-view-chat {
+        background-color: var(--primary-blue);
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 5px 15px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-view-chat:hover {
+        background-color: var(--dark-blue);
+        color: white;
+    }
+    
+    .unread-badge {
+        background-color: var(--primary-blue);
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        position: absolute;
+        top: 15px;
+        right: 15px;
+    }
+</style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <a href="/provider/dashboard" class="sidebar-brand">
+            <i class="bi bi-tools"></i> HandyHub Provider
+        </a>
+        <nav class="nav flex-column">
+            <a class="nav-link <%= currentPage === 'dashboard' ? 'active' : '' %>" href="/provider/dashboard">
+                <i class="bi bi-person"></i> Profile
+            </a>
+            <a class="nav-link <%= currentPage === 'bookings' ? 'active' : '' %>" href="/provider/bookings">
+                <i class="bi bi-calendar-check"></i> Bookings
+            </a>
+            <a class="nav-link <%= currentPage === 'conversations' ? 'active' : '' %>" href="/provider/conversations">
+                <i class="bi bi-chat-dots"></i> Messages
+                <span id="unread-badge" class="badge bg-danger rounded-pill" style="display: none;"></span>
+            </a>
+            <a class="nav-link <%= currentPage === 'reviews' ? 'active' : '' %>" href="/provider/reviews">
+                <i class="bi bi-star"></i> Reviews & Ratings
+            </a>
+            <a class="nav-link <%= currentPage === 'earnings' ? 'active' : '' %>" href="/provider/earnings">
+                <i class="bi bi-wallet2"></i> Earnings
+            </a>
+            <a class="nav-link text-danger" href="/auth/logout">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+        </nav>
+    </div>
+<!-- Main Content -->
+<div class="main-content">
+    <!-- Messages Section -->
+    <% if (locals.success) { %>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <%= success %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <% } %>
+
+    <% if (locals.error) { %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <% } %>
+    
+    <!-- Conversations List -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Messages</h1>
+        <div>
+            <span class="badge bg-primary rounded-pill me-2" id="total-conversations">
+                <%= conversations.length %> Total
+            </span>
+            <span class="badge bg-danger rounded-pill" id="total-unread">
+                <% 
+                    let totalUnread = 0;
+                    conversations.forEach(conv => {
+                        totalUnread += parseInt(conv.unread_count || 0);
+                    });
+                %>
+                <%= totalUnread %> Unread
+            </span>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-9">
+            <% if (conversations && conversations.length > 0) { %>
+                <% conversations.forEach(conv => { %>
+                    <div class="conversation-card">
+                        <% if (parseInt(conv.unread_count) > 0) { %>
+                            <div class="unread-badge">
+                                <%= conv.unread_count %>
+                            </div>
+                        <% } %>
+                        
+                        <div class="conversation-header">
+                            <div class="customer-info">
+                                <div class="customer-avatar">
+                                    <%= conv.customer_name.charAt(0).toUpperCase() %>
+                                </div>
+                                <div class="customer-name">
+                                    <%= conv.customer_name %>
+                                </div>
+                            </div>
+                            <div class="message-time">
+                                <% if (conv.last_message_time) { %>
+                                    <% 
+                                        const msgDate = new Date(conv.last_message_time);
+                                        const today = new Date();
+                                        const yesterday = new Date(today);
+                                        yesterday.setDate(yesterday.getDate() - 1);
+                                        
+                                        if (msgDate.toDateString() === today.toDateString()) {
+                                            // Show time only if today
+                                            %><i class="bi bi-clock"></i> <%= msgDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %><%
+                                        } else if (msgDate.toDateString() === yesterday.toDateString()) {
+                                            // Show "Yesterday" if yesterday
+                                            %><i class="bi bi-calendar-check"></i> Yesterday<%
+                                        } else {
+                                            // Show date otherwise
+                                            %><i class="bi bi-calendar"></i> <%= msgDate.toLocaleDateString() %><%
+                                        }
+                                    %>
+                                <% } %>
+                            </div>
+                        </div>
+                        
+                        <div class="conversation-body">
+                            <div class="last-message">
+                                <%= conv.last_message || 'No messages yet' %>
+                            </div>
+                        </div>
+                        
+                        <div class="conversation-footer">
+                            <div></div>
+                            <a href="/provider/chat/<%= conv.conversation_id %>" class="btn btn-view-chat">
+                                <i class="bi bi-chat-text"></i> View Conversation
+                            </a>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } else { %>
+                <div class="text-center py-5 bg-light rounded mb-4">
+                    <i class="bi bi-chat-dots" style="font-size: 3rem; color: #ccc;"></i>
+                    <h3 class="mt-3">No messages yet</h3>
+                    <p class="text-muted">When customers message you, they will appear here.</p>
+                </div>
+            <% } %>
+        </div>
+        
+        <div class="col-lg-3">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-info-circle"></i> About Messages
+                    </h5>
+                    <p class="card-text">
+                        Stay in touch with your customers through our messaging system. Respond promptly to increase your chances of securing bookings.
+                    </p>
+                    <div class="list-group list-group-flush mb-3">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            Total Conversations
+                            <span class="badge bg-primary rounded-pill">
+                                <%= conversations.length %>
+                            </span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            Unread Messages
+                            <span class="badge bg-danger rounded-pill">
+                                <%= totalUnread %>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-lightbulb"></i> Tips
+                    </h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Respond promptly to messages
+                        </li>
+                        <li class="list-group-item">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Be clear about your services
+                        </li>
+                        <li class="list-group-item">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Use professional language
+                        </li>
+                        <li class="list-group-item">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Keep communication on the platform
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Connect to Socket.IO for real-time notifications
+        const socket = io({
+            auth: {
+                userType: 'provider'
+            }
+        });
+        
+        // Listen for new messages
+        socket.on('new-message', function(data) {
+            // Refresh the page to show the latest conversations
+            if (data.to_user_type === 'provider') {
+                window.location.reload();
+            }
+        });
+        
+        // Function to poll for unread count
+        function checkUnreadMessages() {
+            fetch('/api/unread-count')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const unreadBadge = document.getElementById('unread-badge');
+                        const totalUnread = document.getElementById('total-unread');
+                        
+                        if (data.unreadCount > 0) {
+                            // Update sidebar badge
+                            unreadBadge.textContent = data.unreadCount;
+                            unreadBadge.style.display = 'inline-block';
+                            
+                            // Update header badge
+                            totalUnread.textContent = data.unreadCount + ' Unread';
+                            
+                            // Update title to show unread count
+                            document.title = `(${data.unreadCount}) Messages`;
+                        } else {
+                            unreadBadge.style.display = 'none';
+                            totalUnread.textContent = '0 Unread';
+                            document.title = 'Messages';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking unread messages:', error);
+                });
+        }
+        
+        // Check for unread messages every 30 seconds
+        setInterval(checkUnreadMessages, 30000);
+        
+        // Initial check
+        checkUnreadMessages();
+    });
+</script>
+</body>
+</html>

@@ -412,6 +412,73 @@
     }
 }
 
+/* Floating Chat Button Styles */
+.message-tooltip {
+    position: absolute;
+    right: 75px;
+    bottom: 10px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    white-space: nowrap;
+    z-index: 1001;
+}
+
+.message-tooltip::after {
+    content: '';
+    position: absolute;
+    right: -8px;
+    bottom: 12px;
+    border-width: 8px 0 8px 8px;
+    border-style: solid;
+    border-color: transparent transparent transparent rgba(0, 0, 0, 0.7);
+}
+
+#floating-chat-button {
+    touch-action: none; /* Improves touch handling */
+    z-index: 1000;
+}
+
+/* Pulse animation for the floating button */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
+    }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Position the badge properly */
+.btn-primary .badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translate(25%, -25%);
+}
+
+/* Notification animation */
+@keyframes notify-bounce {
+    0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+    40% {transform: translateY(-5px);}
+    60% {transform: translateY(-2px);}
+}
+
+.notify-animation {
+    animation: notify-bounce 2s infinite;
+}
+
     </style>
 
 </head>
@@ -571,6 +638,15 @@
             <% } %>
         </div>
     </div>
+
+<!-- Floating Chat Button -->
+<div id="floating-chat-button" class="position-fixed bottom-0 end-0 mb-4 me-4" style="cursor: move;">
+    <div class="message-tooltip" id="message-tooltip">View messages</div>
+    <a href="/customer/conversations" class="btn btn-primary rounded-circle p-3 shadow-lg pulse d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; transition: all 0.3s ease;">
+        <i class="bi bi-chat-dots-fill" style="font-size: 1.5rem;"></i>
+    </a>
+</div>
+
     <div id="contact">
         <!-- Footer -->
         <%- include('../partials/footer') %>
@@ -765,6 +841,197 @@
         executeSearch(searchInput.value);
     }
 });
+
+//floating message icon
+document.addEventListener('DOMContentLoaded', function() {
+        const floatingButton = document.getElementById('floating-chat-button');
+        const tooltip = document.getElementById('message-tooltip');
+        let isDragging = false;
+        let offsetX, offsetY;
+        let isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        // Initialize button position from localStorage if available
+        const savedPosition = localStorage.getItem('chatButtonPosition');
+        if (savedPosition) {
+            try {
+                const position = JSON.parse(savedPosition);
+                floatingButton.style.bottom = position.bottom + 'px';
+                floatingButton.style.right = position.right + 'px';
+            } catch (e) {
+                console.error('Error parsing saved position:', e);
+            }
+        }
+
+        // Show tooltip briefly on page load
+        setTimeout(() => {
+            tooltip.style.opacity = '1';
+            setTimeout(() => {
+                tooltip.style.opacity = '0';
+            }, 3000);
+        }, 1000);
+
+        // Mouse/Touch event handlers
+        if (isTouchDevice) {
+            // Touch events for mobile
+            floatingButton.addEventListener('touchstart', handleDragStart);
+            document.addEventListener('touchmove', handleDragMove);
+            document.addEventListener('touchend', handleDragEnd);
+        } else {
+            // Mouse events for desktop
+            floatingButton.addEventListener('mousedown', handleDragStart);
+            document.addEventListener('mousemove', handleDragMove);
+            document.addEventListener('mouseup', handleDragEnd);
+        }
+
+        // Start dragging function
+        function handleDragStart(e) {
+            // For touch events, use the first touch point
+            const event = (e.type === 'touchstart') ? e.touches[0] : e;
+            
+            // Don't start drag if clicking on the link or icon
+            const target = event.target.tagName.toLowerCase();
+            if (target === 'a' || target === 'i') {
+                return;
+            }
+            
+            isDragging = true;
+            
+            // Calculate the offset
+            const rect = floatingButton.getBoundingClientRect();
+            offsetX = event.clientX - rect.left;
+            offsetY = event.clientY - rect.top;
+            
+            // Change appearance to indicate dragging
+            floatingButton.style.opacity = '0.8';
+            
+            // Prevent default to avoid scrolling on mobile
+            e.preventDefault();
+        }
+
+        // Dragging function
+        function handleDragMove(e) {
+            if (!isDragging) return;
+            
+            // For touch events, use the first touch point
+            const event = (e.type === 'touchmove') ? e.touches[0] : e;
+            
+            // Calculate new position
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const buttonWidth = floatingButton.offsetWidth;
+            const buttonHeight = floatingButton.offsetHeight;
+            
+            const left = event.clientX - offsetX;
+            const top = event.clientY - offsetY;
+            
+            // Keep button within viewport
+            const right = Math.max(0, windowWidth - (left + buttonWidth));
+            const bottom = Math.max(0, windowHeight - (top + buttonHeight));
+            
+            // Update position
+            floatingButton.style.right = right + 'px';
+            floatingButton.style.bottom = bottom + 'px';
+            floatingButton.style.left = 'auto';
+            floatingButton.style.top = 'auto';
+            
+            e.preventDefault(); // Prevent scrolling on mobile
+        }
+
+        // End dragging function
+        function handleDragEnd() {
+            if (isDragging) {
+                isDragging = false;
+                
+                // Restore appearance
+                floatingButton.style.opacity = '1';
+                
+                // Save position
+                try {
+                    const position = {
+                        right: parseFloat(floatingButton.style.right) || 0,
+                        bottom: parseFloat(floatingButton.style.bottom) || 0
+                    };
+                    localStorage.setItem('chatButtonPosition', JSON.stringify(position));
+                } catch (e) {
+                    console.error('Error saving position:', e);
+                }
+            }
+        }
+
+        // Show tooltip on hover/touch
+        const showTooltip = () => {
+            if (!isDragging) {
+                tooltip.style.opacity = '1';
+            }
+        };
+        
+        const hideTooltip = () => {
+            tooltip.style.opacity = '0';
+        };
+
+        // Add hover/touch events for tooltip
+        if (isTouchDevice) {
+            floatingButton.addEventListener('touchstart', function(e) {
+                // Only show tooltip for brief touches on the button (not dragging)
+                const touchDuration = 500; // ms
+                const timer = setTimeout(showTooltip, touchDuration);
+                
+                floatingButton.addEventListener('touchend', function() {
+                    clearTimeout(timer);
+                    setTimeout(hideTooltip, 1500);
+                }, { once: true });
+                
+                floatingButton.addEventListener('touchmove', function() {
+                    clearTimeout(timer);
+                    hideTooltip();
+                }, { once: true });
+            });
+        } else {
+            floatingButton.addEventListener('mouseenter', showTooltip);
+            floatingButton.addEventListener('mouseleave', hideTooltip);
+        }
+
+        // Stop pulsing animation after 5 seconds
+        setTimeout(() => {
+            const button = floatingButton.querySelector('a');
+            button.classList.remove('pulse');
+        }, 5000);
+
+        // Add unread message indicator
+        function checkUnreadMessages() {
+            fetch('/api/unread-count')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.unreadCount > 0) {
+                        // If there are unread messages, add a badge
+                        let badge = document.getElementById('unread-badge');
+                        if (!badge) {
+                            badge = document.createElement('span');
+                            badge.id = 'unread-badge';
+                            badge.className = 'position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger';
+                            badge.style.fontSize = '0.7rem';
+                            floatingButton.querySelector('a').appendChild(badge);
+                        }
+                        badge.textContent = data.unreadCount;
+                        
+                        // Add notification animation to the button
+                        const button = floatingButton.querySelector('a');
+                        if (!button.classList.contains('pulse') && !button.classList.contains('notify-animation')) {
+                            button.classList.add('notify-animation');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking unread messages:', error);
+                });
+        }
+
+        // Check for unread messages every 30 seconds
+        setInterval(checkUnreadMessages, 30000);
+        
+        // Initial check
+        checkUnreadMessages();
+    });
     </script>
 </body>
 </html>

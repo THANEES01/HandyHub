@@ -5,12 +5,15 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
+import http from 'http';
 import authRoutes from './auth.js'; // Import authRoutes
 import providerRoutes from './provider.js'; // Import providerRoutes
 import adminRoutes from './admin.js'; // Import adminRoutes
 import customerRoutes from './customer.js';
 import bookingRoutes from './booking.js';
 import paymentRoutes from './payment.js';
+import chatRoutes from './chat.js';
+import setupSocketIO from './socketio.js';
 
 dotenv.config();
 
@@ -18,6 +21,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
+
+// Create HTTP server
+const server = http.createServer(app);
 
 // Add this in your middleware setup section, before setting up routes
 // This is important for Stripe webhook handling (raw body needed)
@@ -37,18 +43,21 @@ app.use('/img', express.static(path.join(__dirname, 'public/img')));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// ===== FIXED SESSION CONFIGURATION =====
-app.use(session({
-    secret: 'your-secret-key',
-    resave: true, // Changed to true to ensure session is saved even if unchanged
-    saveUninitialized: true, // Changed to true to save new but unmodified sessions
-    cookie: { 
-        secure: process.env.NODE_ENV === 'production', // Only use secure cookies in production
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-}));
+// Define session middleware once
+const sessionMiddleware = session({
+  secret: 'your-secret-key',
+  resave: true,
+  saveUninitialized: true,
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 
+  }
+});
 
-// ===== IMPROVED FLASH MESSAGE MIDDLEWARE =====
+// Apply middleware
+app.use(sessionMiddleware);
+
+// Flash message middleware
 app.use((req, res, next) => {
     // Make sure session exists before accessing it
     if (req.session) {
@@ -83,6 +92,9 @@ app.use((req, res, next) => {
     next();
 });
 
+// Set up Socket.IO with session middleware
+const io = setupSocketIO(server, sessionMiddleware);
+
 // Routes
 app.use('/auth', authRoutes);
 app.use('/provider', providerRoutes);
@@ -90,6 +102,7 @@ app.use('/admin', adminRoutes);
 app.use('/customer', customerRoutes);
 app.use(bookingRoutes);
 app.use('/customer', paymentRoutes);
+app.use('/', chatRoutes);
 
 // Home route
 app.get('/', (req, res) => {
@@ -123,6 +136,6 @@ app.get('/test-session', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });
