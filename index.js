@@ -43,14 +43,16 @@ app.use('/img', express.static(path.join(__dirname, 'public/img')));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Define session middleware once
+// Define session middleware once with more secure settings
 const sessionMiddleware = session({
-  secret: 'your-secret-key',
-  resave: true,
-  saveUninitialized: true,
+  secret: process.env.SESSION_SECRET || 'your-secret-key', // Use environment variable in production
+  resave: false, // Don't save session if unmodified
+  saveUninitialized: false, // Don't create session until something stored
   cookie: { 
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    httpOnly: true, // Helps prevent XSS attacks
+    sameSite: 'lax' // Helps prevent CSRF attacks
   }
 });
 
@@ -92,8 +94,14 @@ app.use((req, res, next) => {
     next();
 });
 
-// Set up Socket.IO with session middleware
+// Set up Socket.IO with session middleware for authentication
 const io = setupSocketIO(server, sessionMiddleware);
+
+// Make io available to request objects
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
 
 // Routes
 app.use('/auth', authRoutes);
@@ -108,6 +116,73 @@ app.use('/', chatRoutes);
 app.get('/', (req, res) => {
     res.render('home', { 
         title: 'HandyHub - Professional Home Services'
+    });
+});
+
+// Chat public page - create a special endpoint for socket.io testing
+app.get('/chat-test', (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Chat Test</title>
+            <script src="/socket.io/socket.io.js"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const socket = io({
+                        auth: {
+                            userType: 'customer'
+                        }
+                    });
+                    
+                    socket.on('connect', function() {
+                        console.log('Connected to Socket.IO server');
+                        document.getElementById('status').textContent = 'Connected';
+                        document.getElementById('status').style.color = 'green';
+                    });
+                    
+                    socket.on('connect_error', function(err) {
+                        console.error('Connection error:', err);
+                        document.getElementById('status').textContent = 'Error: ' + err.message;
+                        document.getElementById('status').style.color = 'red';
+                    });
+                    
+                    socket.on('disconnect', function() {
+                        console.log('Disconnected from Socket.IO server');
+                        document.getElementById('status').textContent = 'Disconnected';
+                        document.getElementById('status').style.color = 'red';
+                    });
+                    
+                    document.getElementById('test-btn').addEventListener('click', function() {
+                        console.log('Sending test event');
+                        socket.emit('test', { message: 'Hello from the client!' });
+                    });
+                });
+            </script>
+        </head>
+        <body>
+            <h1>Socket.IO Test Page</h1>
+            <p>Status: <span id="status">Connecting...</span></p>
+            <button id="test-btn">Send Test Event</button>
+        </body>
+        </html>
+    `);
+});
+
+// Error handling for 404
+app.use((req, res, next) => {
+    res.status(404).render('error', {
+        title: 'Page Not Found',
+        error: { status: 404, message: 'The page you are looking for does not exist.' }
+    });
+});
+
+// General error handler
+app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(err.status || 500).render('error', {
+        title: 'Error',
+        error: { status: err.status || 500, message: err.message || 'An unexpected error occurred' }
     });
 });
 
@@ -139,3 +214,6 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });
+
+// Export io for potential external use
+export { io };

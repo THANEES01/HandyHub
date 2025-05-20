@@ -449,7 +449,7 @@
                                 </a>
                             <% } %>
                             
-                           <a href="/customer/start-chat/<%= provider.id %>" class="btn btn-message w-100">
+                           <a href="/customer/conversations?provider=<%= provider.id %>" class="btn btn-message w-100">
                                 <i class="bi bi-chat-dots"></i> Message Provider
                             </a>
                         </div>
@@ -565,8 +565,7 @@
     <!-- Floating Chat Button -->
     <div id="floating-chat-button" class="position-fixed bottom-0 end-0 mb-4 me-4" style="z-index: 1000; cursor: move;">
         <div class="message-tooltip" id="message-tooltip">View messages</div>
-        <a href="/customer/conversations" class="btn btn-primary rounded-circle p-3 shadow-lg pulse d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; transition: all 0.3s ease;">
-            <i class="bi bi-chat-dots-fill" style="font-size: 1.5rem;"></i>
+        <a href="/customer/conversations" class="btn btn-primary rounded-circle p-3 shadow-lg pulse d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; transition: all 0.3s ease;">            <i class="bi bi-chat-dots-fill" style="font-size: 1.5rem;"></i>
         </a>
     </div>
 

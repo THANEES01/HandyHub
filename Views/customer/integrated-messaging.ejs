@@ -1,0 +1,1416 @@
+<!DOCTYPE html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title><%= title %></title> 
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"> 
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet"> 
+    <link rel="stylesheet" href="/css/style.css"> 
+    <style> 
+    :root { 
+        --primary-blue: #0077be; 
+        --secondary-blue: #00a2e8; 
+        --dark-blue: #003366; 
+        --light-blue: #e6f2ff;
+        --message-blue: #1c93e3;
+        --bg-light: #f5f7fb;
+        --border-light: #e9ecef;
+        --footer-blue: #002347; /* Dark blue for footer */
+    }
+
+    body {
+        background-color: #f8f9fa;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .content-wrapper {
+        flex: 1 0 auto;
+    }
+
+    /* Page header styles */
+    .page-header {
+        padding: 15px 0;
+        margin-bottom: 20px;
+    }
+
+    .back-link {
+        color: var(--primary-blue);
+        text-decoration: none;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 1rem;
+    }
+
+    .page-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0;
+        color: #333;
+        text-align: center;
+    }
+
+    /* Main container */
+    .chat-wrapper {
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        overflow: hidden;
+        height: calc(100vh - 220px);
+        margin-bottom: 30px;
+    }
+
+    /* Conversation List Styling */
+    .conversations-list {
+        height: 100%;
+        overflow-y: auto;
+        border-right: 1px solid var(--border-light);
+    }
+
+    .conversation-card {
+        border-radius: 0;
+        border: none;
+        border-bottom: 1px solid var(--border-light);
+        margin-bottom: 0;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        padding: 15px 20px;
+    }
+  
+    .conversation-card:hover {
+        background-color: rgba(0,0,0,0.02);
+    }
+
+    .conversation-card.active {
+        background-color: var(--light-blue);
+        border-left: 3px solid var(--primary-blue);
+    }
+    
+    .provider-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .provider-avatar {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background-color: var(--light-blue);
+        color: var(--dark-blue);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+    
+    .provider-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .last-message {
+        color: #666;
+        font-size: 0.85rem;
+        margin-bottom: 5px;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .conversation-time {
+        font-size: 0.75rem;
+        color: #888;
+    }
+    
+    .unread-badge {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background-color: #ff3b30;
+        color: white;
+        font-size: 0.75rem;
+        border-radius: 50%;
+        min-width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 5px;
+        font-weight: bold;
+    }
+
+    /* Chat Styling */
+    .chat-container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background-color: white;
+    }
+    
+    .chat-header {
+        background-color: white;
+        color: #333;
+        padding: 15px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .chat-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        background-color: var(--bg-light);
+    }
+    
+    .message {
+        max-width: 80%;
+        padding: 12px 16px;
+        border-radius: 20px;
+        position: relative;
+        word-break: break-word;
+        margin-bottom: 2px;
+        line-height: 1.4;
+    }
+    
+    .message-outgoing {
+        align-self: flex-end;
+        background-color: var(--message-blue);
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+
+    .message-outgoing .read-status {
+        margin-top: 4px;
+        color: rgba(255,255,255,0.7);
+    }
+
+    .message-content {
+        margin-bottom: 2px;
+    }
+    
+    .message-incoming {
+        align-self: flex-start;
+        background-color: white;
+        color: #333;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    /* Message attachment styling */
+    .message-image {
+        border-radius: 12px;
+        overflow: hidden;
+        max-width: 250px;
+        max-height: 200px;
+        display: block;
+        margin-top: 6px;
+        border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .message-outgoing .message-image {
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+    
+    .chat-input {
+        padding: 15px 20px;
+        background-color: white;
+        border-top: 1px solid var(--border-light);
+    }
+    
+    .chat-input .input-group {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border-radius: 24px;
+        background-color: white;
+        overflow: hidden;
+    }
+    
+    .chat-input input {
+        border: none;
+        padding: 12px 20px;
+        background-color: white;
+        font-size: 0.95rem;
+    }
+    
+    .chat-input input:focus {
+        box-shadow: none;
+    }
+
+    /* Updated button styles for repositioning attachment icon */
+    .chat-input .input-group-append {
+        display: flex;
+    }
+    
+    .chat-input button {
+        border: none;
+        transition: all 0.2s ease;
+    }
+    
+    .chat-input button.btn-primary {
+        background-color: var(--message-blue);
+        border-radius: 0 24px 24px 0;
+        padding: 0 20px;
+    }
+
+    .chat-input button.btn-attachment {
+        background-color: transparent;
+        color: #999;
+        border-radius: 0;
+        padding: 0 15px;
+        border-right: 1px solid #eee;
+    }
+    
+    .chat-input button:hover {
+        opacity: 0.9;
+    }
+    
+    .read-status {
+        font-size: 0.7rem;
+        text-align: right;
+        font-weight: 300;
+    }
+    
+    .read-status.read {
+        color: #6c757d;
+    }
+    
+    .read-status.unread {
+        color: #adb5bd;
+    }
+    
+    .typing-indicator {
+        display: none;
+        align-self: flex-start;
+        background-color: white;
+        color: #333;
+        border-radius: 18px;
+        padding: 8px 15px;
+        font-size: 0.9rem;
+        margin-top: 8px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    .typing-indicator span {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background-color: #666;
+        border-radius: 50%;
+        animation: typing 1s infinite;
+        margin: 0 1px;
+    }
+    
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @keyframes typing {
+        0%, 100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-5px);
+        }
+    }
+
+    /* Empty chat state */
+    .empty-chat {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        padding: 20px;
+        text-align: center;
+        color: #888;
+        background-color: var(--bg-light);
+    }
+
+    .empty-chat i {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        color: #ccc;
+    }
+
+    .empty-chat.hidden {
+        display: none;
+    }
+
+    /* Show/hide chat container */
+    .chat-container {
+        display: none;
+    }
+
+    .chat-container.active {
+        display: flex;
+    }
+
+    /* Conversation list empty state */
+    .no-conversations {
+        padding: 30px 20px;
+        text-align: center;
+        color: #666;
+    }
+
+    .no-conversations i {
+        font-size: 3rem;
+        color: #ddd;
+        margin-bottom: 15px;
+    }
+
+    /* Image preview */
+    #image-preview-container {
+        background-color: rgba(0,0,0,0.03);
+        border-radius: 12px;
+        padding: 10px;
+        margin-top: 10px;
+    }
+
+    #image-preview {
+        border-radius: 8px;
+    }
+
+    /* Bold styling for unread conversations */
+    .conversation-card.has-unread .provider-name {
+        font-weight: 700;
+        color: #000;
+    }
+
+    .conversation-card.has-unread .last-message {
+        font-weight: 600;
+        color: #333;
+    }
+
+    /* Highlight active chat when there are new unread messages */
+    .chat-container.has-new-messages {
+        border: 2px solid #ff3b30;
+    }
+
+    /* Subtle highlight for new incoming messages */
+    .message-incoming.new-message {
+        animation: highlightNew 2s ease-out;
+    }
+
+    @keyframes highlightNew {
+        0% {
+            background-color: rgba(0, 119, 190, 0.1);
+        }
+        100% {
+            background-color: white;
+        }
+    }
+
+    /* Footer styling to match the first image */
+    .site-footer {
+        background-color: var(--footer-blue);
+        color: white;
+        padding: 40px 0 20px;
+        margin-top: auto;
+    }
+
+    .footer-heading {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 20px;
+    }
+
+    .footer-text {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .footer-link {
+        color: white;
+        text-decoration: none;
+        display: block;
+        margin-bottom: 10px;
+        transition: all 0.2s ease;
+    }
+
+    .footer-link:hover {
+        color: var(--secondary-blue);
+    }
+
+    .footer-icon {
+        margin-right: 10px;
+        width: 18px;
+    }
+
+    .footer-social {
+        display: flex;
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .footer-social a {
+        color: white;
+        font-size: 1.2rem;
+        transition: all 0.2s ease;
+    }
+
+    .footer-social a:hover {
+        color: var(--secondary-blue);
+    }
+
+    .footer-bottom {
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 20px;
+        margin-top: 30px;
+        font-size: 0.85rem;
+    }
+
+    .footer-bottom-links {
+        text-align: right;
+    }
+
+    .footer-bottom-links a {
+        color: rgba(255, 255, 255, 0.8);
+        margin-left: 20px;
+        text-decoration: none;
+    }
+
+    .footer-bottom-links a:hover {
+        color: white;
+    }
+
+    /* Media queries */
+    @media (max-width: 992px) {
+        .chat-wrapper {
+            border-radius: 0;
+            height: calc(100vh - 180px);
+        }
+        
+        .conversations-col {
+            display: none;
+        }
+        
+        .conversations-col.active {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            background-color: white;
+        }
+        
+        .chat-container {
+            border-radius: 0;
+        }
+
+        .footer-bottom-links {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .footer-bottom-links a {
+            margin: 0 10px;
+        }
+    }
+    </style> 
+</head> 
+
+<body> 
+<%- include('../partials/navbar') %>
+
+<div class="content-wrapper">
+    <div class="container py-4">
+        <!-- Simple header without card styling -->
+        <div class="page-header d-flex justify-content-between align-items-center">
+            <a href="/customer/dashboard" class="back-link">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+            <h1 class="page-title">My Conversations</h1>
+            <div style="width: 150px;"></div>
+        </div>
+
+        <% if (locals.error) { %>
+            <div class="alert alert-danger" role="alert">
+                <%= error %>
+            </div>
+        <% } %>
+        
+        <% if (locals.success) { %>
+            <div class="alert alert-success" role="alert">
+                <%= success %>
+            </div>
+        <% } %>
+        
+        <!-- Main chat interface -->
+        <div class="chat-wrapper">
+            <div class="row g-0 h-100">
+                <!-- Conversation list column -->
+                <div class="col-lg-4 conversations-col h-100">
+                    <!-- Conversation List -->
+                    <div class="conversations-list">
+                    <% if (conversations && conversations.length > 0) { %>
+                        <% conversations.forEach(conv => { %>
+                            <div class="conversation-card <%= activeProvider && activeProvider.id == conv.provider_id ? 'active' : '' %> <%= parseInt(conv.unread_count) > 0 ? 'has-unread' : '' %>" 
+                                data-provider-id="<%= conv.provider_id %>" 
+                                data-unread="<%= conv.unread_count %>"
+                                onclick="window.location.href='/customer/conversations?provider=<%= conv.provider_id %>'">
+                                <div class="provider-info">
+                                    <div class="provider-avatar">
+                                        <%= conv.provider_name.charAt(0).toUpperCase() %>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="provider-name">
+                                            <%= conv.provider_name %>
+                                            <% if (conv.is_verified) { %>
+                                                <i class="bi bi-check-circle-fill text-primary ms-1" title="Verified Provider" style="font-size: 0.75rem;"></i>
+                                            <% } %>
+                                        </div>
+                                        <div class="last-message">
+                                            <% if (conv.last_message_has_attachment && (!conv.last_message || conv.last_message.trim() === '')) { %>
+                                                <% if (conv.last_message_attachment_type && conv.last_message_attachment_type.startsWith('image/')) { %>
+                                                    📷 Image
+                                                <% } else { %>
+                                                    📎 File attachment
+                                                <% } %>
+                                            <% } else { %>
+                                                <%= conv.last_message || 'No messages yet' %>
+                                            <% } %>
+                                        </div>
+                                        <div class="conversation-time">
+                                            <% if (conv.last_message_time) { %>
+                                                <% 
+                                                    // Convert to Malaysian timezone
+                                                    const msgDate = new Date(conv.last_message_time);
+                                                    
+                                                    // Format date for Malaysian timezone
+                                                    const malaysianTimeFormatter = new Intl.DateTimeFormat('en-MY', {
+                                                        timeZone: 'Asia/Kuala_Lumpur',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                        hour12: true
+                                                    });
+                                                    
+                                                    // Get today and yesterday dates in Malaysian timezone
+                                                    const now = new Date();
+                                                    const malaysianNow = new Date(now.toLocaleString('en-US', {timeZone: 'Asia/Kuala_Lumpur'}));
+                                                    
+                                                    const yesterday = new Date();
+                                                    yesterday.setDate(now.getDate() - 1);
+                                                    const malaysianYesterday = new Date(yesterday.toLocaleString('en-US', {timeZone: 'Asia/Kuala_Lumpur'}));
+                                                    
+                                                    // Convert message date to Malaysian time for comparison
+                                                    const malaysianMsgDate = new Date(msgDate.toLocaleString('en-US', {timeZone: 'Asia/Kuala_Lumpur'}));
+                                                    
+                                                    const isToday = malaysianNow.getDate() === malaysianMsgDate.getDate() &&
+                                                                malaysianNow.getMonth() === malaysianMsgDate.getMonth() &&
+                                                                malaysianNow.getFullYear() === malaysianMsgDate.getFullYear();
+                                                    
+                                                    const isYesterday = malaysianYesterday.getDate() === malaysianMsgDate.getDate() &&
+                                                                    malaysianYesterday.getMonth() === malaysianMsgDate.getMonth() &&
+                                                                    malaysianYesterday.getFullYear() === malaysianMsgDate.getFullYear();
+                                                    
+                                                    if (isToday) {
+                                                        // Show time only if today
+                                                        %><i class="bi bi-clock"></i> <%= malaysianTimeFormatter.format(msgDate) %><%
+                                                    } else if (isYesterday) {
+                                                        // Show "Yesterday" if yesterday
+                                                        %><i class="bi bi-calendar-check"></i> Yesterday<%
+                                                    } else {
+                                                        // Show date otherwise
+                                                        const dateFormatter = new Intl.DateTimeFormat('en-MY', {
+                                                            timeZone: 'Asia/Kuala_Lumpur',
+                                                            year: 'numeric',
+                                                            month: 'short',
+                                                            day: 'numeric'
+                                                        });
+                                                        
+                                                        %><i class="bi bi-calendar"></i> <%= dateFormatter.format(msgDate) %><%
+                                                    }
+                                                %>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+                                <% if (parseInt(conv.unread_count) > 0) { %>
+                                    <div class="unread-badge">
+                                        <%= conv.unread_count %>
+                                    </div>
+                                <% } %>
+                            </div>
+                        <% }); %>
+                    <% } else { %>
+                        <div class="no-conversations">
+                            <i class="bi bi-chat-dots"></i>
+                            <h4>No conversations yet</h4>
+                            <p class="text-muted">Start a conversation with a service provider by visiting their profile.</p>
+                            <a href="/customer/categories" class="btn btn-primary mt-2">
+                                <i class="bi bi-search"></i> Find Service Providers
+                            </a>
+                        </div>
+                    <% } %>
+                    </div>
+                </div>
+                
+                <!-- Chat column -->
+                <div class="col-lg-8 h-100">
+                    <!-- Empty State (shown when no conversation is selected) -->
+                    <div class="empty-chat <%= activeProvider ? 'hidden' : '' %>" id="empty-chat">
+                        <i class="bi bi-chat-square-text"></i>
+                        <h3>Select a conversation</h3>
+                        <p>Choose a conversation from the list to start chatting with a service provider</p>
+                    </div>
+                    
+                    <!-- Active Chat -->
+                    <div class="chat-container <%= activeProvider ? 'active' : '' %>" id="chat-container">
+                        <% if (activeProvider) { %>
+                            <div class="chat-header">
+                                <div class="provider-info">
+                                    <div class="provider-avatar">
+                                        <%= activeProvider.business_name.charAt(0).toUpperCase() %>
+                                    </div>
+                                    <h2>
+                                        <%= activeProvider.business_name %>
+                                        <% if (activeProvider.is_verified) { %>
+                                            <i class="bi bi-check-circle-fill text-primary ms-1" title="Verified Provider" style="font-size: 0.8rem;"></i>
+                                        <% } %>
+                                    </h2>
+                                </div>
+                                <div>
+                                    <a href="/customer/provider/<%= activeProvider.id %>" class="btn btn-sm btn-outline-primary rounded-pill">
+                                        <i class="bi bi-info-circle"></i> View Profile
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="chat-messages" id="chat-messages">
+                                <% if (messages && messages.length > 0) { %>
+                                    <% messages.forEach(message => { %>
+                                        <div class="message <%= message.sender_type === 'customer' ? 'message-outgoing' : 'message-incoming' %>">
+                                            <% if (message.message_text) { %>
+                                                <div class="message-content"><%= message.message_text %></div>
+                                            <% } %>
+                                            
+                                            <% if (message.has_attachment && message.attachment_url) { %>
+                                                <% const isImage = message.attachment_type && message.attachment_type.startsWith('image/'); %>
+                                                <% if (isImage) { %>
+                                                    <div class="message-attachment">
+                                                        <img src="<%= message.attachment_url %>" class="message-image" alt="Image attachment">
+                                                    </div>
+                                                <% } else { %>
+                                                    <div class="message-attachment">
+                                                        <a href="<%= message.attachment_url %>" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                                            <i class="bi bi-paperclip"></i> <%= message.attachment_name || 'Attachment' %>
+                                                        </a>
+                                                    </div>
+                                                <% } %>
+                                            <% } %>
+                                            
+                                            <% if (message.sender_type === 'customer') { %>
+                                                <div class="read-status <%= message.is_read ? 'read' : 'unread' %>">
+                                                    <%= message.is_read ? 'Read' : 'Delivered' %>
+                                                </div>
+                                            <% } %>
+                                        </div>
+                                    <% }); %>
+                                <% } else { %>
+                                    <div class="text-center text-muted my-4">
+                                        <p>No messages yet. Start the conversation!</p>
+                                    </div>
+                                <% } %>
+                                <div class="typing-indicator" id="typing-indicator">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                            </div>
+                            
+                            <!-- Updated chat input with repositioned attachment button -->
+                            <div class="chat-input">
+                                <form id="message-form" data-conversation-id="<%= conversationId %>">
+                                    <!-- Hidden file input -->
+                                    <input type="file" id="image-upload" name="attachment" style="display: none;" accept="image/*">
+                                    
+                                    <div class="input-group">
+                                        <!-- Message input -->
+                                        <input type="text" id="message-input" class="form-control" placeholder="Type your message..." autocomplete="off">
+                                        
+                                        <div class="input-group-append">
+                                            <!-- Paperclip attachment button (now on the right) -->
+                                            <button type="button" class="btn btn-attachment" id="attachment-button" title="Attach image">
+                                                <i class="bi bi-paperclip"></i>
+                                            </button>
+                                            
+                                            <!-- Send button -->
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-send-fill"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Image preview container (hidden by default) -->
+                                    <div id="image-preview-container" class="d-none mt-2">
+                                        <div class="position-relative d-inline-block">
+                                            <img id="image-preview" class="rounded border" style="max-height: 100px; max-width: 200px; object-fit: contain;">
+                                            <button type="button" id="remove-image" class="btn btn-sm btn-danger position-absolute" style="top: -10px; right: -10px; border-radius: 50%; width: 24px; height: 24px; padding: 0;">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<%- include('../partials/footer') %>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/socket.io.js"></script>
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function() {
+    <% if (activeProvider) { %>
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const messagesContainer = document.getElementById('chat-messages');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const chatContainer = document.getElementById('chat-container');
+        const conversationId = '<%= conversationId %>';
+        let lastMessageId = '<%= messages && messages.length > 0 ? messages[messages.length - 1].id : 0 %>';
+        let typingTimeout;
+        let hasSeenNewMessages = true; // Track if user has seen all new messages
+        
+        // Connect to Socket.IO
+        const socket = io({
+            auth: {
+                conversationId: conversationId,
+                userType: 'customer'
+            }
+        });
+        
+        // Join the conversation room
+        socket.emit('join-conversation', {
+            conversationId: conversationId
+        });
+        
+        // Check if page is visible
+        let pageIsVisible = !document.hidden;
+        
+        document.addEventListener('visibilitychange', function() {
+            pageIsVisible = !document.hidden;
+            
+            // If page becomes visible, reset new message indicator
+            if (pageIsVisible) {
+                hasSeenNewMessages = true;
+                chatContainer.classList.remove('has-new-messages');
+            }
+        });
+        
+        // Handle incoming messages
+        socket.on('receive-message', function(data) {
+            console.log('Socket: received message', data);
+            // Only add the message if it's not already in the view
+            if (data.sender_type === 'provider') {
+                // Add with new message styling
+                addMessage(data, false, true);
+                
+                // If user is looking at the page, mark as read
+                if (pageIsVisible) {
+                    hasSeenNewMessages = true;
+                    socket.emit('mark-as-read', {
+                        messageId: data.id,
+                        conversationId: conversationId
+                    });
+                } else {
+                    // Otherwise indicate new message
+                    hasSeenNewMessages = false;
+                    chatContainer.classList.add('has-new-messages');
+                    
+                    // Update page title with notification
+                    document.title = `(New) My Conversations`;
+                    
+                    // Play notification sound if available
+                    playNotificationSound();
+                }
+            }
+            
+            // Hide typing indicator
+            typingIndicator.style.display = 'none';
+        });
+        
+        // Play notification sound
+        function playNotificationSound() {
+            try {
+                const audio = new Audio('/notification.mp3');
+                audio.play();
+            } catch (e) {
+                console.log('Notification sound not available');
+            }
+        }
+        
+        // Handle typing indicator
+        socket.on('typing', function(data) {
+            if (data.sender_type === 'provider') {
+                typingIndicator.style.display = 'block';
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Hide typing indicator after 3 seconds
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    typingIndicator.style.display = 'none';
+                }, 3000);
+            }
+        });
+        
+        // Handle read receipts
+        socket.on('message-read', function(data) {
+            // Update read status for all messages
+            const messages = document.querySelectorAll('.message.message-outgoing');
+            messages.forEach(message => {
+                const readStatus = message.querySelector('.read-status');
+                if (readStatus) {
+                    readStatus.textContent = 'Read';
+                    readStatus.classList.remove('unread');
+                    readStatus.classList.add('read');
+                }
+            });
+        });
+        
+        // Format date for Malaysian timezone (GMT+8) - only used for conversation list, not messages
+        function formatMalaysianTime(date) {
+            if (!(date instanceof Date)) {
+                date = new Date(date);
+            }
+            
+            // Adjust for Malaysian timezone (GMT+8)
+            const malaysianOptions = { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kuala_Lumpur'
+            };
+            
+            return new Intl.DateTimeFormat('en-MY', malaysianOptions).format(date);
+        }
+        
+        // Get current Malaysian time
+        function getCurrentMalaysianTime() {
+            return formatMalaysianTime(new Date());
+        }
+        
+        // Updated addMessage function to handle images
+        window.addMessage = function(message, isOutgoing, isNew = false) {
+            // Make sure we have all the necessary data
+            if (!message || (!message.message_text && !message.has_attachment)) {
+                console.error('Invalid message object:', message);
+                return;
+            }
+            
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add(isOutgoing ? 'message-outgoing' : 'message-incoming');
+            
+            // Add 'new-message' class if this is a new incoming message
+            if (isNew && !isOutgoing) {
+                messageElement.classList.add('new-message');
+            }
+            
+            let messageHTML = '';
+            
+            // Add text content if exists
+            if (message.message_text) {
+                messageHTML += `<div class="message-content">${message.message_text}</div>`;
+            }
+            
+            // Add image attachment if exists
+            if (message.has_attachment && message.attachment_url) {
+                const isImage = message.attachment_type && message.attachment_type.startsWith('image/');
+                
+                if (isImage) {
+                    messageHTML += `
+                        <div class="message-attachment">
+                            <img src="${message.attachment_url}" class="message-image" alt="Image attachment">
+                        </div>
+                    `;
+                } else {
+                    messageHTML += `
+                        <div class="message-attachment">
+                            <a href="${message.attachment_url}" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                <i class="bi bi-paperclip"></i> ${message.attachment_name || 'Attachment'}
+                            </a>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Add read status for outgoing messages
+            if (isOutgoing) {
+                messageHTML += `
+                    <div class="read-status ${message.is_read ? 'read' : 'unread'}">
+                        ${message.is_read ? 'Read' : 'Delivered'}
+                    </div>
+                `;
+            }
+            
+            messageElement.innerHTML = messageHTML;
+            
+            // Add to container
+            messagesContainer.appendChild(messageElement);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Update last message ID if available
+            if (message.id) {
+                lastMessageId = message.id;
+            }
+
+            // Update conversation in the list
+            updateConversationListItem(message);
+        };
+
+        // Function to update the conversation list item with the latest message
+        function updateConversationListItem(message) {
+            const providerId = '<%= activeProvider.id %>';
+            const conversationCard = document.querySelector(`.conversation-card[data-provider-id="${providerId}"]`);
+            
+            if (conversationCard) {
+                const lastMessageElement = conversationCard.querySelector('.last-message');
+                if (lastMessageElement) {
+                    // Update message text or indicate there's an attachment
+                    if (message.message_text) {
+                        lastMessageElement.textContent = message.message_text;
+                    } else if (message.has_attachment) {
+                        const isImage = message.attachment_type && message.attachment_type.startsWith('image/');
+                        lastMessageElement.textContent = isImage ? '📷 Image' : '📎 File attachment';
+                    }
+                }
+
+                const timeElement = conversationCard.querySelector('.conversation-time');
+                if (timeElement) {
+                    const now = new Date();
+                    timeElement.innerHTML = `<i class="bi bi-clock"></i> ${getCurrentMalaysianTime()}`;
+                }
+
+                // If message is from provider and it's the active conversation,
+                // update the unread count and styling
+                if (message.sender_type === 'provider') {
+                    // The current conversation should show as read if it's visible
+                    if (pageIsVisible) {
+                        conversationCard.classList.remove('has-unread');
+                        const unreadBadge = conversationCard.querySelector('.unread-badge');
+                        if (unreadBadge) {
+                            unreadBadge.remove();
+                        }
+                    } else {
+                        // Otherwise, increment unread count
+                        conversationCard.classList.add('has-unread');
+                        let unreadBadge = conversationCard.querySelector('.unread-badge');
+                        
+                        if (!unreadBadge) {
+                            // Create badge if it doesn't exist
+                            unreadBadge = document.createElement('div');
+                            unreadBadge.classList.add('unread-badge');
+                            unreadBadge.textContent = '1';
+                            conversationCard.appendChild(unreadBadge);
+                        } else {
+                            // Otherwise increment count
+                            const currentCount = parseInt(unreadBadge.textContent) || 0;
+                            unreadBadge.textContent = (currentCount + 1).toString();
+                        }
+                    }
+                } else {
+                    // For outgoing messages, remove unread status
+                    conversationCard.classList.remove('has-unread');
+                    const unreadBadge = conversationCard.querySelector('.unread-badge');
+                    if (unreadBadge) {
+                        unreadBadge.remove();
+                    }
+                }
+
+                // Move this conversation to the top if it's not already
+                const listBody = conversationCard.parentElement;
+                if (listBody && listBody.firstChild !== conversationCard) {
+                    listBody.insertBefore(conversationCard, listBody.firstChild);
+                }
+            }
+        }
+        
+        // Function to poll for new messages
+        function pollMessages() {
+            fetch(`/api/messages/${conversationId}?lastMessageId=${lastMessageId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.messages && data.messages.length > 0) {
+                        data.messages.forEach(message => {
+                            if (message.sender_type === 'provider') {
+                                addMessage(message, false, true);
+                                if (pageIsVisible) {
+                                    // Mark as read if page is visible
+                                    fetch('/api/mark-messages-read', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                            conversationId: conversationId
+                                        }),
+                                    }).catch(error => {
+                                        console.error('Error marking messages as read:', error);
+                                    });
+                                } else {
+                                    // Otherwise indicate new message
+                                    hasSeenNewMessages = false;
+                                    chatContainer.classList.add('has-new-messages');
+                                    
+                                    // Update page title with notification
+                                    document.title = `(New) My Conversations`;
+                                    
+                                    // Play notification sound if available
+                                    playNotificationSound();
+                                }
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error polling messages:', error);
+                });
+        }
+        
+        // When the user clicks or interacts with the chat, mark as seen
+        chatContainer.addEventListener('click', function() {
+            if (!hasSeenNewMessages) {
+                hasSeenNewMessages = true;
+                chatContainer.classList.remove('has-new-messages');
+                document.title = 'My Conversations';
+                
+                // Mark messages as read via API
+                fetch('/api/mark-messages-read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        conversationId: conversationId
+                    }),
+                }).catch(error => {
+                    console.error('Error marking messages as read:', error);
+                });
+            }
+        });
+        
+        // Scroll to bottom of chat on load
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        // Poll for new messages every 10 seconds as a fallback
+        setInterval(pollMessages, 10000);
+    <% } %>
+
+    // Attachment handling
+    const attachmentButton = document.getElementById('attachment-button');
+    const fileInput = document.getElementById('image-upload');
+    const previewContainer = document.getElementById('image-preview-container');
+    const imagePreview = document.getElementById('image-preview');
+    const removeButton = document.getElementById('remove-image');
+    
+    if (attachmentButton && fileInput) {
+        // Trigger file selection when clicking the paperclip button
+        attachmentButton.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        // Handle file selection
+        fileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Validate file type and size
+            if (!file.type.match('image.*')) {
+                alert('Please select an image file.');
+                fileInput.value = '';
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                alert('Image file size must be less than 5MB.');
+                fileInput.value = '';
+                return;
+            }
+            
+            // Display preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (imagePreview) {
+                    imagePreview.src = e.target.result;
+                    previewContainer.classList.remove('d-none');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        // Handle remove image button
+        if (removeButton) {
+            removeButton.addEventListener('click', function() {
+                fileInput.value = '';
+                previewContainer.classList.add('d-none');
+            });
+        }
+    }
+    
+    // Form submission handling for file uploads
+    const messageForm = document.getElementById('message-form');
+    if (messageForm) {
+        messageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const messageInput = document.getElementById('message-input');
+            const message = messageInput.value.trim();
+            const file = fileInput.files[0];
+            
+            // Don't submit if neither message nor file is provided
+            if (!message && !file) {
+                return;
+            }
+            
+            // Create FormData for the request
+            const formData = new FormData();
+            const conversationId = messageForm.dataset.conversationId;
+            formData.append('conversationId', conversationId);
+            
+            if (message) {
+                formData.append('message', message);
+            }
+            
+            if (file) {
+                formData.append('attachment', file);
+            }
+            
+            // Disable the send button and show sending indicator
+            const submitButton = this.querySelector('button[type="submit"]');
+            if (submitButton) submitButton.disabled = true;
+            
+            // Create temporary message element
+            const messagesContainer = document.getElementById('chat-messages');
+            const tempMessage = document.createElement('div');
+            tempMessage.classList.add('message', 'message-outgoing', 'temp-message');
+            
+            let tempContent = '';
+            if (message) {
+                tempContent += `<div class="message-content">${message}</div>`;
+            }
+            if (file) {
+                tempContent += `<div class="image-uploading mt-1">
+                    <i class="bi bi-cloud-upload"></i> Sending image...
+                </div>`;
+            }
+            tempContent += `<div class="read-status unread">Sending...</div>`;
+            
+            tempMessage.innerHTML = tempContent;
+            messagesContainer.appendChild(tempMessage);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Send request
+            fetch('/api/send-message', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Remove temporary message
+                const tempMessages = document.querySelectorAll('.temp-message');
+                tempMessages.forEach(el => {
+                    try {
+                        messagesContainer.removeChild(el);
+                    } catch (err) {
+                        console.warn('Could not remove temp message:', err);
+                    }
+                });
+                
+                if (data.success) {
+                    // Add confirmed message
+                    if (typeof window.addMessage === 'function') {
+                        window.addMessage(data.message, true);
+                    }
+                    
+                    // Clear inputs
+                    messageInput.value = '';
+                    fileInput.value = '';
+                    previewContainer.classList.add('d-none');
+                    
+                    // Send via socket if available
+                    if (typeof socket !== 'undefined' && socket.connected) {
+                        socket.emit('send-message', {
+                            conversationId: conversationId,
+                            message: data.message
+                        });
+                    }
+                } else {
+                    alert('Failed to send message: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error sending message:', error);
+                alert('Failed to send message. Please try again.');
+                
+                // Remove temporary message
+                const tempMessages = document.querySelectorAll('.temp-message');
+                tempMessages.forEach(el => {
+                    try {
+                        messagesContainer.removeChild(el);
+                    } catch (err) {
+                        console.warn('Could not remove temp message:', err);
+                    }
+                });
+            })
+            .finally(() => {
+                // Re-enable send button
+                if (submitButton) submitButton.disabled = false;
+            });
+        });
+    }
+
+    // Connect to Socket.IO for real-time notifications
+    const notificationSocket = io({
+        auth: {
+            userType: 'customer'
+        }
+    });
+    
+    // Add notification dot in header
+    const updateHeaderNotifications = function(hasUnread) {
+        // Find all message icon elements in the header
+        const messageIcons = document.querySelectorAll('.nav-item .bi-chat-dots, .nav-item .bi-envelope');
+        
+        messageIcons.forEach(icon => {
+            const parent = icon.parentElement;
+            if (parent) {
+                parent.classList.add('nav-notification-dot');
+                if (hasUnread) {
+                    parent.classList.add('has-notification');
+                } else {
+                    parent.classList.remove('has-notification');
+                }
+            }
+        });
+    };
+    
+    // Listen for new messages
+    notificationSocket.on('new-message', function(data) {
+        console.log('New message notification received:', data);
+        
+        // Update header notification
+        updateHeaderNotifications(true);
+        
+        // Show browser notification if supported
+        if (Notification && Notification.permission === "granted" && data.to_user_type === 'customer') {
+            const notification = new Notification('New message on HandyHub', {
+                body: 'You have received a new message',
+                icon: '/img/logo.png'
+            });
+            
+            notification.onclick = function() {
+                window.focus();
+                this.close();
+            };
+        }
+        
+        // Refresh the page to show the latest conversations
+        if (data.to_user_type === 'customer') {
+            // Refresh with notification indication
+            window.location.href = '/customer/conversations?notification=new';
+        }
+    });
+    
+    // Function to poll for unread count
+    function checkUnreadMessages() {
+        fetch('/api/unread-count')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.unreadCount > 0) {
+                    // Update title to show unread count
+                    document.title = `(${data.unreadCount}) My Conversations`;
+                    
+                    // Update header notification indicator
+                    updateHeaderNotifications(true);
+                } else {
+                    // No unread messages
+                    updateHeaderNotifications(false);
+                }
+            })
+            .catch(error => {
+                console.error('Error checking unread messages:', error);
+            });
+    }
+    
+    // Check for unread messages every 30 seconds
+    setInterval(checkUnreadMessages, 30000);
+    
+    // Initial check
+    checkUnreadMessages();
+    
+    // Style all conversation cards with unread messages
+    document.querySelectorAll('.conversation-card').forEach(card => {
+        const unreadCount = parseInt(card.getAttribute('data-unread') || '0');
+        if (unreadCount > 0) {
+            card.classList.add('has-unread');
+        }
+    });
+    
+    // Request notification permission
+    if (Notification && Notification.permission !== "granted" && Notification.permission !== "denied") {
+        Notification.requestPermission();
+    }
+    
+    // Mobile view - toggle conversation list
+    const mediaQuery = window.matchMedia('(max-width: 992px)');
+    if (mediaQuery.matches) {
+        const conversationsCol = document.querySelector('.conversations-col');
+        const backBtn = document.querySelector('.back-link');
+        
+        // Add a back button when in conversation view on mobile
+        if (conversationsCol && backBtn && window.location.search.includes('provider=')) {
+            backBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = '/customer/conversations';
+            });
+        }
+    }
+});
+</script>
+</body> 
+</html>
