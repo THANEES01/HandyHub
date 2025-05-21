@@ -1,5 +1,4 @@
 // Socket.io implementation for real-time messaging
-
 import { Server } from 'socket.io';
 import pool from './config/database.js';
 

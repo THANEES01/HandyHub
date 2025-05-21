@@ -164,92 +164,130 @@
             border-radius: 5px;
             border: 1px solid #ddd;
         }
+        
+        .availability-info {
+            transition: all 0.3s ease;
+            border-radius: 8px;
+        }
+
+        .availability-info.alert-warning {
+            background-color: #fff3cd;
+            border-color: #ffecb5;
+        }
+
+        .refresh-slots-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            color: #212529;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .refresh-slots-btn:hover {
+            background-color: #e9ecef;
+        }
+
+        .refresh-icon {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
-      <!-- Navbar -->
-      <%- include('../partials/navbar') %>
+        <!-- Navbar -->
+    <%- include('../partials/navbar') %>
 
-      <div class="content-wrapper">
-          <div class="container mt-5 mb-5">
-              <a href="/customer/provider/<%= provider.id %><%= selectedCategory ? '?category=' + selectedCategory : '' %>" class="back-link">
-                  <i class="bi bi-arrow-left"></i>Back to Provider Profile
-              </a>
-              
-              <div class="booking-container">
-                  <% if (locals.error) { %>
-                      <div class="alert alert-danger" role="alert">
-                          <%= error %>
-                      </div>
-                  <% } %>
-                  
-                  <div class="booking-header">
-                      <h2>Book Service</h2>
-                      <p class="mb-0">Complete the form below to request a service booking</p>
-                  </div>
-                  
-                  <div class="booking-content">
-                      <div class="provider-info">
-                          <div class="provider-icon">
-                              <i class="bi bi-person-gear"></i>
-                          </div>
-                          <div class="provider-details">
-                              <h4><%= provider.business_name %></h4>
-                              <% if (selectedCategory) { %>
-                                  <p><%= selectedCategory %></p>
-                              <% } else { %>
-                                  <p><%= categories.map(cat => cat.category_name).join(', ') %></p>
-                              <% } %>
-                          </div>
-                      </div>
+    <div class="content-wrapper">
+        <div class="container mt-5 mb-5">
+            <a href="/customer/provider/<%= provider.id %><%= selectedCategory ? '?category=' + selectedCategory : '' %>" class="back-link">
+                <i class="bi bi-arrow-left"></i>Back to Provider Profile
+            </a>
+            
+            <div class="booking-container">
+                <% if (locals.error) { %>
+                    <div class="alert alert-danger" role="alert">
+                        <%= error %>
+                    </div>
+                <% } %>
+                
+                <div class="booking-header">
+                    <h2>Book Service</h2>
+                    <p class="mb-0">Complete the form below to request a service booking</p>
+                </div>
+                
+                <div class="booking-content">
+                    <div class="provider-info">
+                        <div class="provider-icon">
+                            <i class="bi bi-person-gear"></i>
+                        </div>
+                        <div class="provider-details">
+                            <h4><%= provider.business_name %></h4>
+                            <% if (selectedCategory) { %>
+                                <p><%= selectedCategory %></p>
+                            <% } else { %>
+                                <p><%= categories.map(cat => cat.category_name).join(', ') %></p>
+                            <% } %>
+                        </div>
+                    </div>
 
-                      <form action="/customer/book-service" method="POST" enctype="multipart/form-data">
-                          <input type="hidden" name="providerId" value="<%= provider.id %>">
-                          
-                          <!-- Service Type Selection Section -->
-                          <div class="form-section">
-                              <h3 class="form-section-title">1. Service Details</h3>
-                              
-                              <% if (selectedCategory && categories.length > 0) { %>
-                                  <% const category = categories.find(cat => cat.category_name === selectedCategory); %>
-                                  <% if (category) { %>
-                                      <div class="alert alert-info">
-                                          <strong>Selected Service:</strong> <%= category.category_name %> - 
-                                          <span class="badge bg-primary">RM <%= parseFloat(category.base_fee).toFixed(2) %> <%= category.fee_type %></span>
-                                      </div>
-                                      <input type="hidden" name="serviceType" value="<%= category.category_name %>">
-                                      <input type="hidden" name="baseFee" value="<%= category.base_fee %>">
-                                      <input type="hidden" name="feeType" value="<%= category.fee_type %>">
-                                  <% } else { %>
-                                      <div class="alert alert-warning">
-                                          <strong>Selected Service:</strong> <%= selectedCategory %> (pricing information not available)
-                                      </div>
-                                      <input type="hidden" name="serviceType" value="<%= selectedCategory %>">
-                                  <% } %>
-                              <% } else if (categories && categories.length > 0) { %>
-                                  <div class="mb-3">
-                                      <label for="serviceType" class="form-label">Select Service Type</label>
-                                      <select class="form-select" id="serviceType" name="serviceType" required>
-                                          <option value="" disabled selected>Select service type</option>
-                                          <% categories.forEach(category => { %>
-                                              <option value="<%= category.category_name %>" 
-                                                      data-fee="<%= category.base_fee %>" 
-                                                      data-fee-type="<%= category.fee_type %>">
-                                                  <%= category.category_name %> - RM <%= parseFloat(category.base_fee).toFixed(2) %> (<%= category.fee_type %>)
-                                              </option>
-                                          <% }); %>
-                                      </select>
-                                  </div>
-                                  <!-- Hidden fields that will be updated by JavaScript when user selects a service -->
-                                  <input type="hidden" name="baseFee" value="<%= categories[0].base_fee %>">
-                                  <input type="hidden" name="feeType" value="<%= categories[0].fee_type %>">
-                              <% } else { %>
-                                  <div class="alert alert-warning">
-                                      <strong>No service categories available.</strong> Please contact support.
-                                  </div>
-                              <% } %>
-                          </div>
-                          <!-- Add this after the service type selection section, inside the first form-section -->
+                    <form action="/customer/book-service" method="POST" enctype="multipart/form-data" id="bookingForm">
+                        <input type="hidden" name="providerId" value="<%= provider.id %>">
+                        
+                        <!-- Service Type Selection Section -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">1. Service Details</h3>
+                            
+                            <% if (selectedCategory && categories.length > 0) { %>
+                                <% const category = categories.find(cat => cat.category_name === selectedCategory); %>
+                                <% if (category) { %>
+                                    <div class="alert alert-info">
+                                        <strong>Selected Service:</strong> <%= category.category_name %> - 
+                                        <span class="badge bg-primary">RM <%= parseFloat(category.base_fee).toFixed(2) %> <%= category.fee_type %></span>
+                                    </div>
+                                    <input type="hidden" name="serviceType" value="<%= category.category_name %>">
+                                    <input type="hidden" name="baseFee" value="<%= category.base_fee %>">
+                                    <input type="hidden" name="feeType" value="<%= category.fee_type %>">
+                                <% } else { %>
+                                    <div class="alert alert-warning">
+                                        <strong>Selected Service:</strong> <%= selectedCategory %> (pricing information not available)
+                                    </div>
+                                    <input type="hidden" name="serviceType" value="<%= selectedCategory %>">
+                                <% } %>
+                            <% } else if (categories && categories.length > 0) { %>
+                                <div class="mb-3">
+                                    <label for="serviceType" class="form-label">Select Service Type</label>
+                                    <select class="form-select" id="serviceType" name="serviceType" required>
+                                        <option value="" disabled selected>Select service type</option>
+                                        <% categories.forEach(category => { %>
+                                            <option value="<%= category.category_name %>" 
+                                                    data-fee="<%= category.base_fee %>" 
+                                                    data-fee-type="<%= category.fee_type %>">
+                                                <%= category.category_name %> - RM <%= parseFloat(category.base_fee).toFixed(2) %> (<%= category.fee_type %>)
+                                            </option>
+                                        <% }); %>
+                                    </select>
+                                </div>
+                                <!-- Hidden fields that will be updated by JavaScript when user selects a service -->
+                                <input type="hidden" name="baseFee" value="<%= categories[0].base_fee %>">
+                                <input type="hidden" name="feeType" value="<%= categories[0].fee_type %>">
+                            <% } else { %>
+                                <div class="alert alert-warning">
+                                    <strong>No service categories available.</strong> Please contact support.
+                                </div>
+                            <% } %>
+
+                            <!-- Hourly booking section -->
                             <div class="mb-3 hourly-booking-section" id="hourlyBookingSection" style="display: none;">
                                 <label for="bookingHours" class="form-label">Number of Hours</label>
                                 <div class="input-group">
@@ -265,61 +303,63 @@
                                 </div>
                                 <input type="hidden" name="totalFee" id="totalFeeInput" value="0">
                             </div>
-                         
-                        <!-- Issue Description-->
-                          <div class="form-section">
-                              <h3 class="form-section-title">2. Describe Your Issue</h3>
-                              
-                              <div class="mb-3">
-                                  <label for="issueDescription" class="form-label">Describe the Issue</label>
-                                  <textarea class="form-control" id="issueDescription" name="issueDescription" rows="4" placeholder="Please describe the problem in detail..." required></textarea>
-                              </div>
-                              
-                              <div class="mb-3">
-                                  <label class="form-label">Upload Problem Pictures (Optional)</label>
-                                  <label for="problemImages" class="custom-file-upload">
-                                      <i class="bi bi-camera me-2"></i> Choose Images
-                                      <small class="d-block text-muted mt-1">You can select up to 5 images (10MB max each)</small>
-                                  </label>
-                                  <input type="file" id="problemImages" name="problemImages" multiple accept="image/jpeg,image/png,image/gif" style="display: none;">
-                                  <div id="imagePreviewContainer" class="preview-container mt-2"></div>
-                                  <div id="fileErrors" class="text-danger mt-2"></div>
-                              </div>
-                          </div>
-                          
-                          <div class="form-section">
-                              <h3 class="form-section-title">3. Service Location</h3>
-                              
-                              <div class="row">
-                                  <div class="col-12 mb-3">
-                                      <label for="streetAddress" class="form-label">Street Address</label>
-                                      <input type="text" class="form-control" id="streetAddress" name="streetAddress" placeholder="Enter your street address" required>
-                                  </div>
-                                  
-                                  <div class="col-md-6 mb-3">
-                                      <label for="city" class="form-label">City</label>
-                                      <input type="text" class="form-control" id="city" name="city" required>
-                                  </div>
-                                  
-                                  <div class="col-md-3 mb-3">
-                                      <label for="state" class="form-label">State</label>
-                                      <input type="text" class="form-control" id="state" name="state" required>
-                                  </div>
-                                  
-                                  <div class="col-md-3 mb-3">
-                                      <label for="zipCode" class="form-label">ZIP Code</label>
-                                      <input type="text" class="form-control" id="zipCode" name="zipCode" required>
-                                  </div>
-                                  
-                                  <div class="col-12 mb-3">
-                                      <label for="accessInstructions" class="form-label">Access Instructions (Optional)</label>
-                                      <textarea class="form-control" id="accessInstructions" name="accessInstructions" rows="2" placeholder="Gate code, entry instructions, parking information, etc."></textarea>
-                                  </div>
-                              </div>
-                          </div>
-                          
-                          <!--Service Schedule-->
-                          <div class="form-section">
+                        </div>
+                        
+                        <!-- Issue Description Section -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">2. Describe Your Issue</h3>
+                            
+                            <div class="mb-3">
+                                <label for="issueDescription" class="form-label">Describe the Issue</label>
+                                <textarea class="form-control" id="issueDescription" name="issueDescription" rows="4" placeholder="Please describe the problem in detail..." required></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Upload Problem Pictures (Optional)</label>
+                                <label for="problemImages" class="custom-file-upload">
+                                    <i class="bi bi-camera me-2"></i> Choose Images
+                                    <small class="d-block text-muted mt-1">You can select up to 5 images (10MB max each)</small>
+                                </label>
+                                <input type="file" id="problemImages" name="problemImages" multiple accept="image/jpeg,image/png,image/gif" style="display: none;">
+                                <div id="imagePreviewContainer" class="preview-container mt-2"></div>
+                                <div id="fileErrors" class="text-danger mt-2"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Service Location Section -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">3. Service Location</h3>
+                            
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label for="streetAddress" class="form-label">Street Address</label>
+                                    <input type="text" class="form-control" id="streetAddress" name="streetAddress" placeholder="Enter your street address" required>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="city" class="form-label">City</label>
+                                    <input type="text" class="form-control" id="city" name="city" required>
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <label for="state" class="form-label">State</label>
+                                    <input type="text" class="form-control" id="state" name="state" required>
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <label for="zipCode" class="form-label">ZIP Code</label>
+                                    <input type="text" class="form-control" id="zipCode" name="zipCode" required>
+                                </div>
+                                
+                                <div class="col-12 mb-3">
+                                    <label for="accessInstructions" class="form-label">Access Instructions (Optional)</label>
+                                    <textarea class="form-control" id="accessInstructions" name="accessInstructions" rows="2" placeholder="Gate code, entry instructions, parking information, etc."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Service Schedule Section -->
+                        <div class="form-section">
                             <h3 class="form-section-title">4. Schedule Service</h3>
                             
                             <div class="mb-3">
@@ -348,229 +388,407 @@
                                 </div>
                             </div>
                         </div>
-                          
-                          <div class="form-section">
-                              <h3 class="form-section-title">5. Contact Information</h3>
-                              
-                              <div class="row">
-                                  <div class="col-md-6 mb-3">
-                                      <label for="fullName" class="form-label">Full Name</label>
-                                      <input type="text" class="form-control" id="fullName" name="fullName" required>
-                                  </div>
-                                  
-                                  <div class="col-md-6 mb-3">
-                                      <label for="phoneNumber" class="form-label">Phone Number</label>
-                                      <input type="tel" class="form-control" id="phoneNumber" name="phoneNumber" required>
-                                  </div>
-                                  
-                                  <div class="col-12 mb-3">
-                                      <label for="email" class="form-label">Email Address</label>
-                                      <input type="email" class="form-control" id="email" name="email" required>
-                                  </div>
-                              </div>
-                          </div>
-                          
-                          <button type="submit" class="btn btn-submit">Submit Service Request</button>
-                      </form>
-                  </div>
-              </div>
-          </div>
-      </div>
-  
-      <div class="footer-wrapper">
-          <!-- Footer -->
-          <%- include('../partials/footer') %>
-      </div>
+                        
+                        <!-- Contact Information Section -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">5. Contact Information</h3>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="fullName" class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" id="fullName" name="fullName" required>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="phoneNumber" class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="phoneNumber" name="phoneNumber" required>
+                                </div>
+                                
+                                <div class="col-12 mb-3">
+                                    <label for="email" class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-submit" id="submitButton">
+                            <i class="bi bi-calendar-check me-2"></i> Submit Service Request
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <div class="footer-wrapper">
+        <!-- Footer -->
+        <%- include('../partials/footer') %>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set minimum date for booking to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('preferredDate').min = today;
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set minimum date for booking to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('preferredDate').min = today;
+        
+        // Image preview functionality
+        const imageInput = document.getElementById('problemImages');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        
+        imageInput.addEventListener('change', function() {
+            previewContainer.innerHTML = ''; // Clear previous previews
             
-            // Image preview functionality
-            const imageInput = document.getElementById('problemImages');
-            const previewContainer = document.getElementById('imagePreviewContainer');
-            
-            imageInput.addEventListener('change', function() {
-                previewContainer.innerHTML = ''; // Clear previous previews
-                
-                if (this.files) {
-                    Array.from(this.files).forEach(file => {
-                        if (file.type.match('image.*')) {
-                            const reader = new FileReader();
-                            
-                            reader.onload = function(e) {
-                                const img = document.createElement('img');
-                                img.classList.add('image-preview');
-                                img.src = e.target.result;
-                                previewContainer.appendChild(img);
-                            }
-                            
-                            reader.readAsDataURL(file);
+            if (this.files) {
+                Array.from(this.files).forEach(file => {
+                    if (file.type.match('image.*')) {
+                        const reader = new FileReader();
+                        
+                        reader.onload = function(e) {
+                            const img = document.createElement('img');
+                            img.classList.add('image-preview');
+                            img.src = e.target.result;
+                            previewContainer.appendChild(img);
                         }
-                    });
-                }
-            });
-            
-            // Service type selection functionality and hourly booking section
-            const serviceTypeSelect = document.getElementById('serviceType');
-            const hourlyBookingSection = document.getElementById('hourlyBookingSection');
-            const bookingHoursInput = document.getElementById('bookingHours');
-            const hourlyBaseRateSpan = document.getElementById('hourlyBaseRate');
-            const totalFeeSpan = document.getElementById('totalFee');
-            const totalFeeInput = document.getElementById('totalFeeInput');
-            
-            // Function to update total fee calculation
-            function updateTotalFee() {
-                const hours = parseInt(bookingHoursInput.value) || 1;
-                const baseRate = parseFloat(hourlyBaseRateSpan.textContent) || 0;
-                const total = hours * baseRate;
-                totalFeeSpan.textContent = total.toFixed(2);
-                totalFeeInput.value = total;
-            }
-            
-            // Initialize with any existing values
-            if (bookingHoursInput) {
-                bookingHoursInput.addEventListener('change', updateTotalFee);
-                updateTotalFee(); // Initial calculation
-            }
-            
-            if (serviceTypeSelect) {
-                serviceTypeSelect.addEventListener('change', function() {
-                    const selectedOption = this.options[this.selectedIndex];
-                    const baseFee = selectedOption.getAttribute('data-fee');
-                    const feeType = selectedOption.getAttribute('data-fee-type');
-                    
-                    // Update hidden fields
-                    document.querySelector('input[name="baseFee"]').value = baseFee;
-                    document.querySelector('input[name="feeType"]').value = feeType;
-                    
-                    // Show/hide hourly booking section based on fee type
-                    if (feeType === 'per hour') {
-                        hourlyBookingSection.style.display = 'block';
-                        hourlyBaseRateSpan.textContent = parseFloat(baseFee).toFixed(2);
-                        updateTotalFee();
-                    } else {
-                        hourlyBookingSection.style.display = 'none';
-                    }
-                    
-                    console.log(`Updated service selection: ${this.value}, Fee: ${baseFee}, Type: ${feeType}`);
-                });
-                
-                // Trigger the change event initially to set correct state
-                if (serviceTypeSelect.value) {
-                    serviceTypeSelect.dispatchEvent(new Event('change'));
-                }
-            }
-            
-            // For pre-selected category
-            window.addEventListener('load', function() {
-                const preSelectedCategory = document.querySelector('input[name="serviceType"][type="hidden"]');
-                const feeType = document.querySelector('input[name="feeType"][type="hidden"]');
-                const baseFee = document.querySelector('input[name="baseFee"][type="hidden"]');
-                
-                if (preSelectedCategory && feeType && baseFee) {
-                    if (feeType.value === 'per hour') {
-                        hourlyBookingSection.style.display = 'block';
-                        hourlyBaseRateSpan.textContent = parseFloat(baseFee.value).toFixed(2);
-                        updateTotalFee();
-                    }
-                }
-            });
-            
-            // Enhanced date selection for availability
-            document.getElementById('preferredDate').addEventListener('change', function() {
-                const date = this.value;
-                const providerId = document.querySelector('input[name="providerId"]').value;
-                
-                if (date) {
-                    // Show loading state
-                    const timeSlotSelect = document.getElementById('timeSlot');
-                    timeSlotSelect.innerHTML = '<option value="" disabled selected>Loading available slots...</option>';
-                    timeSlotSelect.disabled = true;
-                    
-                    // Get day of week from selected date
-                    const selectedDate = new Date(date);
-                    const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
-                    
-                    // Fetch available time slots for this date and provider
-                    fetch(`/api/available-slots?providerId=${providerId}&date=${date}&dayOfWeek=${dayOfWeek}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            timeSlotSelect.innerHTML = ''; // Clear existing options
-                            timeSlotSelect.disabled = false;
-                            
-                            if (data.slots && data.slots.length > 0) {
-                                // Add a default option
-                                const defaultOption = document.createElement('option');
-                                defaultOption.value = "";
-                                defaultOption.textContent = "Select a time slot";
-                                defaultOption.disabled = true;
-                                defaultOption.selected = true;
-                                timeSlotSelect.appendChild(defaultOption);
-                                
-                                // Add each available slot
-                                data.slots.forEach(slot => {
-                                    const option = document.createElement('option');
-                                    option.value = slot;
-                                    option.textContent = slot;
-                                    timeSlotSelect.appendChild(option);
-                                });
-                            } else {
-                                const option = document.createElement('option');
-                                option.value = "";
-                                option.textContent = "No available slots for this date";
-                                option.disabled = true;
-                                option.selected = true;
-                                timeSlotSelect.appendChild(option);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error fetching time slots:', error);
-                            timeSlotSelect.innerHTML = '<option value="" disabled selected>Error loading time slots</option>';
-                        });
-                } else {
-                    const timeSlotSelect = document.getElementById('timeSlot');
-                    timeSlotSelect.innerHTML = '<option value="" disabled selected>Please select a date first</option>';
-                    timeSlotSelect.disabled = true;
-                }
-            });
-            
-            // Form validation
-            const bookingForm = document.querySelector('form[action="/customer/book-service"]');
-            if (bookingForm) {
-                bookingForm.addEventListener('submit', function(e) {
-                    const timeSlot = document.getElementById('timeSlot').value;
-                    const date = document.getElementById('preferredDate').value;
-                    
-                    if (!date) {
-                        e.preventDefault();
-                        alert('Please select a preferred date for the service.');
-                        return false;
-                    }
-                    
-                    if (!timeSlot) {
-                        e.preventDefault();
-                        alert('Please select an available time slot.');
-                        return false;
-                    }
-                    
-                    // Add validation for hourly bookings
-                    const feeType = document.querySelector('input[name="feeType"]').value;
-                    if (feeType === 'per hour') {
-                        const hours = parseInt(document.getElementById('bookingHours').value);
-                        if (!hours || hours < 1) {
-                            e.preventDefault();
-                            alert('Please specify how many hours you need for the service.');
-                            return false;
-                        }
+                        
+                        reader.readAsDataURL(file);
                     }
                 });
             }
         });
-    </script>
+        
+        // Service type selection functionality and hourly booking section
+        const serviceTypeSelect = document.getElementById('serviceType');
+        const hourlyBookingSection = document.getElementById('hourlyBookingSection');
+        const bookingHoursInput = document.getElementById('bookingHours');
+        const hourlyBaseRateSpan = document.getElementById('hourlyBaseRate');
+        const totalFeeSpan = document.getElementById('totalFee');
+        const totalFeeInput = document.getElementById('totalFeeInput');
+        
+        // Function to update total fee calculation
+        function updateTotalFee() {
+            const hours = parseInt(bookingHoursInput.value) || 1;
+            const baseRate = parseFloat(hourlyBaseRateSpan.textContent) || 0;
+            const total = hours * baseRate;
+            totalFeeSpan.textContent = total.toFixed(2);
+            totalFeeInput.value = total;
+        }
+        
+        // Initialize with any existing values
+        if (bookingHoursInput) {
+            bookingHoursInput.addEventListener('change', updateTotalFee);
+            updateTotalFee(); // Initial calculation
+        }
+        
+        if (serviceTypeSelect) {
+            serviceTypeSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const baseFee = selectedOption.getAttribute('data-fee');
+                const feeType = selectedOption.getAttribute('data-fee-type');
+                
+                // Update hidden fields
+                document.querySelector('input[name="baseFee"]').value = baseFee;
+                document.querySelector('input[name="feeType"]').value = feeType;
+                
+                // Show/hide hourly booking section based on fee type
+                if (feeType === 'per hour') {
+                    hourlyBookingSection.style.display = 'block';
+                    hourlyBaseRateSpan.textContent = parseFloat(baseFee).toFixed(2);
+                    updateTotalFee();
+                } else {
+                    hourlyBookingSection.style.display = 'none';
+                }
+                
+                console.log(`Updated service selection: ${this.value}, Fee: ${baseFee}, Type: ${feeType}`);
+            });
+            
+            // Trigger the change event initially to set correct state
+            if (serviceTypeSelect.value) {
+                serviceTypeSelect.dispatchEvent(new Event('change'));
+            }
+        }
+        
+        // For pre-selected category
+        window.addEventListener('load', function() {
+            const preSelectedCategory = document.querySelector('input[name="serviceType"][type="hidden"]');
+            const feeType = document.querySelector('input[name="feeType"][type="hidden"]');
+            const baseFee = document.querySelector('input[name="baseFee"][type="hidden"]');
+            
+            if (preSelectedCategory && feeType && baseFee) {
+                if (feeType.value === 'per hour') {
+                    hourlyBookingSection.style.display = 'block';
+                    hourlyBaseRateSpan.textContent = parseFloat(baseFee.value).toFixed(2);
+                    updateTotalFee();
+                }
+            }
+        });
+        
+        // Enhanced date selection for availability with real-time checking
+        document.getElementById('preferredDate').addEventListener('change', function() {
+            loadAvailableTimeSlots();
+        });
+        
+        // Function to load available time slots
+        function loadAvailableTimeSlots(isManualRefresh = false) {
+            const dateInput = document.getElementById('preferredDate');
+            const date = dateInput.value;
+            const providerId = document.querySelector('input[name="providerId"]').value;
+            
+            if (date) {
+                // Show loading state
+                const timeSlotSelect = document.getElementById('timeSlot');
+                timeSlotSelect.innerHTML = '<option value="" disabled selected>Loading available slots...</option>';
+                timeSlotSelect.disabled = true;
+                
+                // If it's a manual refresh, show a spinning icon on the refresh button if it exists
+                if (isManualRefresh && document.querySelector('.refresh-slots-btn i')) {
+                    const refreshBtn = document.querySelector('.refresh-slots-btn i');
+                    refreshBtn.classList.add('refresh-icon');
+                }
+                
+                // Get day of week from selected date
+                const selectedDate = new Date(date);
+                const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
+                
+                // Fetch available time slots for this date and provider
+                fetch(`/api/available-slots?providerId=${providerId}&date=${date}&dayOfWeek=${dayOfWeek}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        timeSlotSelect.innerHTML = ''; // Clear existing options
+                        timeSlotSelect.disabled = false;
+                        
+                        if (data.slots && data.slots.length > 0) {
+                            // Add a default option
+                            const defaultOption = document.createElement('option');
+                            defaultOption.value = "";
+                            defaultOption.textContent = "Select a time slot";
+                            defaultOption.disabled = true;
+                            defaultOption.selected = true;
+                            timeSlotSelect.appendChild(defaultOption);
+                            
+                            // Add each available slot
+                            data.slots.forEach(slot => {
+                                const option = document.createElement('option');
+                                option.value = slot;
+                                option.textContent = slot;
+                                timeSlotSelect.appendChild(option);
+                            });
+                            
+                            // Show provider's available hours
+                            const availabilityInfo = document.querySelector('.availability-info');
+                            if (availabilityInfo) {
+                                const providerHours = document.querySelector('.provider-hours');
+                                if (providerHours) {
+                                    providerHours.textContent = data.providerHours || `Available on ${dayOfWeek}`;
+                                }
+                                
+                                availabilityInfo.style.display = 'block';
+                                availabilityInfo.classList.add('alert-info');
+                                availabilityInfo.classList.remove('alert-warning');
+                                
+                                const availabilityNote = document.querySelector('.availability-note');
+                                if (availabilityNote) {
+                                    availabilityNote.textContent = `${data.slots.length} time slot${data.slots.length !== 1 ? 's' : ''} available on ${dayOfWeek}. Each slot is ${data.slotDuration || 60} minutes.`;
+                                }
+                            }
+                        } else {
+                            const option = document.createElement('option');
+                            option.value = "";
+                            option.textContent = "No available slots for this date";
+                            option.disabled = true;
+                            option.selected = true;
+                            timeSlotSelect.appendChild(option);
+                            
+                            // Show unavailability message
+                            const availabilityInfo = document.querySelector('.availability-info');
+                            if (availabilityInfo) {
+                                availabilityInfo.style.display = 'block';
+                                availabilityInfo.classList.add('alert-warning');
+                                availabilityInfo.classList.remove('alert-info');
+                                
+                                const providerHours = document.querySelector('.provider-hours');
+                                if (providerHours) {
+                                    providerHours.textContent = data.providerHours || 'Not available on this date';
+                                }
+                                
+                                const availabilityNote = document.querySelector('.availability-note');
+                                if (availabilityNote) {
+                                    availabilityNote.textContent = 'All time slots for this date have been booked. Please select another date.';
+                                }
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching time slots:', error);
+                        timeSlotSelect.innerHTML = '<option value="" disabled selected>Error loading time slots</option>';
+                    })
+                    .finally(() => {
+                        // Remove spinning icon if it was a manual refresh
+                        if (isManualRefresh && document.querySelector('.refresh-slots-btn i')) {
+                            const refreshBtn = document.querySelector('.refresh-slots-btn i');
+                            refreshBtn.classList.remove('refresh-icon');
+                        }
+                    });
+            } else {
+                const timeSlotSelect = document.getElementById('timeSlot');
+                timeSlotSelect.innerHTML = '<option value="" disabled selected>Please select a date first</option>';
+                timeSlotSelect.disabled = true;
+                
+                // Hide availability info
+                const availabilityInfo = document.querySelector('.availability-info');
+                if (availabilityInfo) {
+                    availabilityInfo.style.display = 'none';
+                }
+            }
+        }
+        
+        // Add a refresh button to the availability info box
+        const availabilityInfo = document.querySelector('.availability-info');
+        if (availabilityInfo) {
+            const refreshButton = document.createElement('button');
+            refreshButton.type = 'button';
+            refreshButton.className = 'btn btn-sm btn-outline-secondary mt-2';
+            refreshButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh Available Slots';
+            refreshButton.onclick = function() { loadAvailableTimeSlots(true); };
+            
+            // Add the button after the availability-note div
+            const availabilityNote = document.querySelector('.availability-note');
+            if (availabilityNote && availabilityNote.parentNode) {
+                availabilityNote.parentNode.appendChild(refreshButton);
+            }
+        }
+        
+        // Periodically refresh available time slots if the date is selected
+        const refreshInterval = setInterval(function() {
+            const dateInput = document.getElementById('preferredDate');
+            const timeSlotSelect = document.getElementById('timeSlot');
+            
+            if (dateInput.value && !timeSlotSelect.disabled) {
+                // Save the currently selected time slot
+                const selectedValue = timeSlotSelect.value;
+                
+                // Load updated time slots
+                fetch(`/api/available-slots?providerId=${document.querySelector('input[name="providerId"]').value}&date=${dateInput.value}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Check if the previously selected time slot is still available
+                        if (selectedValue && data.slots && !data.slots.includes(selectedValue)) {
+                            // Time slot is no longer available, show a warning
+                            alert('The time slot you selected is no longer available. It may have been booked by another customer. Please select another time slot.');
+                            
+                            // Force reload available time slots
+                            loadAvailableTimeSlots();
+                        } else if (document.activeElement !== timeSlotSelect) {
+                            // Only update the dropdown if user is not actively selecting
+                            // This prevents disrupting the user's selection process
+                            const wasEmpty = timeSlotSelect.options.length <= 1;
+                            
+                            if (wasEmpty && data.slots && data.slots.length > 0) {
+                                // If it was empty before but now has slots, update
+                                loadAvailableTimeSlots();
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking time slot availability:', error);
+                    });
+            }
+        }, 30000); // Check every 30 seconds
+        
+        // Clean up interval when page is unloaded
+        window.addEventListener('beforeunload', function() {
+            clearInterval(refreshInterval);
+        });
+        
+        // Form validation with real-time slot check
+        const bookingForm = document.querySelector('form[action="/customer/book-service"]');
+        if (bookingForm) {
+            bookingForm.addEventListener('submit', function(e) {
+                const timeSlot = document.getElementById('timeSlot').value;
+                const date = document.getElementById('preferredDate').value;
+                const providerId = document.querySelector('input[name="providerId"]').value;
+                
+                if (!date) {
+                    e.preventDefault();
+                    alert('Please select a preferred date for the service.');
+                    return false;
+                }
+                
+                if (!timeSlot) {
+                    e.preventDefault();
+                    alert('Please select an available time slot.');
+                    return false;
+                }
+                
+                // Add validation for hourly bookings
+                const feeType = document.querySelector('input[name="feeType"]').value;
+                if (feeType === 'per hour') {
+                    const hours = parseInt(document.getElementById('bookingHours').value);
+                    if (!hours || hours < 1) {
+                        e.preventDefault();
+                        alert('Please specify how many hours you need for the service.');
+                        return false;
+                    }
+                }
+                
+                // Add a final check to ensure this time slot is still available
+                e.preventDefault(); // Temporarily prevent form submission
+                
+                // Show loading message
+                const submitButton = this.querySelector('button[type="submit"]');
+                const originalButtonText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Verifying availability...';
+                
+                // Double check slot availability
+                fetch(`/api/available-slots?providerId=${providerId}&date=${date}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.slots && data.slots.includes(timeSlot)) {
+                            // Slot is still available, submit the form
+                            submitButton.innerHTML = '<i class="bi bi-check-circle me-2"></i> Booking...';
+                            bookingForm.submit();
+                        } else {
+                            // Slot is no longer available
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = originalButtonText;
+                            
+                            alert('Sorry, this time slot is no longer available. It may have been booked by another customer. Please select a different time slot.');
+                            
+                            // Refresh the available time slots
+                            loadAvailableTimeSlots();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error verifying time slot:', error);
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalButtonText;
+                        
+                        // In case of error, allow form submission but warn the user
+                        if (confirm('There was an error verifying the availability of this time slot. Do you want to proceed with booking anyway?')) {
+                            bookingForm.submit();
+                        }
+                    });
+            });
+        }
+        
+        // Add some CSS styles for the refresh animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+            .refresh-icon {
+                animation: spin 1s linear infinite;
+            }
+            .availability-info {
+                transition: all 0.3s ease;
+            }
+        `;
+        document.head.appendChild(style);
+    });
+</script>
 </body>
 </html>

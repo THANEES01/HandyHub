@@ -14,10 +14,13 @@
             --light-blue: #e6f2ff;
             --sidebar-width: 250px;
         }
+
         body {
             min-height: 100vh;
             background-color: #f8f9fa;
             overflow-x: hidden;
+            margin: 0;
+            padding: 0;
         }
 
         /* Sidebar Styling */
@@ -59,28 +62,34 @@
         
         /* Main Content Styling */
         .main-content {
-            margin-left: var(--sidebar-width);
-            padding: 30px;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+             margin-left: var(--sidebar-width);
+                padding: 30px;
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                overflow: hidden; /* Prevent scrolling in main container */
         }
         
         /* Conversation List Styling */
         .conversations-container {
             display: flex;
-            height: calc(100vh - 100px);
+            flex: 1; /* Take up all available space */
             gap: 20px;
+            height: calc(100vh - 140px); /* Account for header and margins */
+            min-height: 400px; /* Minimum height for smaller screens */
+            overflow: hidden; /* Prevent container overflow */
         }
         
         .conversation-list {
             width: 350px;
+            min-width: 300px; /* Minimum width on smaller screens */
             background-color: white;
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            height: 100%; /* Fill available height */
         }
         
         .list-header {
@@ -97,22 +106,26 @@
             flex: 1;
             overflow-y: auto;
             padding: 0;
+            max-height: calc(100% - 50px); /* Account for list header */
         }
         
         .conversation-card {
-            padding: 15px;
+               padding: 15px;
             border-bottom: 1px solid #f5f5f5;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             cursor: pointer;
             position: relative;
         }
         
         .conversation-card:hover {
             background-color: var(--light-blue);
+        transform: translateX(5px); /* Slight movement on hover */
         }
         
         .conversation-card.active {
             background-color: var(--light-blue);
+            border-left: 4px solid var(--primary-blue); /* Highlight active conversation */
+            padding-left: 11px; /* Compensate for border */
         }
         
         .customer-info {
@@ -181,13 +194,14 @@
         
         /* Chat Styling */
         .chat-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            overflow: hidden;
+             flex: 1;
+                display: flex;
+                flex-direction: column;
+                background-color: white;
+                border-radius: 10px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+                overflow: hidden;
+                height: 100%; /* Fill available height */
         }
         
         .empty-chat {
@@ -204,18 +218,26 @@
         }
         
         .empty-chat i {
-            font-size: 3rem;
+           font-size: 4rem; /* Larger icon */
             margin-bottom: 20px;
             color: #ccc;
+            opacity: 0.7;
         }
+
+         .empty-chat h3 {
+        color: #555;
+        margin-bottom: 10px;
+    }
         
         .chat-header {
-            background-color: var(--primary-blue);
-            color: white;
-            padding: 15px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+                background-color: var(--primary-blue);
+        color: white;
+        padding: 15px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-radius: 10px 10px 0 0; /* Rounded top corners only */
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
         .chat-header h2 {
@@ -231,19 +253,22 @@
             flex-direction: column;
             gap: 15px;
             background-color: #f9f9f9;
+            max-height: calc(100% - 135px); /* Account for header and input area */
         }
         
         .message {
             max-width: 80%;
-            padding: 10px 15px;
-            border-radius: 15px;
+            padding: 12px 18px; /* Slightly larger message bubbles */
+            border-radius: 18px;
             position: relative;
             word-break: break-word;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Subtle shadow for depth */
+            animation: messageAppear 0.3s ease-out;
         }
         
         .message-time {
             font-size: 0.75rem;
-            color: #666;
+            color: #000000;
             margin-top: 5px;
             text-align: right;
         }
@@ -262,27 +287,64 @@
             border-bottom-left-radius: 5px;
         }
         
+        /* Message attachment styling */
+        .message-attachment {
+            margin-top: 8px;
+        }
+        
+        .message-image {
+            max-width: 300px;
+            max-height: 200px;
+            border-radius: 10px;
+            margin-top: 5px;
+            border: 1px solid rgba(0,0,0,0.1);
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        .message-outgoing .message-image {
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        .message-attachment .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        
         .chat-input {
-            padding: 15px;
+           padding: 15px;
             border-top: 1px solid #eee;
             background-color: white;
+            width: 100%;
         }
         
         .chat-input form {
-            display: flex;
+             display: flex;
+            width: 100%;
             gap: 10px;
         }
         
         .chat-input input {
             flex: 1;
-            padding: 10px 15px;
+            padding: 12px 15px;
             border: 1px solid #ddd;
             border-radius: 30px;
             outline: none;
+            min-width: 0; /* This is important to allow the input to shrink */
+            width: 100%; /* Make it take all available space */
+        }
+
+        /* Make the send button have a fixed width */
+        .chat-input button[type="submit"] {
+            min-width: 100px; /* Fixed width for send button */
+            white-space: nowrap; /* Keep text on one line */
+            padding: 10px 20px;
         }
         
         .chat-input input:focus {
-            border-color: var(--primary-blue);
+           border-color: var(--primary-blue);
+           box-shadow: 0 0 0 3px rgba(0, 119, 190, 0.1); /* Add subtle focus glow */
         }
         
         .chat-input button {
@@ -298,6 +360,23 @@
         .chat-input button:hover {
             background-color: var(--dark-blue);
         }
+
+        .chat-input .attachment-btn {
+            background-color: #6c757d;
+            padding: 10px 15px;
+            border-radius: 50%; /* Make it circular */
+            height: 40px;
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+         .chat-input .attachment-btn:hover {
+        background-color: #5a6268;
+        transform: scale(1.05);
+    }
         
         .read-status {
             font-size: 0.7rem;
@@ -306,7 +385,7 @@
         }
         
         .read-status.read {
-            color: #6c757d;
+            color: #000000;
         }
         
         .read-status.unread {
@@ -314,13 +393,15 @@
         }
         
         .typing-indicator {
-            display: none;
+             display: none;
             align-self: flex-start;
             background-color: #e6e6e6;
             color: #333;
             border-radius: 15px;
             padding: 8px 15px;
             font-size: 0.9rem;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
         
         .typing-indicator span {
@@ -353,6 +434,59 @@
         .empty-chat.hidden {
             display: none;
         }
+
+        /* Image preview styles */
+        #image-preview-container {
+            background-color: rgba(0,0,0,0.03);
+            border-radius: 12px;
+            padding: 10px;
+            margin-top: 10px;
+            display: none;
+            max-width: 220px; /* Limit preview size */
+        }
+
+        #image-preview {
+            max-height: 100px;
+            max-width: 200px;
+            border-radius: 8px;
+        }
+
+        .document-icon {
+            width: 64px !important;
+            height: 64px !important;
+            object-fit: contain;
+            background-color: white;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* Loading state for images */
+        .message-image.loading {
+            min-height: 80px;
+            background-color: rgba(0,0,0,0.05);
+            position: relative;
+        }
+        
+        .message-image.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 3px solid rgba(0, 119, 190, 0.2);
+            border-top-color: rgba(0, 119, 190, 0.8);
+            transform: translate(-50%, -50%);
+            animation: cloudinary-loading 1s infinite linear;
+        }
+        
+        @keyframes cloudinary-loading {
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
         
         @keyframes typing {
             0%, 100% {
@@ -367,24 +501,59 @@
         @media (max-width: 992px) {
             .conversations-container {
                 flex-direction: column;
+                height: auto;
+                max-height: calc(100vh - 140px);
             }
             
             .conversation-list {
                 width: 100%;
-                height: auto;
-                max-height: 300px;
+                height: 300px;
+                min-height: 200px;
             }
             
             .chat-container, .empty-chat {
-                margin-top: 20px;
+                flex: 1;
+                min-height: 400px;
             }
         }
         
         @media (max-width: 768px) {
-            .main-content {
+             .main-content {
                 padding: 15px;
+                margin-left: 0;
+                padding-left: calc(var(--sidebar-width) + 15px);
+            }
+        
+            .chat-messages {
+                padding: 10px;
             }
         }
+
+         /* Animation for new messages */
+    @keyframes messageAppear {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .btn-pulse {
+    animation: pulse 1.5s infinite;
+}
+
+.btn-clicked {
+    transform: scale(0.95);
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 119, 190, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(0, 119, 190, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 119, 190, 0);
+    }
+}
     </style>
 </head>
 <body>
@@ -478,7 +647,21 @@
                                             <%= conv.customer_name %>
                                         </div>
                                         <div class="last-message">
-                                            <%= conv.last_message || 'No messages yet' %>
+                                            <% if (conv.last_message_has_attachment && (!conv.last_message || conv.last_message.trim() === '')) { %>
+                                                <% if (conv.last_message_attachment_type && conv.last_message_attachment_type.startsWith('image/')) { %>
+                                                    📷 Image
+                                                <% } else if (conv.last_message_attachment_type && conv.last_message_attachment_type.includes('pdf')) { %>
+                                                    📄 PDF Document
+                                                <% } else if (conv.last_message_attachment_type && (conv.last_message_attachment_type.includes('word') || conv.last_message_attachment_type.includes('doc'))) { %>
+                                                    📝 Document
+                                                <% } else if (conv.last_message_attachment_type && (conv.last_message_attachment_type.includes('excel') || conv.last_message_attachment_type.includes('sheet'))) { %>
+                                                    📊 Spreadsheet
+                                                <% } else { %>
+                                                    📎 File attachment
+                                                <% } %>
+                                            <% } else { %>
+                                                <%= conv.last_message || 'No messages yet' %>
+                                            <% } %>
                                         </div>
                                     </div>
                                 </div>
@@ -545,10 +728,31 @@
                         <% if (messages && messages.length > 0) { %>
                             <% messages.forEach(message => { %>
                                 <div class="message <%= message.sender_type === 'provider' ? 'message-outgoing' : 'message-incoming' %>">
-                                    <%= message.message_text %>
+                                    <% if (message.message_text) { %>
+                                        <div class="message-content"><%= message.message_text %></div>
+                                    <% } %>
+                                    
+                                    <% if (message.has_attachment && message.attachment_url) { %>
+                                        <% const isImage = message.attachment_type && message.attachment_type.startsWith('image/'); %>
+                                        <% if (isImage) { %>
+                                            <div class="message-attachment">
+                                                <a href="<%= message.attachment_url %>" target="_blank">
+                                                    <img src="<%= message.attachment_url %>" class="message-image" alt="Image attachment">
+                                                </a>
+                                            </div>
+                                        <% } else { %>
+                                            <div class="message-attachment">
+                                                <a href="<%= message.attachment_url %>" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                                    <i class="bi bi-paperclip"></i> <%= message.attachment_name || 'Attachment' %>
+                                                </a>
+                                            </div>
+                                        <% } %>
+                                    <% } %>
+                                    
                                     <div class="message-time">
                                         <%= new Date(message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %>
                                     </div>
+                                    
                                     <% if (message.sender_type === 'provider') { %>
                                         <div class="read-status <%= message.is_read ? 'read' : 'unread' %>">
                                             <%= message.is_read ? 'Read' : 'Delivered' %>
@@ -568,12 +772,30 @@
                         </div>
                     </div>
                     
-                    <div class="chat-input">
-                        <form id="message-form">
-                            <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" required>
+                   <div class="chat-input">
+                    <form id="message-form">
+                        <!-- Hidden file input for attachment -->
+                        <input type="file" id="file-upload" style="display: none;" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx">
+                        
+                        <div class="d-flex gap-2 w-100"> <!-- Added w-100 class for full width -->
+                            <button type="button" class="btn attachment-btn" id="attachment-button">
+                                <i class="bi bi-paperclip"></i>
+                            </button>
+                            <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" class="flex-grow-1"> <!-- Added flex-grow-1 -->
                             <button type="submit">
                                 <i class="bi bi-send"></i> Send
                             </button>
+                        </div>
+                            
+                            <!-- Image preview container (hidden by default) -->
+                            <div id="image-preview-container">
+                                <div class="position-relative d-inline-block">
+                                    <img id="image-preview" src="" alt="Preview">
+                                    <button type="button" id="remove-image" class="btn btn-sm btn-danger position-absolute" style="top: -10px; right: -10px; border-radius: 50%; width: 24px; height: 24px; padding: 0;">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </form>
                     </div>
                 <% } %>
@@ -593,6 +815,54 @@
                 const conversationId = '<%= activeConversation.id %>';
                 let lastMessageId = '<%= messages && messages.length > 0 ? messages[messages.length - 1].id : 0 %>';
                 let typingTimeout;
+                
+                // File attachment elements
+                const fileInput = document.getElementById('file-upload');
+                const attachmentButton = document.getElementById('attachment-button');
+                const imagePreviewContainer = document.getElementById('image-preview-container');
+                const imagePreview = document.getElementById('image-preview');
+                const removeImageButton = document.getElementById('remove-image');
+                
+                // Function to detect if a URL is a Cloudinary URL
+                function isCloudinaryUrl(url) {
+                    return url && (url.includes('cloudinary.com') || url.includes('res.cloudinary.com'));
+                }
+
+                // Function to optimize Cloudinary image URLs for different purposes
+                function optimizeCloudinaryUrl(url, type) {
+                    if (!isCloudinaryUrl(url)) return url;
+                    
+                    // Extract the base URL without transformation parameters
+                    let baseUrl = url;
+                    
+                    if (url.includes('/upload/')) {
+                        // Split at /upload/ to insert transformations
+                        const parts = url.split('/upload/');
+                        
+                        switch(type) {
+                            case 'thumbnail':
+                                // Small thumbnail for conversation list
+                                return `${parts[0]}/upload/c_fill,w_100,h_100,g_auto/${parts[1]}`;
+                            
+                            case 'preview':
+                                // Medium size for image preview before sending
+                                return `${parts[0]}/upload/c_scale,w_300/${parts[1]}`;
+                            
+                            case 'chat':
+                                // For images in chat messages
+                                return `${parts[0]}/upload/c_limit,w_500,h_400/${parts[1]}`;
+                            
+                            case 'fullsize':
+                                // For viewing the full image
+                                return `${parts[0]}/upload/q_auto,f_auto/${parts[1]}`;
+                                
+                            default:
+                                return url;
+                        }
+                    }
+                    
+                    return url;
+                }
                 
                 // Connect to Socket.IO with authentication
                 const socket = io({
@@ -652,12 +922,83 @@
                     });
                 });
                 
+                // File upload button handler
+                if (attachmentButton) {
+                    attachmentButton.addEventListener('click', function() {
+                        fileInput.click();
+                    });
+                }
+                
+                // File input change handler
+                if (fileInput) {
+                    fileInput.addEventListener('change', function(e) {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        
+                        // Validate file size (5MB max)
+                        if (file.size > 5 * 1024 * 1024) {
+                            alert('File size must be less than 5MB');
+                            fileInput.value = '';
+                            return;
+                        }
+                        
+                        // Show preview
+                        if (file.type.startsWith('image/')) {
+                            // For images, show actual preview
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                imagePreview.src = e.target.result;
+                                imagePreview.classList.remove('document-icon');
+                                imagePreview.style.width = 'auto';
+                                imagePreview.style.maxHeight = '100px';
+                                imagePreview.style.maxWidth = '200px';
+                                imagePreviewContainer.style.display = 'block';
+                            };
+                            reader.readAsDataURL(file);
+                        } else {
+                            // For documents, show an appropriate icon
+                            imagePreview.classList.add('document-icon');
+                            imagePreview.style.width = '64px';
+                            imagePreview.style.height = '64px';
+                            
+                            if (file.type.includes('pdf')) {
+                                imagePreview.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNkYzM1NDUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQuNSAySDZWMjJIMThWNS41TDE0LjUgMloiLz48cGF0aCBkPSJNMTQgMlY2SDE4Ii8+PHBhdGggZD0iTTEyIDEzTDkgMTNNMTIgMTdMOSAxN00xMiA5TDkgOU0xNSAxM0wxOCAxM00xNSA5TDE4IDkiLz48L3N2Zz4=';
+                            } else if (file.type.includes('word') || file.type.includes('doc')) {
+                                imagePreview.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwZDZlZmQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQuNSAySDZWMjJIMThWNS41TDE0LjUgMloiLz48cGF0aCBkPSJNMTQgMlY2SDE4Ii8+PHBhdGggZD0iTTE0IDE2SDhNMTQgMTJIOE0xNCA4SDgiLz48L3N2Zz4=';
+                            } else if (file.type.includes('excel') || file.type.includes('sheet')) {
+                                imagePreview.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxOTg3NTQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQuNSAySDZWMjJIMThWNS41TDE0LjUgMloiLz48cGF0aCBkPSJNMTQgMlY2SDE4Ii8+PHBhdGggZD0iTTggMTBIMTFNMTQgMTBIMTYiLz48cGF0aCBkPSJNOCAxNEgxMU0xNCAxNEgxNiIvPjxwYXRoIGQ9Ik04IDE4SDExTTE0IDE4SDE2Ii8+PC9zdmc+';
+                            } else {
+                                imagePreview.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2YzczNzYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQuNSAySDZWMjJIMThWNS41TDE0LjUgMloiLz48cGF0aCBkPSJNMTQgMlY2SDE4Ii8+PC9zdmc+';
+                            }
+                            
+                            imagePreviewContainer.style.display = 'block';
+                        }
+                    });
+                }
+                
+                // Remove image button handler
+                if (removeImageButton) {
+                    removeImageButton.addEventListener('click', function() {
+                        // Clear file input and hide preview
+                        fileInput.value = '';
+                        imagePreviewContainer.style.display = 'none';
+                    });
+                }
+                
                 // Submit message form
                 messageForm.addEventListener('submit', function(e) {
                     e.preventDefault();
                     
                     const message = messageInput.value.trim();
-                    if (!message) return;
+                    const file = fileInput.files[0];
+                    // If there's a file, upload with the file API
+                    if (file) {
+                        uploadFileWithMessage(file, message);
+                        return;
+                    }
+                    
+                    // Otherwise send as a regular text message
+                    if (!message) return; // Don't send empty messages
                     
                     console.log('Sending message:', message, 'to conversation:', conversationId);
                     
@@ -698,6 +1039,104 @@
                     });
                 });
                 
+                // Function to upload file with message
+                function uploadFileWithMessage(file, messageText) {
+                    if (!file) return;
+                    
+                    // Create temp message with loading state
+                    const tempMsg = document.createElement('div');
+                    tempMsg.classList.add('message', 'message-outgoing', 'temp-message');
+                    
+                    // Determine icon and text based on file type
+                    let uploadingIcon, uploadingText;
+                    if (file.type.startsWith('image/')) {
+                        uploadingIcon = 'bi-image';
+                        uploadingText = 'Uploading image...';
+                    } else if (file.type.includes('pdf')) {
+                        uploadingIcon = 'bi-file-pdf';
+                        uploadingText = 'Uploading PDF...';
+                    } else if (file.type.includes('word') || file.type.includes('doc')) {
+                        uploadingIcon = 'bi-file-word';
+                        uploadingText = 'Uploading document...';
+                    } else if (file.type.includes('excel') || file.type.includes('sheet')) {
+                        uploadingIcon = 'bi-file-excel';
+                        uploadingText = 'Uploading spreadsheet...';
+                    } else {
+                        uploadingIcon = 'bi-file-earmark';
+                        uploadingText = 'Uploading file...';
+                    }
+                    
+                    // Add message text if provided
+                    let tempMsgContent = '';
+                    if (messageText) {
+                        tempMsgContent = `<div class="message-content">${messageText}</div>`;
+                    }
+                    
+                    // Create loading indicator
+                    tempMsg.innerHTML = `
+                        ${tempMsgContent}
+                        <div class="image-uploading mt-1">
+                            <i class="bi ${uploadingIcon}"></i> ${uploadingText}
+                        </div>
+                        <div class="read-status unread">Sending...</div>
+                    `;
+                    
+                    // Add to messages container
+                    messagesContainer.appendChild(tempMsg);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    
+                    // Create form data for upload
+                    const formData = new FormData();
+                    formData.append('conversationId', conversationId);
+                    formData.append('message', messageText || '');
+                    formData.append('attachment', file);
+                    
+                    // Send with the file upload API
+                    fetch('/api/send-message-with-attachment', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Remove temp message
+                        document.querySelectorAll('.temp-message').forEach(el => {
+                            messagesContainer.removeChild(el);
+                        });
+                        
+                        if (data.success) {
+                            // Add the real message to the chat
+                            if (data.message.attachment_type && data.message.attachment_type.startsWith('image/')) {
+                                addImageMessage(data.message, true);
+                            } else {
+                                addDocumentMessage(data.message, true);
+                            }
+                            
+                            // Emit socket event for real-time
+                            socket.emit('send-message', {
+                                conversationId: conversationId,
+                                message: data.message
+                            });
+                            
+                            // Clear inputs and preview
+                            messageInput.value = '';
+                            fileInput.value = '';
+                            imagePreviewContainer.style.display = 'none';
+                        } else {
+                            console.error('Error uploading file:', data.error);
+                            alert('Failed to upload file: ' + (data.error || 'Unknown error'));
+                        }
+                    })
+                    .catch(error => {
+                        // Remove temp message on error
+                        document.querySelectorAll('.temp-message').forEach(el => {
+                            messagesContainer.removeChild(el);
+                        });
+                        
+                        console.error('Error uploading file:', error);
+                        alert('Failed to upload file. Please try again.');
+                    });
+                }
+                
                 // Typing indicator
                 messageInput.addEventListener('input', function() {
                     socket.emit('typing', {
@@ -708,14 +1147,199 @@
                 
                 // Function to add a message to the chat
                 function addMessage(message, isOutgoing) {
+                    // Determine if message has attachment
+                    if (message.has_attachment && message.attachment_url) {
+                        const isImage = message.attachment_type && message.attachment_type.startsWith('image/');
+                        if (isImage) {
+                            return addImageMessage(message, isOutgoing);
+                        } else {
+                            return addDocumentMessage(message, isOutgoing);
+                        }
+                    }
+                    
+                    // Create message element
                     const messageElement = document.createElement('div');
                     messageElement.classList.add('message');
                     messageElement.classList.add(isOutgoing ? 'message-outgoing' : 'message-incoming');
                     
-                    // Create message text
-                    messageElement.textContent = message.message_text;
+                    // Add message text
+                    const contentElement = document.createElement('div');
+                    contentElement.classList.add('message-content');
+                    contentElement.textContent = message.message_text;
+                    messageElement.appendChild(contentElement);
                     
-                    // Create time element
+                    // Add time
+                    const timeElement = document.createElement('div');
+                    timeElement.classList.add('message-time');
+                    const messageTime = new Date(message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    timeElement.textContent = messageTime;
+                    messageElement.appendChild(timeElement);
+                    
+                    // Add read status for outgoing messages
+                    if (isOutgoing) {
+                        const readStatus = document.createElement('div');
+                        readStatus.classList.add('read-status');
+                        readStatus.classList.add(message.is_read ? 'read' : 'unread');
+                        readStatus.textContent = message.is_read ? 'Read' : 'Delivered';
+                        messageElement.appendChild(readStatus);
+                    }
+                    
+                    // Add message to container
+                    messagesContainer.appendChild(messageElement);
+                    
+                    // Scroll to bottom
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    
+                    // Update last message ID
+                    lastMessageId = message.id;
+
+                    // Update conversation in the list
+                    updateConversationListItem(message);
+                }
+                
+                // Function to add an image message
+                function addImageMessage(message, isOutgoing) {
+                    const messageElement = document.createElement('div');
+                    messageElement.classList.add('message');
+                    messageElement.classList.add(isOutgoing ? 'message-outgoing' : 'message-incoming');
+                    
+                    // Add message text if exists
+                    if (message.message_text) {
+                        const contentDiv = document.createElement('div');
+                        contentDiv.classList.add('message-content');
+                        contentDiv.textContent = message.message_text;
+                        messageElement.appendChild(contentDiv);
+                    }
+                    
+                    // Process image attachment
+                    if (message.has_attachment && message.attachment_url) {
+                        const attachmentDiv = document.createElement('div');
+                        attachmentDiv.classList.add('message-attachment');
+                        
+                        // Optimize URLs if using Cloudinary
+                        let imageUrl = message.attachment_url;
+                        let fullSizeUrl = message.attachment_url;
+                        
+                        if (isCloudinaryUrl(message.attachment_url)) {
+                            imageUrl = optimizeCloudinaryUrl(message.attachment_url, 'chat');
+                            fullSizeUrl = optimizeCloudinaryUrl(message.attachment_url, 'fullsize');
+                        }
+                        
+                        // Create link for image
+                        const link = document.createElement('a');
+                        link.href = fullSizeUrl;
+                        link.target = "_blank";
+                        
+                        // Create image element
+                        const img = document.createElement('img');
+                        img.classList.add('message-image', 'loading');
+                        img.alt = 'Image attachment';
+                        
+                        // Set image source
+                        img.src = imageUrl;
+                        
+                        // Handle image load
+                        img.onload = function() {
+                            img.classList.remove('loading');
+                        };
+                        
+                        // Handle image error
+                        img.onerror = function() {
+                            console.error('Failed to load image:', message.attachment_url);
+                            img.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWltYWdlLW9mZiI+PHBhdGggZD0iTTIgMmEyIDIgMCAwIDAtMiAydjE2YTIgMiAwIDAgMCAyIDJoMTZhMiAyIDAgMCAwIDItMlY4Ii8+PHBhdGggZD0iTTIgNmg4LjRjMS45MTQgMCAzLjgzLjUyMyA1IDEuNXYtNGEyIDIgMCAwIDAtMi0ySDRhMiAyIDAgMCAwLTIgMnYyeiIvPjxwYXRoIGQ9Ik0yIDE2bDEwLTMuNUwyMiAxNS41Ii8+PHBhdGggZD0iTTE4IDIuNVY1Ii8+PHBhdGggZD0iTTIwLjUgNC4yTDIyIDYiLz48cGF0aCBkPSJNMjIgMmwtOCA4Ii8+PC9zdmc+';
+                            img.style.width = '100px';
+                            img.style.height = '100px';
+                            img.alt = 'Image could not be loaded';
+                            img.classList.remove('loading');
+                        };
+                        
+                        link.appendChild(img);
+                        attachmentDiv.appendChild(link);
+                        messageElement.appendChild(attachmentDiv);
+                    }
+                    
+                    // Add time
+                    const timeElement = document.createElement('div');
+                    timeElement.classList.add('message-time');
+                    const messageTime = new Date(message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    timeElement.textContent = messageTime;
+                    messageElement.appendChild(timeElement);
+                    
+                    // Add read status for outgoing messages
+                    if (isOutgoing) {
+                        const readStatus = document.createElement('div');
+                        readStatus.classList.add('read-status');
+                        readStatus.classList.add(message.is_read ? 'read' : 'unread');
+                        readStatus.textContent = message.is_read ? 'Read' : 'Delivered';
+                        messageElement.appendChild(readStatus);
+                    }
+                    
+                    // Add message to container
+                    messagesContainer.appendChild(messageElement);
+                    
+                    // Scroll to bottom
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    
+                    // Update last message ID
+                    lastMessageId = message.id;
+
+                    // Update conversation in the list
+                    updateConversationListItem(message);
+                }
+                
+                // Function to add a document message
+                function addDocumentMessage(message, isOutgoing) {
+                    const messageElement = document.createElement('div');
+                    messageElement.classList.add('message');
+                    messageElement.classList.add(isOutgoing ? 'message-outgoing' : 'message-incoming');
+                    
+                    // Add message text if exists
+                    if (message.message_text) {
+                        const contentDiv = document.createElement('div');
+                        contentDiv.classList.add('message-content');
+                        contentDiv.textContent = message.message_text;
+                        messageElement.appendChild(contentDiv);
+                    }
+                    
+                    // Process document attachment
+                    if (message.has_attachment && message.attachment_url) {
+                        const attachmentDiv = document.createElement('div');
+                        attachmentDiv.classList.add('message-attachment');
+                        
+                        // Create button for document
+                        const link = document.createElement('a');
+                        link.href = message.attachment_url;
+                        link.classList.add('btn', 'btn-sm', isOutgoing ? 'btn-outline-light' : 'btn-outline-secondary');
+                        link.target = '_blank';
+                        
+                        // Add appropriate icon based on file type
+                        const icon = document.createElement('i');
+                        icon.classList.add('bi');
+                        
+                        if (message.attachment_type?.includes('pdf')) {
+                            icon.classList.add('bi-file-pdf');
+                            icon.style.color = '#dc3545';
+                        } else if (message.attachment_type?.includes('word') || message.attachment_type?.includes('doc')) {
+                            icon.classList.add('bi-file-word');
+                            icon.style.color = '#0d6efd';
+                        } else if (message.attachment_type?.includes('excel') || message.attachment_type?.includes('sheet')) {
+                            icon.classList.add('bi-file-excel');
+                            icon.style.color = '#198754';
+                        } else {
+                            icon.classList.add('bi-file-earmark');
+                        }
+                        
+                        link.appendChild(icon);
+                        
+                        // Add file name
+                        const text = document.createTextNode(' ' + (message.attachment_name || 'Attachment'));
+                        link.appendChild(text);
+                        
+                        attachmentDiv.appendChild(link);
+                        messageElement.appendChild(attachmentDiv);
+                    }
+                    
+                    // Add time
                     const timeElement = document.createElement('div');
                     timeElement.classList.add('message-time');
                     const messageTime = new Date(message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -747,10 +1371,26 @@
                 // Function to update the conversation list item with the latest message
                 function updateConversationListItem(message) {
                     const conversationCard = document.querySelector(`.conversation-card[data-conversation-id="${conversationId}"]`);
+                    
                     if (conversationCard) {
                         const lastMessageElement = conversationCard.querySelector('.last-message');
                         if (lastMessageElement) {
-                            lastMessageElement.textContent = message.message_text;
+                            // Update message text or indicate there's an attachment
+                            if (message.message_text) {
+                                lastMessageElement.textContent = message.message_text;
+                            } else if (message.has_attachment) {
+                                if (message.attachment_type && message.attachment_type.startsWith('image/')) {
+                                    lastMessageElement.textContent = '📷 Image';
+                                } else if (message.attachment_type && message.attachment_type.includes('pdf')) {
+                                    lastMessageElement.textContent = '📄 PDF Document';
+                                } else if (message.attachment_type && (message.attachment_type.includes('word') || message.attachment_type.includes('doc'))) {
+                                    lastMessageElement.textContent = '📝 Document';
+                                } else if (message.attachment_type && (message.attachment_type.includes('excel') || message.attachment_type.includes('sheet'))) {
+                                    lastMessageElement.textContent = '📊 Spreadsheet';
+                                } else {
+                                    lastMessageElement.textContent = '📎 File attachment';
+                                }
+                            }
                         }
 
                         const timeElement = conversationCard.querySelector('.message-time');
@@ -772,10 +1412,31 @@
                     fetch(`/api/messages/${conversationId}?lastMessageId=${lastMessageId}`)
                         .then(response => response.json())
                         .then(data => {
-                            if (data.success && data.messages.length > 0) {
+                            if (data.success && data.messages && data.messages.length > 0) {
                                 data.messages.forEach(message => {
                                     if (message.sender_type === 'customer') {
-                                        addMessage(message, false);
+                                        if (message.has_attachment) {
+                                            if (message.attachment_type && message.attachment_type.startsWith('image/')) {
+                                                addImageMessage(message, false);
+                                            } else {
+                                                addDocumentMessage(message, false);
+                                            }
+                                        } else {
+                                            addMessage(message, false);
+                                        }
+                                        
+                                        // Mark as read via API
+                                        fetch('/api/mark-messages-read', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({
+                                                conversationId: conversationId
+                                            }),
+                                        }).catch(error => {
+                                            console.error('Error marking messages as read:', error);
+                                        });
                                     }
                                 });
                             }
@@ -787,6 +1448,39 @@
                 
                 // Scroll to bottom of chat on load
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Fix existing images on load
+                fixExistingImages();
+                
+                // Function to fix existing images with Cloudinary optimization
+                function fixExistingImages() {
+                    const images = document.querySelectorAll('.message-image');
+                    images.forEach(image => {
+                        const src = image.getAttribute('src');
+                        if (isCloudinaryUrl(src)) {
+                            const optimizedUrl = optimizeCloudinaryUrl(src, 'chat');
+                            image.src = optimizedUrl;
+                            
+                            // Update link URL if image is in a link
+                            const link = image.closest('a');
+                            if (link) {
+                                link.href = optimizeCloudinaryUrl(src, 'fullsize');
+                            }
+                        }
+                        
+                        // Add loading class and handlers
+                        image.classList.add('loading');
+                        
+                        image.onload = function() {
+                            image.classList.remove('loading');
+                        };
+                        
+                        image.onerror = function() {
+                            console.error('Image failed to load:', src);
+                            image.classList.remove('loading');
+                        };
+                    });
+                }
                 
                 // Poll for new messages every 10 seconds as a fallback
                 setInterval(pollMessages, 10000);
@@ -818,6 +1512,97 @@
             // Check unread count on page load
             checkUnreadCount();
         });
+
+        // Add these improvements to the JavaScript section at the bottom of your integrated-messaging.ejs file
+// to ensure smooth transitions and fixes for the send button and image loading
+
+// Make sure the input field grows with content
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-expand text input field based on content
+    const messageInput = document.getElementById('message-input');
+    if (messageInput) {
+        messageInput.addEventListener('input', function() {
+            // Reset height to auto to correctly calculate the new height
+            this.style.height = 'auto';
+            
+            // Set the height to match content (with max-height limit)
+            const newHeight = Math.min(this.scrollHeight, 120); // Max 120px height
+            this.style.height = newHeight + 'px';
+        });
+    }
+    
+    // Enhance send button
+    const sendButton = document.querySelector('#message-form button[type="submit"]');
+    if (sendButton) {
+        // Add pulse effect when typing
+        messageInput.addEventListener('input', function() {
+            if (this.value.trim() !== '') {
+                sendButton.classList.add('btn-pulse');
+            } else {
+                sendButton.classList.remove('btn-pulse');
+            }
+        });
+        
+        // Add click feedback
+        sendButton.addEventListener('click', function() {
+            this.classList.add('btn-clicked');
+            setTimeout(() => {
+                this.classList.remove('btn-clicked');
+            }, 200);
+        });
+    }
+    
+    // Pre-load image error placeholder
+    const errorImageSrc = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWltYWdlLW9mZiI+PHBhdGggZD0iTTIgMmEyIDIgMCAwIDAtMiAydjE2YTIgMiAwIDAgMCAyIDJoMTZhMiAyIDAgMCAwIDItMlY4Ii8+PHBhdGggZD0iTTIgNmg4LjRjMS45MTQgMCAzLjgzLjUyMyA1IDEuNXYtNGEyIDIgMCAwIDAtMi0ySDRhMiAyIDAgMCAwLTIgMnYyeiIvPjxwYXRoIGQ9Ik0yIDE2bDEwLTMuNUwyMiAxNS41Ii8+PHBhdGggZD0iTTE4IDIuNVY1Ii8+PHBhdGggZD0iTTIwLjUgNC4yTDIyIDYiLz48cGF0aCBkPSJNMjIgMmwtOCA4Ii8+PC9zdmc+';
+    const img = new Image();
+    img.src = errorImageSrc;
+    
+    // Better error handling for image loading
+    function enhanceImageErrorHandling() {
+        const images = document.querySelectorAll('.message-image');
+        images.forEach(img => {
+            img.onerror = function() {
+                console.error('Failed to load image:', this.src);
+                this.src = errorImageSrc;
+                this.style.width = '100px';
+                this.style.height = '100px';
+                this.alt = 'Image could not be loaded';
+                this.classList.remove('loading');
+                
+                // Add error message below image
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'text-danger small mt-1';
+                errorMsg.textContent = 'Image failed to load. Click to try again.';
+                this.parentNode.appendChild(errorMsg);
+            };
+            
+            // Improve click behavior for broken images
+            img.addEventListener('click', function(e) {
+                if (this.src === errorImageSrc) {
+                    e.preventDefault();
+                    const originalSrc = this.dataset.originalSrc || this.closest('a').href;
+                    if (originalSrc) {
+                        this.classList.add('loading');
+                        this.src = originalSrc;
+                        
+                        // Remove error message if exists
+                        const errorMsg = this.parentNode.querySelector('.text-danger');
+                        if (errorMsg) errorMsg.remove();
+                    }
+                }
+            });
+            
+            // Store original src for retry
+            img.dataset.originalSrc = img.src;
+        });
+    }
+    
+    // Run initially and after each message is added
+    enhanceImageErrorHandling();
+    
+    // Periodically check for new images
+    setInterval(enhanceImageErrorHandling, 2000);
+});
     </script>
 </body>
 </html>

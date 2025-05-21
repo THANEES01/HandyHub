@@ -14,6 +14,7 @@ import bookingRoutes from './booking.js';
 import paymentRoutes from './payment.js';
 import chatRoutes from './chat.js';
 import setupSocketIO from './socketio.js';
+import chatProviderRoutes from './chat-provider.js'; // Import the new chat routes
 
 dotenv.config();
 
@@ -111,6 +112,7 @@ app.use('/customer', customerRoutes);
 app.use(bookingRoutes);
 app.use('/customer', paymentRoutes);
 app.use('/', chatRoutes);
+app.use('/provider', chatProviderRoutes); // This should be after the main provider routes
 
 // Home route
 app.get('/', (req, res) => {
@@ -207,6 +209,36 @@ app.get('/test-session', (req, res) => {
         
         // Redirect to a page to see if messages appear
         res.redirect('/auth/customer-login');
+    });
+});
+
+// Add this route to your index.js to test direct file access
+app.get('/test-image-access', (req, res) => {
+    const uploadDir = path.join(__dirname, 'public/uploads/chat_attachments');
+    
+    // List all files in the directory
+    fs.readdir(uploadDir, (err, files) => {
+        if (err) {
+            return res.status(500).json({ 
+                error: 'Error reading directory', 
+                details: err.message,
+                path: uploadDir
+            });
+        }
+        
+        const imageFiles = files.filter(file => 
+            file.endsWith('.jpg') || 
+            file.endsWith('.jpeg') || 
+            file.endsWith('.png') || 
+            file.endsWith('.gif')
+        );
+        
+        res.json({
+            directory: uploadDir,
+            files: files,
+            imageFiles: imageFiles,
+            testUrl: imageFiles.length > 0 ? `/uploads/chat_attachments/${imageFiles[0]}` : null
+        });
     });
 });
 

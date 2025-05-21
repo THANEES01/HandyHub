@@ -260,27 +260,32 @@ router.get('/process-payment', isCustomerAuth, async (req, res) => {
             
             // Record the payment in payments table
             if (req.session.paymentInfo) {
-                try {
-                    await pool.query(`
-                        INSERT INTO payments (
-                            booking_id, customer_id, amount, base_fee, service_charge, payment_method, 
-                            payment_reference, status, created_at
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-                    `, [
-                        bookingId, 
-                        req.session.user.id, 
-                        parseFloat(req.session.paymentInfo.baseFee) * 1.05, // Total amount
-                        parseFloat(req.session.paymentInfo.baseFee),        // Base fee
-                        parseFloat(req.session.paymentInfo.baseFee) * 0.05, // Service charge
-                        'Stripe',
-                        payment_intent,
-                        'Completed'
-                    ]);
-                    console.log('Payment record created');
-                } catch (paymentError) {
-                    console.error('Error recording payment:', paymentError);
+                    try {
+                        // Get values from session, or calculate if not available
+                        const baseFee = parseFloat(req.session.paymentInfo.calculatedFee || req.session.paymentInfo.baseFee || 0);
+                        const serviceCharge = req.session.paymentInfo.serviceCharge || (baseFee * 0.05);
+                        const totalAmount = req.session.paymentInfo.totalAmount || (baseFee + serviceCharge);
+                        
+                        await pool.query(`
+                            INSERT INTO payments (
+                                booking_id, customer_id, amount, base_fee, service_charge, payment_method, 
+                                payment_reference, status, created_at
+                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+                        `, [
+                            bookingId, 
+                            req.session.user.id, 
+                            totalAmount,         // Total amount including service charge
+                            baseFee,             // Base fee 
+                            serviceCharge,       // Service charge
+                            'Stripe',
+                            payment_intent,
+                            'Completed'
+                        ]);
+                        console.log('Payment record created with all fee details');
+                    } catch (paymentError) {
+                        console.error('Error recording payment:', paymentError);
+                    }
                 }
-            }
             
             // Clear payment info and set success message
             delete req.session.paymentInfo;

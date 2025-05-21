@@ -246,6 +246,12 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             console.log(`Calculated hourly fee: ${calculatedFee} (${finalBaseFee} × ${bookingHours} hours)`);
         }
         
+        // Calculate service charge and total amount
+        const serviceCharge = calculatedFee * 0.05; // 5% service charge
+        const totalAmount = calculatedFee + serviceCharge;
+
+        console.log(`Calculated fees: Base=${calculatedFee}, Service=${serviceCharge}, Total=${totalAmount}`);
+        
         // Process uploaded files
         console.log('Files received:', req.files); // Debug uploaded files
 
@@ -276,8 +282,8 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             (customer_id, provider_id, service_type, issue_description, service_address, 
             access_instructions, preferred_date, time_slot, customer_name, 
             customer_phone, customer_email, status, created_at, images, 
-            base_fee, fee_type, booking_hours)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), $13, $14, $15, $16)
+            base_fee, fee_type, booking_hours, service_charge, total_amount)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), $13, $14, $15, $16, $17, $18)
             RETURNING id
         `, [
             customerId, 
@@ -295,7 +301,9 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             imageFilesJson, // Store the stringified JSON
             calculatedFee, // Store the calculated fee
             finalFeeType || 'per visit',
-            finalFeeType === 'per hour' ? parseInt(bookingHours) : null // Only store hours for hourly services
+            finalFeeType === 'per hour' ? parseInt(bookingHours) : null, // Only store hours for hourly services
+            serviceCharge,  // Add service charge
+            totalAmount     // Add total amount
         ]);
                         
         // If booking was successful, redirect to payment page
@@ -309,6 +317,8 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
                 serviceType: serviceType,
                 baseFee: parseFloat(finalBaseFee) || 0,
                 calculatedFee: calculatedFee, // Add calculated fee to session
+                serviceCharge: serviceCharge,  // Add service charge to session
+                totalAmount: totalAmount,      // Add total amount to session
                 feeType: finalFeeType || 'per visit',
                 bookingHours: finalFeeType === 'per hour' ? parseInt(bookingHours) : null, // Add hours if relevant
                 customerName: fullName,
@@ -807,17 +817,17 @@ router.post('/customer/process-payment', isCustomerAuth, async (req, res) => {
 });
 
 router.get('/customer/booking-confirmation/:bookingId?', isCustomerAuth, async (req, res) => {
-    try {
+     try {
         const bookingId = req.params.bookingId;
         const customerId = req.session.user.id;
         
         // Get detailed booking information with provider name and pricing
         const bookingResult = await pool.query(`
-            SELECT sb.*, sp.business_name as provider_name, 
-                   sc.base_fee, sc.fee_type
+            SELECT 
+                sb.*, 
+                sp.business_name as provider_name
             FROM service_bookings sb
             JOIN service_providers sp ON sb.provider_id = sp.id
-            LEFT JOIN service_categories sc ON sp.id = sc.provider_id AND LOWER(sc.category_name) = LOWER(sb.service_type)
             WHERE sb.id = $1 AND sb.customer_id = $2
             LIMIT 1
         `, [bookingId, customerId]);
@@ -828,6 +838,18 @@ router.get('/customer/booking-confirmation/:bookingId?', isCustomerAuth, async (
         }
         
         const booking = bookingResult.rows[0];
+        
+        // Ensure all necessary payment fields exist with fallback values
+        booking.base_fee = booking.base_fee || 0;
+        booking.service_charge = booking.service_charge || (booking.base_fee * 0.05);
+        booking.total_amount = booking.total_amount || (parseFloat(booking.base_fee) + parseFloat(booking.service_charge));
+        
+        console.log('Booking details:', {
+            id: booking.id,
+            base_fee: booking.base_fee,
+            service_charge: booking.service_charge,
+            total_amount: booking.total_amount
+        });
         
         // If booking is cancelled, redirect to the cancellation page
         if (booking.status === 'Cancelled') {
@@ -959,13 +981,18 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
         
         const availability = availabilityResult.rows[0];
         
-        // Get existing bookings for this provider and date
+        // Get ALL existing bookings for this provider and date, regardless of status
+        // This includes pending bookings that haven't been paid for yet
         const bookingsResult = await pool.query(
-            'SELECT time_slot FROM service_bookings WHERE provider_id = $1 AND preferred_date = $2',
+            `SELECT time_slot FROM service_bookings 
+             WHERE provider_id = $1 AND preferred_date = $2 
+             AND status NOT IN ('Cancelled')`,
             [providerId, date]
         );
         
-        const bookedSlots = bookingsResult.rows.map(row => row.time_slot);
+        // Create a Set of all booked slots for quick lookup
+        const bookedSlots = new Set(bookingsResult.rows.map(row => row.time_slot));
+        console.log(`Found ${bookedSlots.size} booked slots for ${date}:`, [...bookedSlots]);
         
         // Generate available time slots based on availability and booked slots
         const startTime = new Date(`${date}T${availability.start_time}`);
@@ -983,7 +1010,7 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
                 const timeSlot = `${formatTime(currentTime)} - ${formatTime(slotEndTime)}`;
                 
                 // Check if this slot is not already booked
-                if (!bookedSlots.includes(timeSlot)) {
+                if (!bookedSlots.has(timeSlot)) {
                     availableSlots.push(timeSlot);
                 }
             }
@@ -995,7 +1022,8 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
         res.json({ 
             slots: availableSlots,
             dayOfWeek: dayName,
-            slotDuration: slotDuration
+            slotDuration: slotDuration,
+            providerHours: `${formatTime(startTime)} - ${formatTime(endTime)}`
         });
         
     } catch (error) {

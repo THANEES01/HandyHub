@@ -224,10 +224,23 @@
                             <span>RM <%= parseFloat(paymentInfo.baseFee).toFixed(2) %> (<%= paymentInfo.feeType %>)</span>
                         </div>
                         
+                        <% if (paymentInfo.feeType === 'per hour' && paymentInfo.bookingHours) { %>
+                        <div class="summary-item">
+                            <span>Hours:</span>
+                            <span><%= paymentInfo.bookingHours %> hours</span>
+                        </div>
+                        
+                        <div class="summary-item">
+                            <span>Subtotal:</span>
+                            <span>RM <%= parseFloat(paymentInfo.calculatedFee).toFixed(2) %></span>
+                        </div>
+                        <% } %>
+                        
                         <% 
-                        // Calculate any additional fees
-                        const serviceFee = parseFloat(paymentInfo.baseFee) * 0.05;
-                        const totalAmount = parseFloat(paymentInfo.baseFee) + serviceFee;
+                        // Calculate any additional fees, preferring values from session if available
+                        const baseFee = parseFloat(paymentInfo.calculatedFee || paymentInfo.baseFee);
+                        const serviceFee = paymentInfo.serviceCharge || (baseFee * 0.05);
+                        const totalAmount = paymentInfo.totalAmount || (baseFee + serviceFee);
                         %>
                         
                         <div class="summary-item">

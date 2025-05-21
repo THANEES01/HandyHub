@@ -98,14 +98,20 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
         
         // Get booking statistics
         const statsResult = await pool.query(`
-            SELECT 
-                COUNT(*) as total_bookings,
-                COUNT(CASE WHEN status = 'Confirmed' OR status = 'In Progress' THEN 1 END) as active_services,
-                COUNT(CASE WHEN status = 'Completed' THEN 1 END) as completed_bookings,
-                COALESCE(SUM(CASE WHEN payment_status = 'Paid' THEN base_fee ELSE 0 END), 0) as total_spent
-            FROM service_bookings
-            WHERE customer_id = $1
-        `, [customerId]);
+        SELECT 
+            COUNT(*) as total_bookings,
+            COUNT(CASE WHEN status = 'Confirmed' OR status = 'In Progress' THEN 1 END) as active_services,
+            COUNT(CASE WHEN status = 'Completed' THEN 1 END) as completed_bookings,
+            COALESCE(SUM(CASE WHEN payment_status = 'Paid' THEN 
+                CASE 
+                    WHEN total_amount IS NOT NULL THEN total_amount 
+                    WHEN service_charge IS NOT NULL THEN base_fee + service_charge
+                    ELSE base_fee 
+                END
+            ELSE 0 END), 0) as total_spent
+        FROM service_bookings
+        WHERE customer_id = $1
+    `, [customerId]);
         
         // Get all service categories
         const categoriesResult = await pool.query(`

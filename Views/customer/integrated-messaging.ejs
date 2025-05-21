@@ -247,6 +247,49 @@
         border-radius: 24px;
         background-color: white;
         overflow: hidden;
+        width: 100%; /* Ensure full width */
+        display: flex;
+    }
+
+    /* Ensure the attachment button has fixed width */
+    .chat-input .btn-attachment {
+        background-color: transparent;
+        color: #999;
+        border-radius: 0;
+        padding: 0 15px;
+        border-right: 1px solid #eee;
+        flex-shrink: 0; /* Prevent from shrinking */
+        width: auto;
+        min-width: 50px;
+    }
+
+    .message-time {
+        font-size: 0.7rem;
+        color: rgba(0,0,0,0.5);
+        text-align: right;
+        margin-top: 4px;
+    }
+
+    .message-outgoing .message-time {
+        color: rgba(0, 0, 0, 0.7);
+    }
+
+    .chat-input .btn-primary {
+        background-color: var(--message-blue);
+        border-radius: 0 24px 24px 0;
+        padding: 0 20px;
+        flex-shrink: 0; /* Prevent from shrinking */
+        width: auto;
+        min-width: 60px;
+    }
+
+    .chat-input .form-control {
+        flex: 1 1 auto; /* Allow input to grow and shrink as needed */
+        min-width: 0; /* Critical for proper flexbox behavior */
+        border: none;
+        padding: 12px 20px;
+        background-color: white;
+        font-size: 0.95rem;
     }
     
     .chat-input input {
@@ -295,11 +338,11 @@
     }
     
     .read-status.read {
-        color: #6c757d;
+        color: #000000;
     }
     
     .read-status.unread {
-        color: #adb5bd;
+        color: #000000;
     }
     
     .typing-indicator {
@@ -550,7 +593,7 @@
             <a href="/customer/dashboard" class="back-link">
                 <i class="bi bi-arrow-left"></i> Back to Dashboard
             </a>
-            <h1 class="page-title">My Conversations</h1>
+            <!-- <h1 class="page-title">My Conversations</h1> -->
             <div style="width: 150px;"></div>
         </div>
 
@@ -668,9 +711,6 @@
                             <i class="bi bi-chat-dots"></i>
                             <h4>No conversations yet</h4>
                             <p class="text-muted">Start a conversation with a service provider by visiting their profile.</p>
-                            <a href="/customer/categories" class="btn btn-primary mt-2">
-                                <i class="bi bi-search"></i> Find Service Providers
-                            </a>
                         </div>
                     <% } %>
                     </div>
@@ -711,24 +751,31 @@
                                 <% if (messages && messages.length > 0) { %>
                                     <% messages.forEach(message => { %>
                                         <div class="message <%= message.sender_type === 'customer' ? 'message-outgoing' : 'message-incoming' %>">
-                                            <% if (message.message_text) { %>
-                                                <div class="message-content"><%= message.message_text %></div>
-                                            <% } %>
-                                            
-                                            <% if (message.has_attachment && message.attachment_url) { %>
-                                                <% const isImage = message.attachment_type && message.attachment_type.startsWith('image/'); %>
-                                                <% if (isImage) { %>
-                                                    <div class="message-attachment">
-                                                        <img src="<%= message.attachment_url %>" class="message-image" alt="Image attachment">
-                                                    </div>
-                                                <% } else { %>
-                                                    <div class="message-attachment">
-                                                        <a href="<%= message.attachment_url %>" class="btn btn-sm btn-outline-secondary" target="_blank">
-                                                            <i class="bi bi-paperclip"></i> <%= message.attachment_name || 'Attachment' %>
-                                                        </a>
-                                                    </div>
+                                                <% if (message.message_text) { %>
+                                                    <div class="message-content"><%= message.message_text %></div>
                                                 <% } %>
-                                            <% } %>
+                                                
+                                                <% if (message.has_attachment && message.attachment_url) { %>
+                                                    <% const isImage = message.attachment_type && message.attachment_type.startsWith('image/'); %>
+                                                    <% if (isImage) { %>
+                                                        <div class="message-attachment">
+                                                            <img src="<%= message.attachment_url %>" class="message-image" alt="Image attachment">
+                                                        </div>
+                                                    <% } else { %>
+                                                        <div class="message-attachment">
+                                                            <a href="<%= message.attachment_url %>" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                                                <i class="bi bi-paperclip"></i> <%= message.attachment_name || 'Attachment' %>
+                                                            </a>
+                                                        </div>
+                                                    <% } %>
+                                                <% } %>
+
+                                                <!-- Add timestamp to each message -->
+                                                <div class="message-time">
+                                                    <%= new Date(message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %>
+                                                </div>
+                            
+                                            
                                             
                                             <% if (message.sender_type === 'customer') { %>
                                                 <div class="read-status <%= message.is_read ? 'read' : 'unread' %>">
@@ -750,22 +797,24 @@
                             </div>
                             
                             <!-- Updated chat input with repositioned attachment button -->
-                            <div class="chat-input">
+                           <div class="chat-input">
                                 <form id="message-form" data-conversation-id="<%= conversationId %>">
                                     <!-- Hidden file input -->
                                     <input type="file" id="image-upload" name="attachment" style="display: none;" accept="image/*">
                                     
-                                    <div class="input-group">
-                                        <!-- Message input -->
-                                        <input type="text" id="message-input" class="form-control" placeholder="Type your message..." autocomplete="off">
-                                        
-                                        <div class="input-group-append">
-                                            <!-- Paperclip attachment button (now on the right) -->
+                                    <div class="input-group w-100"> <!-- Added w-100 for full width -->
+                                        <div class="input-group-append d-flex"> <!-- Use d-flex to ensure proper alignment -->
+                                            <!-- Paperclip attachment button (positioned on the left) -->
                                             <button type="button" class="btn btn-attachment" id="attachment-button" title="Attach image">
                                                 <i class="bi bi-paperclip"></i>
                                             </button>
-                                            
-                                            <!-- Send button -->
+                                        </div>
+                                        
+                                        <!-- Message input - fill all available space -->
+                                        <input type="text" id="message-input" class="form-control flex-grow-1" placeholder="Type your message..." autocomplete="off">
+                                        
+                                        <!-- Send button -->
+                                        <div class="input-group-append">
                                             <button type="submit" class="btn btn-primary">
                                                 <i class="bi bi-send-fill"></i>
                                             </button>
@@ -793,7 +842,7 @@
 <%- include('../partials/footer') %>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/socket.io.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 
 <script>
 
@@ -809,6 +858,47 @@ document.addEventListener('DOMContentLoaded', function() {
         let typingTimeout;
         let hasSeenNewMessages = true; // Track if user has seen all new messages
         
+        // Function to detect if a URL is a Cloudinary URL
+        function isCloudinaryUrl(url) {
+            return url && (url.includes('cloudinary.com') || url.includes('res.cloudinary.com'));
+        }
+
+        // Function to optimize Cloudinary image URLs for different purposes
+        function optimizeCloudinaryUrl(url, type) {
+            if (!isCloudinaryUrl(url)) return url;
+            
+            // Extract the base URL without transformation parameters
+            let baseUrl = url;
+            
+            if (url.includes('/upload/')) {
+                // Split at /upload/ to insert transformations
+                const parts = url.split('/upload/');
+                
+                switch(type) {
+                    case 'thumbnail':
+                        // Small thumbnail for conversation list
+                        return `${parts[0]}/upload/c_fill,w_100,h_100,g_auto/${parts[1]}`;
+                    
+                    case 'preview':
+                        // Medium size for image preview before sending
+                        return `${parts[0]}/upload/c_scale,w_300/${parts[1]}`;
+                    
+                    case 'chat':
+                        // For images in chat messages
+                        return `${parts[0]}/upload/c_limit,w_500,h_400/${parts[1]}`;
+                    
+                    case 'fullsize':
+                        // For viewing the full image
+                        return `${parts[0]}/upload/q_auto,f_auto/${parts[1]}`;
+                        
+                    default:
+                        return url;
+                }
+            }
+            
+            return url;
+        }
+
         // Connect to Socket.IO
         const socket = io({
             auth: {
@@ -905,36 +995,263 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
         
-        // Format date for Malaysian timezone (GMT+8) - only used for conversation list, not messages
-        function formatMalaysianTime(date) {
-            if (!(date instanceof Date)) {
-                date = new Date(date);
-            }
+        // Submit message form
+        messageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            // Adjust for Malaysian timezone (GMT+8)
-            const malaysianOptions = { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: true,
-                timeZone: 'Asia/Kuala_Lumpur'
-            };
+            // Check if there's a file or text message
+            const message = messageInput.value.trim();
+            const fileInput = document.getElementById('image-upload');
+            const file = fileInput ? fileInput.files[0] : null;
+
+            if (!message && !file) return;
             
-            return new Intl.DateTimeFormat('en-MY', malaysianOptions).format(date);
-        }
-        
-        // Get current Malaysian time
-        function getCurrentMalaysianTime() {
-            return formatMalaysianTime(new Date());
-        }
-        
-        // Updated addMessage function to handle images
-        window.addMessage = function(message, isOutgoing, isNew = false) {
-            // Make sure we have all the necessary data
-            if (!message || (!message.message_text && !message.has_attachment)) {
-                console.error('Invalid message object:', message);
+            // If there's a file, handle it with the file upload function
+            if (file) {
+                uploadFileWithMessage(file, message);
                 return;
             }
             
+            // Otherwise, send as a text-only message
+            console.log('Sending message:', message, 'to conversation:', conversationId);
+            
+            // Send message via API
+            fetch('/api/send-message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    conversationId: conversationId,
+                    message: message,
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('API response:', data);
+                if (data.success) {
+                    // Add message to chat
+                    addMessage(data.message, true);
+                    
+                    // Emit socket event for real-time
+                    socket.emit('send-message', {
+                        conversationId: conversationId,
+                        message: data.message
+                    });
+                    
+                    // Clear input
+                    messageInput.value = '';
+                } else {
+                    console.error('Error sending message:', data.error);
+                    alert('Failed to send message: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                alert('Failed to send message. Please try again.');
+            });
+        });
+        
+        // Upload file with optional message text
+        function uploadFileWithMessage(file, messageText) {
+            if (!file) return;
+            
+            // Validate file size
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB.');
+                return;
+            }
+            
+            // Create FormData
+            const formData = new FormData();
+            formData.append('conversationId', conversationId);
+            formData.append('message', messageText || '');
+            formData.append('attachment', file);
+            
+            // Create temporary message with loading indicator
+            const tempMsg = document.createElement('div');
+            tempMsg.classList.add('message', 'message-outgoing', 'temp-message');
+            
+            // Determine icon based on file type
+            let uploadingIcon;
+            let uploadingText;
+            
+            if (file.type.startsWith('image/')) {
+                uploadingIcon = 'bi-image';
+                uploadingText = 'Uploading image...';
+            } else if (file.type.includes('pdf')) {
+                uploadingIcon = 'bi-file-pdf';
+                uploadingText = 'Uploading PDF...';
+            } else if (file.type.includes('word') || file.type.includes('doc')) {
+                uploadingIcon = 'bi-file-word';
+                uploadingText = 'Uploading document...';
+            } else if (file.type.includes('excel') || file.type.includes('sheet')) {
+                uploadingIcon = 'bi-file-excel';
+                uploadingText = 'Uploading spreadsheet...';
+            } else {
+                uploadingIcon = 'bi-file-earmark';
+                uploadingText = 'Uploading file...';
+            }
+            
+            // Add message text if provided
+            let tempMsgContent = '';
+            if (messageText) {
+                tempMsgContent = `<div class="message-content">${messageText}</div>`;
+            }
+            
+            tempMsg.innerHTML = `
+                ${tempMsgContent}
+                <div class="image-uploading mt-1">
+                    <i class="bi ${uploadingIcon}"></i> ${uploadingText}
+                </div>
+                <div class="read-status unread">Sending...</div>
+            `;
+            
+            messagesContainer.appendChild(tempMsg);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Disable buttons during upload
+            const submitBtn = messageForm.querySelector('button[type="submit"]');
+            const attachmentButton = document.getElementById('attachment-button');
+            
+            if (submitBtn) submitBtn.disabled = true;
+            if (attachmentButton) attachmentButton.disabled = true;
+            
+            // Send the request
+            fetch('/api/send-message', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove temp message
+                const tempMsgs = document.querySelectorAll('.temp-message');
+                tempMsgs.forEach(el => {
+                    if (messagesContainer.contains(el)) {
+                        messagesContainer.removeChild(el);
+                    }
+                });
+                
+                if (data.success) {
+                    console.log('Message with attachment sent successfully:', data.message);
+                    
+                    // Create properly formatted message based on file type
+                    if (data.message.attachment_type && data.message.attachment_type.startsWith('image/')) {
+                        createMessageWithImage(data.message, true);
+                    } else {
+                        createMessageWithDocument(data.message, true);
+                    }
+                    
+                    // Clear inputs
+                    if (messageInput) messageInput.value = '';
+                    if (fileInput) fileInput.value = '';
+                    
+                    // Hide preview if shown
+                    const previewContainer = document.getElementById('image-preview-container');
+                    if (previewContainer) previewContainer.classList.add('d-none');
+                    
+                    // Emit socket event
+                    socket.emit('send-message', {
+                        conversationId: conversationId,
+                        message: data.message
+                    });
+                } else {
+                    console.error('Error sending file:', data.error);
+                    alert('Failed to send: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error uploading file:', error);
+                alert('Failed to upload file. Please try again.');
+                
+                // Remove temp message
+                const tempMsgs = document.querySelectorAll('.temp-message');
+                tempMsgs.forEach(el => {
+                    if (messagesContainer.contains(el)) {
+                        messagesContainer.removeChild(el);
+                    }
+                });
+            })
+            .finally(() => {
+                // Re-enable buttons
+                if (submitBtn) submitBtn.disabled = false;
+                if (attachmentButton) attachmentButton.disabled = false;
+            });
+        }
+        
+        // Typing indicator
+        messageInput.addEventListener('input', function() {
+            socket.emit('typing', {
+                conversationId: conversationId,
+                sender_type: 'customer'
+            });
+        });
+        
+        // Function to add a message to the chat
+        function addMessage(message, isOutgoing, isNew = false) {
+    // Determine if message has image or document attachment
+    if (message.has_attachment && message.attachment_url) {
+        const isImage = message.attachment_type && message.attachment_type.startsWith('image/');
+        
+        if (isImage) {
+            createMessageWithImage(message, isOutgoing, isNew);
+        } else {
+            createMessageWithDocument(message, isOutgoing);
+        }
+        return;
+    }
+    
+    // Text-only message
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message');
+    messageElement.classList.add(isOutgoing ? 'message-outgoing' : 'message-incoming');
+    
+    // Add 'new-message' class if this is a new incoming message
+    if (isNew && !isOutgoing) {
+        messageElement.classList.add('new-message');
+    }
+    
+    // Create message content element
+    if (message.message_text) {
+        const contentElement = document.createElement('div');
+        contentElement.classList.add('message-content');
+        contentElement.textContent = message.message_text;
+        messageElement.appendChild(contentElement);
+    }
+    
+    // Add timestamp
+    const timeElement = document.createElement('div');
+    timeElement.classList.add('message-time');
+    const messageTime = new Date(message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    timeElement.textContent = messageTime;
+    messageElement.appendChild(timeElement);
+    
+    // Add read status for outgoing messages
+    if (isOutgoing) {
+        const readStatus = document.createElement('div');
+        readStatus.classList.add('read-status');
+        readStatus.classList.add(message.is_read ? 'read' : 'unread');
+        readStatus.textContent = message.is_read ? 'Read' : 'Delivered';
+        messageElement.appendChild(readStatus);
+    }
+    
+    // Add message to container
+    messagesContainer.appendChild(messageElement);
+    
+    // Scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    // Update last message ID
+    if (message.id) {
+        lastMessageId = message.id;
+    }
+
+    // Update conversation in the list
+    updateConversationListItem(message);
+}
+
+        // Function to create a message with image attachment
+        function createMessageWithImage(message, isOutgoing, isNew = false) {
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
             messageElement.classList.add(isOutgoing ? 'message-outgoing' : 'message-incoming');
@@ -944,59 +1261,170 @@ document.addEventListener('DOMContentLoaded', function() {
                 messageElement.classList.add('new-message');
             }
             
-            let messageHTML = '';
-            
             // Add text content if exists
             if (message.message_text) {
-                messageHTML += `<div class="message-content">${message.message_text}</div>`;
+                const contentDiv = document.createElement('div');
+                contentDiv.classList.add('message-content');
+                contentDiv.textContent = message.message_text;
+                messageElement.appendChild(contentDiv);
             }
             
-            // Add image attachment if exists
+            // Add image attachment
             if (message.has_attachment && message.attachment_url) {
-                const isImage = message.attachment_type && message.attachment_type.startsWith('image/');
+                const attachmentDiv = document.createElement('div');
+                attachmentDiv.classList.add('message-attachment');
                 
-                if (isImage) {
-                    messageHTML += `
-                        <div class="message-attachment">
-                            <img src="${message.attachment_url}" class="message-image" alt="Image attachment">
-                        </div>
-                    `;
-                } else {
-                    messageHTML += `
-                        <div class="message-attachment">
-                            <a href="${message.attachment_url}" class="btn btn-sm btn-outline-secondary" target="_blank">
-                                <i class="bi bi-paperclip"></i> ${message.attachment_name || 'Attachment'}
-                            </a>
-                        </div>
-                    `;
+                // Handle Cloudinary URLs
+                let imageUrl = message.attachment_url;
+                let fullSizeUrl = message.attachment_url;
+                
+                if (isCloudinaryUrl(message.attachment_url)) {
+                    // Optimize for chat display
+                    imageUrl = optimizeCloudinaryUrl(message.attachment_url, 'chat');
+                    // Optimize for full-size view
+                    fullSizeUrl = optimizeCloudinaryUrl(message.attachment_url, 'fullsize');
                 }
+                
+                // Create link for image
+                const link = document.createElement('a');
+                link.href = fullSizeUrl;
+                link.target = '_blank';
+                
+                // Create image element
+                const img = document.createElement('img');
+                img.classList.add('message-image', 'loading');
+                img.alt = 'Image attachment';
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                img.style.display = 'block';
+                img.style.borderRadius = '8px';
+                img.style.marginTop = '8px';
+                
+                // Set the image source
+                img.src = imageUrl;
+                
+                // Add loading and error handlers
+                img.onload = function() {
+                    img.classList.remove('loading');
+                };
+                
+                img.onerror = function() {
+                    console.error('Failed to load image:', message.attachment_url);
+                    img.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWltYWdlLW9mZiI+PHBhdGggZD0iTTIgMmEyIDIgMCAwIDAtMiAydjE2YTIgMiAwIDAgMCAyIDJoMTZhMiAyIDAgMCAwIDItMlY4Ii8+PHBhdGggZD0iTTIgNmg4LjRjMS45MTQgMCAzLjgzLjUyMyA1IDEuNXYtNGEyIDIgMCAwIDAtMi0ySDRhMiAyIDAgMCAwLTIgMnYyeiIvPjxwYXRoIGQ9Ik0yIDE2bDEwLTMuNUwyMiAxNS41Ii8+PHBhdGggZD0iTTE4IDIuNVY1Ii8+PHBhdGggZD0iTTIwLjUgNC4yTDIyIDYiLz48cGF0aCBkPSJNMjIgMmwtOCA4Ii8+PC9zdmc+';
+                    img.style.width = '100px';
+                    img.style.height = '100px';
+                    img.alt = 'Image could not be loaded';
+                    img.classList.remove('loading');
+                };
+                
+                link.appendChild(img);
+                attachmentDiv.appendChild(link);
+                messageElement.appendChild(attachmentDiv);
             }
             
             // Add read status for outgoing messages
             if (isOutgoing) {
-                messageHTML += `
-                    <div class="read-status ${message.is_read ? 'read' : 'unread'}">
-                        ${message.is_read ? 'Read' : 'Delivered'}
-                    </div>
-                `;
+                const readStatus = document.createElement('div');
+                readStatus.classList.add('read-status');
+                readStatus.classList.add(message.is_read ? 'read' : 'unread');
+                readStatus.textContent = message.is_read ? 'Read' : 'Delivered';
+                messageElement.appendChild(readStatus);
             }
             
-            messageElement.innerHTML = messageHTML;
-            
-            // Add to container
+            // Add to messages container
             messagesContainer.appendChild(messageElement);
             
             // Scroll to bottom
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
             
-            // Update last message ID if available
+            // Update last message ID
             if (message.id) {
                 lastMessageId = message.id;
             }
 
             // Update conversation in the list
             updateConversationListItem(message);
-        };
+        }
+
+        // Function to create a message with document attachment
+        function createMessageWithDocument(message, isOutgoing) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add(isOutgoing ? 'message-outgoing' : 'message-incoming');
+            
+            // Add text content if exists
+            if (message.message_text) {
+                const contentDiv = document.createElement('div');
+                contentDiv.classList.add('message-content');
+                contentDiv.textContent = message.message_text;
+                messageElement.appendChild(contentDiv);
+            }
+            
+            // Add document attachment
+            if (message.has_attachment && message.attachment_url) {
+                const attachmentDiv = document.createElement('div');
+                attachmentDiv.classList.add('message-attachment');
+                
+                // Create document link with appropriate styling
+                const link = document.createElement('a');
+                link.href = message.attachment_url;
+                link.classList.add('btn', 'btn-sm', 'btn-outline-secondary');
+                link.target = '_blank';
+                link.style.display = 'inline-flex';
+                link.style.alignItems = 'center';
+                link.style.gap = '6px';
+                link.style.marginTop = '8px';
+                
+                // Add appropriate icon based on file type
+                const icon = document.createElement('i');
+                icon.classList.add('bi');
+                
+                if (message.attachment_type?.includes('pdf')) {
+                    icon.classList.add('bi-file-pdf');
+                    icon.style.color = '#dc3545';
+                } else if (message.attachment_type?.includes('word') || message.attachment_type?.includes('doc')) {
+                    icon.classList.add('bi-file-word');
+                    icon.style.color = '#0d6efd';
+                } else if (message.attachment_type?.includes('excel') || message.attachment_type?.includes('sheet')) {
+                    icon.classList.add('bi-file-excel');
+                    icon.style.color = '#198754';
+                } else {
+                    icon.classList.add('bi-file-earmark');
+                }
+                
+                link.appendChild(icon);
+                
+                // Add file name
+                const text = document.createTextNode(message.attachment_name || 'Attachment');
+                link.appendChild(text);
+                
+                attachmentDiv.appendChild(link);
+                messageElement.appendChild(attachmentDiv);
+            }
+            
+            // Add read status for outgoing messages
+            if (isOutgoing) {
+                const readStatus = document.createElement('div');
+                readStatus.classList.add('read-status');
+                readStatus.classList.add(message.is_read ? 'read' : 'unread');
+                readStatus.textContent = message.is_read ? 'Read' : 'Delivered';
+                messageElement.appendChild(readStatus);
+            }
+            
+            // Add to messages container
+            messagesContainer.appendChild(messageElement);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Update last message ID
+            if (message.id) {
+                lastMessageId = message.id;
+            }
+
+            // Update conversation in the list
+            updateConversationListItem(message);
+        }
 
         // Function to update the conversation list item with the latest message
         function updateConversationListItem(message) {
@@ -1010,51 +1438,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (message.message_text) {
                         lastMessageElement.textContent = message.message_text;
                     } else if (message.has_attachment) {
-                        const isImage = message.attachment_type && message.attachment_type.startsWith('image/');
-                        lastMessageElement.textContent = isImage ? '📷 Image' : '📎 File attachment';
+                        if (message.attachment_type && message.attachment_type.startsWith('image/')) {
+                            lastMessageElement.textContent = '📷 Image';
+                        } else if (message.attachment_type && message.attachment_type.includes('pdf')) {
+                            lastMessageElement.textContent = '📄 PDF Document';
+                        } else if (message.attachment_type && (message.attachment_type.includes('word') || message.attachment_type.includes('doc'))) {
+                            lastMessageElement.textContent = '📝 Document';
+                        } else if (message.attachment_type && (message.attachment_type.includes('excel') || message.attachment_type.includes('sheet'))) {
+                            lastMessageElement.textContent = '📊 Spreadsheet';
+                        } else {
+                            lastMessageElement.textContent = '📎 File attachment';
+                        }
                     }
                 }
 
                 const timeElement = conversationCard.querySelector('.conversation-time');
                 if (timeElement) {
                     const now = new Date();
-                    timeElement.innerHTML = `<i class="bi bi-clock"></i> ${getCurrentMalaysianTime()}`;
-                }
-
-                // If message is from provider and it's the active conversation,
-                // update the unread count and styling
-                if (message.sender_type === 'provider') {
-                    // The current conversation should show as read if it's visible
-                    if (pageIsVisible) {
-                        conversationCard.classList.remove('has-unread');
-                        const unreadBadge = conversationCard.querySelector('.unread-badge');
-                        if (unreadBadge) {
-                            unreadBadge.remove();
-                        }
-                    } else {
-                        // Otherwise, increment unread count
-                        conversationCard.classList.add('has-unread');
-                        let unreadBadge = conversationCard.querySelector('.unread-badge');
-                        
-                        if (!unreadBadge) {
-                            // Create badge if it doesn't exist
-                            unreadBadge = document.createElement('div');
-                            unreadBadge.classList.add('unread-badge');
-                            unreadBadge.textContent = '1';
-                            conversationCard.appendChild(unreadBadge);
-                        } else {
-                            // Otherwise increment count
-                            const currentCount = parseInt(unreadBadge.textContent) || 0;
-                            unreadBadge.textContent = (currentCount + 1).toString();
-                        }
-                    }
-                } else {
-                    // For outgoing messages, remove unread status
-                    conversationCard.classList.remove('has-unread');
-                    const unreadBadge = conversationCard.querySelector('.unread-badge');
-                    if (unreadBadge) {
-                        unreadBadge.remove();
-                    }
+                    timeElement.innerHTML = `<i class="bi bi-clock"></i> ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
                 }
 
                 // Move this conversation to the top if it's not already
@@ -1144,273 +1545,246 @@ document.addEventListener('DOMContentLoaded', function() {
     const removeButton = document.getElementById('remove-image');
     
     if (attachmentButton && fileInput) {
+        // Update file input to accept images and documents
+        fileInput.setAttribute('accept', 'image/*,.pdf,.doc,.docx,.xls,.xlsx');
+        
         // Trigger file selection when clicking the paperclip button
-        attachmentButton.addEventListener('click', function() {
+        attachmentButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             fileInput.click();
         });
         
         // Handle file selection
-        fileInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
             if (!file) return;
             
-            // Validate file type and size
-            if (!file.type.match('image.*')) {
-                alert('Please select an image file.');
-                fileInput.value = '';
-                return;
-            }
+            console.log('File selected:', file);
             
+            // Validate file size
             if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                alert('Image file size must be less than 5MB.');
+                alert('File size must be less than 5MB.');
                 fileInput.value = '';
                 return;
             }
             
-            // Display preview
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                if (imagePreview) {
-                    imagePreview.src = e.target.result;
-                    previewContainer.classList.remove('d-none');
+            // Show preview based on file type
+            if (imagePreview && previewContainer) {
+                if (file.type.startsWith('image/')) {
+                    // For images, show actual preview
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        imagePreview.src = e.target.result;
+                        imagePreview.classList.remove('document-icon');
+                        imagePreview.style.width = 'auto';
+                        imagePreview.style.maxHeight = '100px';
+                        imagePreview.style.maxWidth = '200px';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    // For documents, show an appropriate icon
+                    imagePreview.classList.add('document-icon');
+                    imagePreview.style.width = '64px';
+                    imagePreview.style.height = '64px';
+                    
+                    if (file.type.includes('pdf')) {
+                       imagePreview.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNkYzM1NDUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQuNSAySDZWMjJIMThWNS41TDE0LjUgMloiLz48cGF0aCBkPSJNMTQgMlY2SDE4Ii8+PHBhdGggZD0iTTEyIDEzTDkgMTNNMTIgMTdMOSAxN00xMiA5TDkgOU0xNSAxM0wxOCAxM00xNSA5TDE4IDkiLz48L3N2Zz4=';
+                    } else if (file.type.includes('word') || file.type.includes('doc')) {
+                        imagePreview.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwZDZlZmQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQuNSAySDZWMjJIMThWNS41TDE0LjUgMloiLz48cGF0aCBkPSJNMTQgMlY2SDE4Ii8+PHBhdGggZD0iTTE0IDE2SDhNMTQgMTJIOE0xNCA4SDgiLz48L3N2Zz4=';
+                    } else if (file.type.includes('excel') || file.type.includes('sheet')) {
+                        imagePreview.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxOTg3NTQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQuNSAySDZWMjJIMThWNS41TDE0LjUgMloiLz48cGF0aCBkPSJNMTQgMlY2SDE4Ii8+PHBhdGggZD0iTTggMTBIMTFNMTQgMTBIMTYiLz48cGF0aCBkPSJNOCAxNEgxMU0xNCAxNEgxNiIvPjxwYXRoIGQ9Ik04IDE4SDExTTE0IDE4SDE2Ii8+PC9zdmc+';
+                    } else {
+                        imagePreview.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2YzczNzYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQuNSAySDZWMjJIMThWNS41TDE0LjUgMloiLz48cGF0aCBkPSJNMTQgMlY2SDE4Ii8+PC9zdmc+';
+                    }
                 }
-            };
-            reader.readAsDataURL(file);
+                
+                // Show the preview container
+                previewContainer.classList.remove('d-none');
+            }
         });
-        
-        // Handle remove image button
-        if (removeButton) {
-            removeButton.addEventListener('click', function() {
-                fileInput.value = '';
-                previewContainer.classList.add('d-none');
-            });
-        }
     }
     
-    // Form submission handling for file uploads
-    const messageForm = document.getElementById('message-form');
-    if (messageForm) {
-        messageForm.addEventListener('submit', function(e) {
+    // Remove button for attachments
+    if (removeButton) {
+        removeButton.onclick = function(e) {
             e.preventDefault();
-            
-            const messageInput = document.getElementById('message-input');
-            const message = messageInput.value.trim();
-            const file = fileInput.files[0];
-            
-            // Don't submit if neither message nor file is provided
-            if (!message && !file) {
-                return;
-            }
-            
-            // Create FormData for the request
-            const formData = new FormData();
-            const conversationId = messageForm.dataset.conversationId;
-            formData.append('conversationId', conversationId);
-            
-            if (message) {
-                formData.append('message', message);
-            }
-            
-            if (file) {
-                formData.append('attachment', file);
-            }
-            
-            // Disable the send button and show sending indicator
-            const submitButton = this.querySelector('button[type="submit"]');
-            if (submitButton) submitButton.disabled = true;
-            
-            // Create temporary message element
-            const messagesContainer = document.getElementById('chat-messages');
-            const tempMessage = document.createElement('div');
-            tempMessage.classList.add('message', 'message-outgoing', 'temp-message');
-            
-            let tempContent = '';
-            if (message) {
-                tempContent += `<div class="message-content">${message}</div>`;
-            }
-            if (file) {
-                tempContent += `<div class="image-uploading mt-1">
-                    <i class="bi bi-cloud-upload"></i> Sending image...
-                </div>`;
-            }
-            tempContent += `<div class="read-status unread">Sending...</div>`;
-            
-            tempMessage.innerHTML = tempContent;
-            messagesContainer.appendChild(tempMessage);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            
-            // Send request
-            fetch('/api/send-message', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.status}`);
-                }
-                return response.json();
-            })
+            e.stopPropagation();
+            if (fileInput) fileInput.value = '';
+            if (previewContainer) previewContainer.classList.add('d-none');
+        };
+    }
+
+    // Check for unread messages count
+    function checkUnreadCount() {
+        fetch('/api/unread-count')
+            .then(response => response.json())
             .then(data => {
-                // Remove temporary message
-                const tempMessages = document.querySelectorAll('.temp-message');
-                tempMessages.forEach(el => {
-                    try {
-                        messagesContainer.removeChild(el);
-                    } catch (err) {
-                        console.warn('Could not remove temp message:', err);
-                    }
-                });
-                
                 if (data.success) {
-                    // Add confirmed message
-                    if (typeof window.addMessage === 'function') {
-                        window.addMessage(data.message, true);
+                    const unreadBadge = document.getElementById('unread-badge');
+                    if (unreadBadge && data.unreadCount > 0) {
+                        unreadBadge.textContent = data.unreadCount;
+                        unreadBadge.style.display = 'inline-block';
+                    } else if (unreadBadge) {
+                        unreadBadge.style.display = 'none';
                     }
-                    
-                    // Clear inputs
-                    messageInput.value = '';
-                    fileInput.value = '';
-                    previewContainer.classList.add('d-none');
-                    
-                    // Send via socket if available
-                    if (typeof socket !== 'undefined' && socket.connected) {
-                        socket.emit('send-message', {
-                            conversationId: conversationId,
-                            message: data.message
-                        });
-                    }
-                } else {
-                    alert('Failed to send message: ' + (data.error || 'Unknown error'));
                 }
             })
             .catch(error => {
-                console.error('Error sending message:', error);
-                alert('Failed to send message. Please try again.');
+                console.error('Error checking unread count:', error);
+            });
+    }
+    
+    // Check unread count every 30 seconds
+    setInterval(checkUnreadCount, 30000);
+    
+    // Check unread count on page load
+    checkUnreadCount();
+
+    // Fix existing images that might have Cloudinary URLs
+    function fixExistingImages() {
+        console.log('Fixing existing images for Cloudinary compatibility');
+        
+        // Find all message elements
+        const messages = document.querySelectorAll('.message');
+        
+        messages.forEach(function(message) {
+            // Find attachment elements within this message
+            const attachmentDivs = message.querySelectorAll('.message-attachment');
+            
+            attachmentDivs.forEach(function(attachmentDiv) {
+                // Check if there's an image inside
+                const image = attachmentDiv.querySelector('img.message-image');
                 
-                // Remove temporary message
-                const tempMessages = document.querySelectorAll('.temp-message');
-                tempMessages.forEach(el => {
-                    try {
-                        messagesContainer.removeChild(el);
-                    } catch (err) {
-                        console.warn('Could not remove temp message:', err);
+                if (image) {
+                    // Get current source
+                    const src = image.getAttribute('src');
+                    
+                    // Check if it's a Cloudinary URL
+                    if (isCloudinaryUrl && isCloudinaryUrl(src)) {
+                        // Optimize image for chat display
+                        const optimizedUrl = optimizeCloudinaryUrl(src, 'chat');
+                        image.src = optimizedUrl;
+                        
+                        // If the image is in a link, update the link too
+                        const link = image.closest('a');
+                        if (link) {
+                            link.href = optimizeCloudinaryUrl(src, 'fullsize');
+                        }
                     }
-                });
-            })
-            .finally(() => {
-                // Re-enable send button
-                if (submitButton) submitButton.disabled = false;
+                    
+                    // Add loading state
+                    image.classList.add('loading');
+                    
+                    // Add load and error handlers
+                    image.onload = function() {
+                        image.classList.remove('loading');
+                    };
+                    
+                    image.onerror = function() {
+                        console.error('Image failed to load:', src);
+                        image.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWltYWdlLW9mZiI+PHBhdGggZD0iTTIgMmEyIDIgMCAwIDAtMiAydjE2YTIgMiAwIDAgMCAyIDJoMTZhMiAyIDAgMCAwIDItMlY4Ii8+PHBhdGggZD0iTTIgNmg4LjRjMS45MTQgMCAzLjgzLjUyMyA1IDEuNXYtNGEyIDIgMCAwIDAtMi0ySDRhMiAyIDAgMCAwLTIgMnYyeiIvPjxwYXRoIGQ9Ik0yIDE2bDEwLTMuNUwyMiAxNS41Ii8+PHBhdGggZD0iTTE4IDIuNVY1Ii8+PHBhdGggZD0iTTIwLjUgNC4yTDIyIDYiLz48cGF0aCBkPSJNMjIgMmwtOCA4Ii8+PC9zdmc+';
+                        image.style.width = '100px';
+                        image.style.height = '100px';
+                        image.alt = 'Image could not be loaded';
+                        image.classList.remove('loading');
+                    };
+                }
+                
+                // Check if there's a document link inside
+                const documentLink = attachmentDiv.querySelector('a.btn');
+                
+                if (documentLink) {
+                    // Make sure the document link opens in a new tab
+                    documentLink.target = '_blank';
+                }
             });
         });
     }
 
-    // Connect to Socket.IO for real-time notifications
-    const notificationSocket = io({
-        auth: {
-            userType: 'customer'
+    // Add CSS for Cloudinary image loading states
+    const cloudinaryStyles = document.createElement('style');
+    cloudinaryStyles.textContent = `
+        .message-image.loading {
+            min-height: 80px;
+            background-color: rgba(0,0,0,0.05);
+            position: relative;
         }
-    });
-    
-    // Add notification dot in header
-    const updateHeaderNotifications = function(hasUnread) {
-        // Find all message icon elements in the header
-        const messageIcons = document.querySelectorAll('.nav-item .bi-chat-dots, .nav-item .bi-envelope');
         
-        messageIcons.forEach(icon => {
-            const parent = icon.parentElement;
-            if (parent) {
-                parent.classList.add('nav-notification-dot');
-                if (hasUnread) {
-                    parent.classList.add('has-notification');
-                } else {
-                    parent.classList.remove('has-notification');
-                }
+        .message-image.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 3px solid rgba(0, 119, 190, 0.2);
+            border-top-color: rgba(0, 119, 190, 0.8);
+            animation: cloudinary-loading 1s infinite linear;
+        }
+        
+        @keyframes cloudinary-loading {
+            to {
+                transform: rotate(360deg);
             }
-        });
-    };
-    
-    // Listen for new messages
-    notificationSocket.on('new-message', function(data) {
-        console.log('New message notification received:', data);
-        
-        // Update header notification
-        updateHeaderNotifications(true);
-        
-        // Show browser notification if supported
-        if (Notification && Notification.permission === "granted" && data.to_user_type === 'customer') {
-            const notification = new Notification('New message on HandyHub', {
-                body: 'You have received a new message',
-                icon: '/img/logo.png'
-            });
-            
-            notification.onclick = function() {
-                window.focus();
-                this.close();
-            };
         }
         
-        // Refresh the page to show the latest conversations
-        if (data.to_user_type === 'customer') {
-            // Refresh with notification indication
-            window.location.href = '/customer/conversations?notification=new';
+        .document-icon {
+            width: 64px !important;
+            height: 64px !important;
+            object-fit: contain;
+            background-color: white;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-    });
-    
-    // Function to poll for unread count
-    function checkUnreadMessages() {
-        fetch('/api/unread-count')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.unreadCount > 0) {
-                    // Update title to show unread count
-                    document.title = `(${data.unreadCount}) My Conversations`;
-                    
-                    // Update header notification indicator
-                    updateHeaderNotifications(true);
-                } else {
-                    // No unread messages
-                    updateHeaderNotifications(false);
-                }
-            })
-            .catch(error => {
-                console.error('Error checking unread messages:', error);
-            });
-    }
-    
-    // Check for unread messages every 30 seconds
-    setInterval(checkUnreadMessages, 30000);
-    
-    // Initial check
-    checkUnreadMessages();
-    
-    // Style all conversation cards with unread messages
-    document.querySelectorAll('.conversation-card').forEach(card => {
-        const unreadCount = parseInt(card.getAttribute('data-unread') || '0');
-        if (unreadCount > 0) {
-            card.classList.add('has-unread');
-        }
-    });
-    
-    // Request notification permission
-    if (Notification && Notification.permission !== "granted" && Notification.permission !== "denied") {
-        Notification.requestPermission();
-    }
-    
-    // Mobile view - toggle conversation list
-    const mediaQuery = window.matchMedia('(max-width: 992px)');
-    if (mediaQuery.matches) {
-        const conversationsCol = document.querySelector('.conversations-col');
-        const backBtn = document.querySelector('.back-link');
         
-        // Add a back button when in conversation view on mobile
-        if (conversationsCol && backBtn && window.location.search.includes('provider=')) {
-            backBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                window.location.href = '/customer/conversations';
-            });
+        .message-attachment .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background-color: white;
+            color: #333;
+            padding: 6px 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
         }
+        
+        .message-attachment .btn:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .message-outgoing .message-attachment .btn {
+            background-color: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        .message-outgoing .message-attachment .btn:hover {
+            background-color: rgba(255,255,255,0.3);
+        }
+        
+        .image-uploading {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+    `;
+    document.head.appendChild(cloudinaryStyles);
+
+    // Call fixExistingImages when the page loads
+    if (typeof isCloudinaryUrl === 'function') {
+        // Fix existing images once the DOM is fully loaded
+        setTimeout(fixExistingImages, 500);
     }
 });
 </script>
+
 </body> 
 </html>

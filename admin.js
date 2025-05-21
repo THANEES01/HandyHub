@@ -655,6 +655,8 @@ const getBookingDetails = async (req, res) => {
                 b.payment_reference,
                 b.base_fee,
                 b.fee_type,
+                b.service_charge,
+                b.total_amount,
                 b.completed_at,
                 b.cancellation_reason,
                 b.cancelled_at,
@@ -682,10 +684,40 @@ const getBookingDetails = async (req, res) => {
             return res.status(404).json({ error: 'Booking not found' });
         }
         
+        // Process the booking data to ensure correct values
+        const booking = bookingQuery.rows[0];
+        
+        // First try to use values from the payments table if available
+        // Otherwise fall back to service_bookings table fields
+        if (booking.payment_service_charge === null && booking.service_charge !== null) {
+            booking.payment_service_charge = booking.service_charge;
+        }
+        
+        if (booking.payment_base_fee === null && booking.base_fee !== null) {
+            booking.payment_base_fee = booking.base_fee;
+        }
+        
+        if (booking.payment_total_amount === null && booking.total_amount !== null) {
+            booking.payment_total_amount = booking.total_amount;
+        }
+        
+        // If we still don't have service charge but have base fee, calculate it
+        if (booking.payment_service_charge === null && booking.payment_base_fee !== null) {
+            booking.payment_service_charge = parseFloat(booking.payment_base_fee) * 0.05;
+        }
+        
+        // If we still don't have total amount but have base fee and service charge, calculate it
+        if (booking.payment_total_amount === null && 
+            booking.payment_base_fee !== null && 
+            booking.payment_service_charge !== null) {
+            booking.payment_total_amount = parseFloat(booking.payment_base_fee) + 
+                                          parseFloat(booking.payment_service_charge);
+        }
+        
         console.log('Successfully retrieved booking details');
         
         // Return booking details as JSON
-        res.json(bookingQuery.rows[0]);
+        res.json(booking);
         
     } catch (error) {
         console.error('Error fetching booking details:', error);
@@ -708,7 +740,7 @@ const getEarnings = async (req, res) => {
         
         console.log('Filter parameters:', { timeFilter, fromDate, toDate });
         
-        // Build the base query - UPDATED QUERY TO FIX THE CUSTOMER JOIN
+        // Build the base query - CORRECTED JOIN between payments and customers tables
         let queryText = `
             SELECT 
                 p.id,
@@ -726,7 +758,7 @@ const getEarnings = async (req, res) => {
                 sp.business_name as provider_name
             FROM payments p
             JOIN service_bookings sb ON p.booking_id = sb.id
-            JOIN customers c ON p.customer_id = c.user_id
+            JOIN customers c ON p.customer_id = c.user_id  -- FIXED JOIN condition
             JOIN service_providers sp ON sb.provider_id = sp.id
             WHERE p.status = 'Completed'
         `;
@@ -803,7 +835,7 @@ const getEarnings = async (req, res) => {
             }
         });
         
-        // Get total earnings (all time) - FIXED QUERY
+        // Get total earnings (all time) - FIXED QUERY with proper null handling
         const totalEarningsQuery = await pool.query(`
             SELECT COALESCE(SUM(service_charge), 0) as total_earnings, COUNT(*) as booking_count
             FROM payments
@@ -879,7 +911,7 @@ router.get('/debug-earnings', isAdmin, async (req, res) => {
             ORDER BY created_at DESC
         `);
         
-        // Query with the JOIN to verify the issue
+        // Query with the corrected JOIN
         const joinedPaymentsQuery = await pool.query(`
             SELECT 
                 p.id, p.booking_id, p.customer_id, 
@@ -888,20 +920,17 @@ router.get('/debug-earnings', isAdmin, async (req, res) => {
                 c.user_id as customer_user_id,
                 c.first_name, c.last_name
             FROM payments p
-            LEFT JOIN customers c ON p.customer_id = c.id
+            LEFT JOIN customers c ON p.customer_id = c.user_id
             ORDER BY p.created_at DESC
         `);
         
-        // Fixed query with the correct JOIN
-        const fixedPaymentsQuery = await pool.query(`
+        // Query the service_bookings table for comparison
+        const serviceBookingsQuery = await pool.query(`
             SELECT 
-                p.id, p.booking_id, p.customer_id, 
-                p.amount, p.service_charge,
-                c.id as customer_table_id, 
-                c.first_name, c.last_name
-            FROM payments p
-            LEFT JOIN customers c ON p.customer_id = c.user_id
-            ORDER BY p.created_at DESC
+                id, base_fee, service_charge, total_amount, payment_status
+            FROM service_bookings
+            WHERE payment_status = 'Paid'
+            ORDER BY id DESC
         `);
         
         res.json({
@@ -909,7 +938,7 @@ router.get('/debug-earnings', isAdmin, async (req, res) => {
                 count: rawPaymentsQuery.rows.length,
                 records: rawPaymentsQuery.rows
             },
-            incorrect_join: {
+            correct_join: {
                 count: joinedPaymentsQuery.rows.length,
                 records: joinedPaymentsQuery.rows.map(row => ({
                     payment_id: row.id,
@@ -920,15 +949,9 @@ router.get('/debug-earnings', isAdmin, async (req, res) => {
                     customer_name: row.first_name ? `${row.first_name} ${row.last_name}` : null
                 }))
             },
-            fixed_join: {
-                count: fixedPaymentsQuery.rows.length,
-                records: fixedPaymentsQuery.rows.map(row => ({
-                    payment_id: row.id,
-                    booking_id: row.booking_id,
-                    customer_id: row.customer_id,
-                    customer_table_id: row.customer_table_id,
-                    customer_name: row.first_name ? `${row.first_name} ${row.last_name}` : null
-                }))
+            service_bookings: {
+                count: serviceBookingsQuery.rows.length,
+                records: serviceBookingsQuery.rows
             }
         });
     } catch (error) {

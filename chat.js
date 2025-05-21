@@ -4,6 +4,12 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 // Get current file path (for ES modules)
 const __filename = fileURLToPath(import.meta.url);
@@ -11,60 +17,49 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Create uploads directory if it doesn't exist
-const uploadDir = path.join(__dirname, '../public/uploads/chat_attachments/');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-    console.log(`Created upload directory: ${uploadDir}`);
-}
-
-// Check permissions
-try {
-    fs.accessSync(uploadDir, fs.constants.W_OK);
-    console.log(`Upload directory ${uploadDir} is writable`);
-} catch (err) {
-    console.error(`Upload directory ${uploadDir} is not writable:`, err);
-}
-
-// Configure storage for Multer
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        // Generate unique filename with timestamp and preserve file extension
-        const timestamp = Date.now();
-        const originalName = path.parse(file.originalname).name.replace(/\s+/g, '_');
-        const extension = path.extname(file.originalname);
-        cb(null, `${timestamp}_${originalName}${extension}`);
-    }
+// Configure Cloudinary with credentials from environment variables
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// File filter to limit file types
-const fileFilter = (req, file, cb) => {
-    // Accept only images and common document types
-    const allowedFileTypes = [
-        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-        'application/pdf', 'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    ];
-    
-    if (allowedFileTypes.includes(file.mimetype)) {
-        cb(null, true);
-    } else {
-        cb(new Error('File type not allowed. Please upload images, PDFs, or documents.'), false);
-    }
-};
+// Create storage engine for multer with Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'chat_attachments', // Store files in this folder on Cloudinary
+    resource_type: 'auto', // Auto-detect resource type (image, raw, etc.)
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx'],
+    // Add optional transformation for images
+    transformation: [
+      { width: 1000, height: 1000, crop: 'limit' } // Resize large images to reasonable dimensions
+    ]
+  }
+});
 
-// Create the Multer middleware
+// Configure Multer with Cloudinary storage
 const upload = multer({
     storage: storage,
     limits: {
         fileSize: 5 * 1024 * 1024 // 5MB max file size
     },
-    fileFilter: fileFilter
+    fileFilter: (req, file, cb) => {
+        // Accept only images and common document types
+        const allowedFileTypes = [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+            'application/pdf', 'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ];
+        
+        if (allowedFileTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('File type not allowed. Please upload images, PDFs, or documents.'), false);
+        }
+    }
 });
 
 // Middleware to handle Multer errors
@@ -114,6 +109,22 @@ const isProviderAuth = (req, res, next) => {
     } else {
         res.redirect('/auth/provider-login');
     }
+};
+
+// Enhanced logging for Cloudinary uploads
+const logUploadDetails = async (req, res, next) => {
+  if (req.file) {
+    console.log('========== CLOUDINARY UPLOAD DETAILS ==========');
+    console.log('File received:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      cloudinaryUrl: req.file.path, // The full Cloudinary URL
+      publicId: req.file.filename // Cloudinary public ID
+    });
+    console.log('=========================================');
+  }
+  next();
 };
 
 /**
@@ -283,132 +294,132 @@ router.get('/customer/conversations', isCustomerAuth, async (req, res) => {
 });
 
 // Provider chat routes
-router.get('/provider/conversations', isProviderAuth, async (req, res) => {
-    try {
-        const providerId = req.session.user.providerId;
+// router.get('/provider/conversations', isProviderAuth, async (req, res) => {
+//     try {
+//         const providerId = req.session.user.providerId;
         
-        // Get all conversations for this provider with customer information
-        const conversationsQuery = `
-            SELECT 
-                cc.id as conversation_id,
-                cc.customer_id,
-                c.first_name || ' ' || c.last_name as customer_name,
-                (SELECT message_text FROM chat_messages 
-                 WHERE conversation_id = cc.id 
-                 ORDER BY created_at DESC LIMIT 1) as last_message,
-                (SELECT has_attachment FROM chat_messages
-                 WHERE conversation_id = cc.id
-                 ORDER BY created_at DESC LIMIT 1) as last_message_has_attachment,
-                (SELECT created_at FROM chat_messages 
-                 WHERE conversation_id = cc.id 
-                 ORDER BY created_at DESC LIMIT 1) as last_message_time,
-                (SELECT COUNT(*) FROM chat_messages 
-                 WHERE conversation_id = cc.id 
-                 AND sender_type = 'customer' 
-                 AND is_read = false) as unread_count
-            FROM chat_conversations cc
-            JOIN customers c ON cc.customer_id = c.user_id
-            WHERE cc.provider_id = $1
-            ORDER BY cc.last_message_at DESC
-        `;
+//         // Get all conversations for this provider with customer information
+//         const conversationsQuery = `
+//             SELECT 
+//                 cc.id as conversation_id,
+//                 cc.customer_id,
+//                 c.first_name || ' ' || c.last_name as customer_name,
+//                 (SELECT message_text FROM chat_messages 
+//                  WHERE conversation_id = cc.id 
+//                  ORDER BY created_at DESC LIMIT 1) as last_message,
+//                 (SELECT has_attachment FROM chat_messages
+//                  WHERE conversation_id = cc.id
+//                  ORDER BY created_at DESC LIMIT 1) as last_message_has_attachment,
+//                 (SELECT created_at FROM chat_messages 
+//                  WHERE conversation_id = cc.id 
+//                  ORDER BY created_at DESC LIMIT 1) as last_message_time,
+//                 (SELECT COUNT(*) FROM chat_messages 
+//                  WHERE conversation_id = cc.id 
+//                  AND sender_type = 'customer' 
+//                  AND is_read = false) as unread_count
+//             FROM chat_conversations cc
+//             JOIN customers c ON cc.customer_id = c.user_id
+//             WHERE cc.provider_id = $1
+//             ORDER BY cc.last_message_at DESC
+//         `;
         
-        const conversationsResult = await pool.query(conversationsQuery, [providerId]);
+//         const conversationsResult = await pool.query(conversationsQuery, [providerId]);
         
-        res.render('provider/conversations', {
-            title: 'My Conversations',
-            conversations: conversationsResult.rows,
-            user: req.session.user,
-            error: req.session.error,
-            success: req.session.success,
-            currentPage: 'conversations'
-        });
+//         res.render('provider/integrated-messaging', {
+//             title: 'My Conversations',
+//             conversations: conversationsResult.rows,
+//             user: req.session.user,
+//             error: req.session.error,
+//             success: req.session.success,
+//             currentPage: 'conversations'
+//         });
         
-        // Clear session messages
-        delete req.session.error;
-        delete req.session.success;
+//         // Clear session messages
+//         delete req.session.error;
+//         delete req.session.success;
         
-    } catch (error) {
-        console.error('Error fetching conversations:', error);
-        req.session.error = 'Failed to load conversations';
-        res.redirect('/provider/dashboard');
-    }
-});
+//     } catch (error) {
+//         console.error('Error fetching conversations:', error);
+//         req.session.error = 'Failed to load conversations';
+//         res.redirect('/provider/dashboard');
+//     }
+// });
 
 // Get conversation details for a provider
-router.get('/provider/chat/:conversationId', isProviderAuth, async (req, res) => {
-    try {
-        const providerId = req.session.user.providerId;
-        const conversationId = req.params.conversationId;
+// router.get('/provider/chat/:conversationId', isProviderAuth, async (req, res) => {
+//     try {
+//         const providerId = req.session.user.providerId;
+//         const conversationId = req.params.conversationId;
         
-        // Verify this conversation belongs to this provider
-        const conversationResult = await pool.query(`
-            SELECT 
-                cc.id, 
-                cc.customer_id,
-                c.first_name || ' ' || c.last_name as customer_name
-            FROM chat_conversations cc
-            JOIN customers c ON cc.customer_id = c.user_id
-            WHERE cc.id = $1 AND cc.provider_id = $2
-        `, [conversationId, providerId]);
+//         // Verify this conversation belongs to this provider
+//         const conversationResult = await pool.query(`
+//             SELECT 
+//                 cc.id, 
+//                 cc.customer_id,
+//                 c.first_name || ' ' || c.last_name as customer_name
+//             FROM chat_conversations cc
+//             JOIN customers c ON cc.customer_id = c.user_id
+//             WHERE cc.id = $1 AND cc.provider_id = $2
+//         `, [conversationId, providerId]);
         
-        if (conversationResult.rows.length === 0) {
-            req.session.error = 'Conversation not found';
-            return res.redirect('/provider/conversations');
-        }
+//         if (conversationResult.rows.length === 0) {
+//             req.session.error = 'Conversation not found';
+//             return res.redirect('/provider/conversations');
+//         }
         
-        const conversation = conversationResult.rows[0];
+//         const conversation = conversationResult.rows[0];
         
-        // Get messages for this conversation
-        const messagesResult = await pool.query(`
-            SELECT 
-                id, 
-                sender_id,
-                sender_type,
-                message_text,
-                created_at,
-                is_read,
-                has_attachment,
-                attachment_url,
-                attachment_type,
-                attachment_name
-            FROM chat_messages
-            WHERE conversation_id = $1
-            ORDER BY created_at ASC
-        `, [conversationId]);
+//         // Get messages for this conversation
+//         const messagesResult = await pool.query(`
+//             SELECT 
+//                 id, 
+//                 sender_id,
+//                 sender_type,
+//                 message_text,
+//                 created_at,
+//                 is_read,
+//                 has_attachment,
+//                 attachment_url,
+//                 attachment_type,
+//                 attachment_name
+//             FROM chat_messages
+//             WHERE conversation_id = $1
+//             ORDER BY created_at ASC
+//         `, [conversationId]);
         
-        // Mark messages as read if they are from the customer
-        if (messagesResult.rows.some(msg => msg.sender_type === 'customer' && !msg.is_read)) {
-            await pool.query(`
-                UPDATE chat_messages
-                SET is_read = true
-                WHERE conversation_id = $1 AND sender_type = 'customer' AND is_read = false
-            `, [conversationId]);
-        }
+//         // Mark messages as read if they are from the customer
+//         if (messagesResult.rows.some(msg => msg.sender_type === 'customer' && !msg.is_read)) {
+//             await pool.query(`
+//                 UPDATE chat_messages
+//                 SET is_read = true
+//                 WHERE conversation_id = $1 AND sender_type = 'customer' AND is_read = false
+//             `, [conversationId]);
+//         }
         
-        res.render('provider/chat', {
-            title: `Chat with ${conversation.customer_name}`,
-            user: req.session.user,
-            conversation: conversation,
-            messages: messagesResult.rows,
-            currentPage: 'conversations',
-            error: req.session.error,
-            success: req.session.success
-        });
+//         res.render('provider/chat', {
+//             title: `Chat with ${conversation.customer_name}`,
+//             user: req.session.user,
+//             conversation: conversation,
+//             messages: messagesResult.rows,
+//             currentPage: 'conversations',
+//             error: req.session.error,
+//             success: req.session.success
+//         });
         
-        // Clear session messages
-        delete req.session.error;
-        delete req.session.success;
+//         // Clear session messages
+//         delete req.session.error;
+//         delete req.session.success;
         
-    } catch (error) {
-        console.error('Error loading chat:', error);
-        req.session.error = 'Failed to load chat';
-        res.redirect('/provider/conversations');
-    }
-});
+//     } catch (error) {
+//         console.error('Error loading chat:', error);
+//         req.session.error = 'Failed to load chat';
+//         res.redirect('/provider/conversations');
+//     }
+// });
 
 // API endpoint to send a message with file attachment (for both customer and provider)
-router.post('/api/send-message', isAuthenticated, upload.single('attachment'), handleMulterErrors, async (req, res) => {
-     try {
+router.post('/api/send-message', isAuthenticated, upload.single('attachment'), handleMulterErrors, logUploadDetails, async (req, res) => {
+    try {
         console.log('Message API called with body:', req.body);
         console.log('Session user:', req.session.user);
         
@@ -481,24 +492,41 @@ router.post('/api/send-message', isAuthenticated, upload.single('attachment'), h
         let attachmentUrl = null;
         let attachmentType = null;
         let attachmentName = null;
+        let messageText = message || ''; // Default to empty string instead of null
         
         if (req.file) {
             hasAttachment = true;
             
-            // Create a web-accessible path for the attachment
-            attachmentUrl = `/uploads/chat_attachments/${req.file.filename}`;
+            // Use the Cloudinary URL provided by multer-storage-cloudinary
+            attachmentUrl = req.file.path; // This contains the full Cloudinary URL
             attachmentType = req.file.mimetype;
             attachmentName = req.file.originalname;
             
-            console.log('Attachment processed:', {
+            // If no message text is provided, set a default based on file type
+            if (!messageText) {
+                if (attachmentType.startsWith('image/')) {
+                    messageText = "📷 Image";
+                } else if (attachmentType.includes('pdf')) {
+                    messageText = "📄 PDF Document";
+                } else if (attachmentType.includes('word') || attachmentType.includes('doc')) {
+                    messageText = "📝 Document";
+                } else if (attachmentType.includes('excel') || attachmentType.includes('sheet')) {
+                    messageText = "📊 Spreadsheet";
+                } else {
+                    messageText = "📎 File attachment";
+                }
+            }
+            
+            console.log('Cloudinary attachment processed:', {
                 url: attachmentUrl,
                 type: attachmentType,
-                name: attachmentName
+                name: attachmentName,
+                messageText: messageText
             });
         }
         
         // Insert the message with attachment information if present
-        console.log('Inserting message into database');
+        console.log('Inserting message into database with message_text:', messageText);
         const messageResult = await pool.query(`
             INSERT INTO chat_messages 
             (conversation_id, sender_id, sender_type, message_text, has_attachment, 
@@ -509,7 +537,7 @@ router.post('/api/send-message', isAuthenticated, upload.single('attachment'), h
             conversationId, 
             userId, 
             userType, 
-            message || null, 
+            messageText, // Use messageText instead of message || null
             hasAttachment,
             attachmentUrl,
             attachmentType,
@@ -531,7 +559,7 @@ router.post('/api/send-message', isAuthenticated, upload.single('attachment'), h
             id: messageResult.rows[0].id,
             sender_id: userId,
             sender_type: userType,
-            message_text: message || null,
+            message_text: messageText,
             created_at: messageResult.rows[0].created_at,
             is_read: messageResult.rows[0].is_read || false,
             has_attachment: hasAttachment,
@@ -757,6 +785,32 @@ router.post('/api/mark-messages-read', isAuthenticated, async (req, res) => {
         });
     }
 });
+
+// Utility function to delete a file from Cloudinary if needed
+const deleteFileFromCloudinary = async (publicId) => {
+    if (!publicId) return;
+    
+    try {
+        // Extract public ID from the full URL if needed
+        let id = publicId;
+        if (publicId.includes('cloudinary.com')) {
+            // Example URL: https://res.cloudinary.com/mycloud/image/upload/v1234567890/chat_attachments/abcdef123456
+            const parts = publicId.split('/');
+            id = parts[parts.length - 1];
+            // If the folder is included in the public ID
+            if (id.includes('/')) {
+                id = 'chat_attachments/' + id.split('/').pop();
+            }
+        }
+        
+        console.log(`Attempting to delete file with public ID: ${id}`);
+        const result = await cloudinary.uploader.destroy(id);
+        console.log('Cloudinary delete result:', result);
+        return result;
+    } catch (error) {
+        console.error('Error deleting file from Cloudinary:', error);
+    }
+};
 
 // Debug endpoint to view messages for a conversation
 router.get('/debug-messages/:conversationId', isCustomerAuth, async (req, res) => {
