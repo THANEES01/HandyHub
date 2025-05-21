@@ -955,8 +955,8 @@ router.get('/customer/bookings', isCustomerAuth, async (req, res) => {
 
 // API endpoint to get available time slots
 router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
-    try {
-        const { providerId, date, dayOfWeek } = req.query;
+       try {
+        const { providerId, date, dayOfWeek, serviceType, bookingHours } = req.query;
         
         if (!providerId || !date) {
             return res.status(400).json({ error: 'Provider ID and date are required' });
@@ -982,24 +982,63 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
         const availability = availabilityResult.rows[0];
         
         // Get ALL existing bookings for this provider and date, regardless of status
-        // This includes pending bookings that haven't been paid for yet
         const bookingsResult = await pool.query(
-            `SELECT time_slot FROM service_bookings 
+            `SELECT time_slot, service_type, booking_hours FROM service_bookings 
              WHERE provider_id = $1 AND preferred_date = $2 
              AND status NOT IN ('Cancelled')`,
             [providerId, date]
         );
         
-        // Create a Set of all booked slots for quick lookup
-        const bookedSlots = new Set(bookingsResult.rows.map(row => row.time_slot));
-        console.log(`Found ${bookedSlots.size} booked slots for ${date}:`, [...bookedSlots]);
+        console.log(`Found ${bookingsResult.rows.length} existing bookings for ${date}:`, bookingsResult.rows);
         
-        // Generate available time slots based on availability and booked slots
+        // Generate all possible 1-hour time slots for the day
         const startTime = new Date(`${date}T${availability.start_time}`);
         const endTime = new Date(`${date}T${availability.end_time}`);
         const slotDuration = parseInt(availability.slot_duration) || 60; // in minutes
         
-        const availableSlots = [];
+        // Create a Set to track all occupied 1-hour slots
+        const occupiedSlots = new Set();
+        
+        // Process each existing booking to determine which 1-hour slots it occupies
+        bookingsResult.rows.forEach(booking => {
+            const timeSlot = booking.time_slot;
+            const bookingHours = booking.booking_hours || 1;
+            const isHomeCleaningMultiHour = booking.service_type === 'Home Cleaning' && bookingHours > 1;
+            
+            if (isHomeCleaningMultiHour) {
+                // For multi-hour Home Cleaning bookings, parse the time slot and mark all occupied hours
+                const [startTimeStr, endTimeStr] = timeSlot.split(' - ');
+                const bookingStartTime = parseTimeString(startTimeStr, date);
+                const bookingEndTime = parseTimeString(endTimeStr, date);
+                
+                // Mark each 1-hour slot within this booking as occupied
+                let currentSlotTime = new Date(bookingStartTime);
+                while (currentSlotTime < bookingEndTime) {
+                    const slotEndTime = new Date(currentSlotTime);
+                    slotEndTime.setMinutes(slotEndTime.getMinutes() + slotDuration);
+                    
+                    const oneHourSlot = `${formatTime(currentSlotTime)} - ${formatTime(slotEndTime)}`;
+                    occupiedSlots.add(oneHourSlot);
+                    
+                    currentSlotTime.setMinutes(currentSlotTime.getMinutes() + slotDuration);
+                }
+                
+                console.log(`Multi-hour booking ${timeSlot} occupies slots:`, 
+                    Array.from(occupiedSlots).filter(slot => {
+                        const slotStart = parseTimeString(slot.split(' - ')[0], date);
+                        return slotStart >= bookingStartTime && slotStart < bookingEndTime;
+                    })
+                );
+            } else {
+                // For single-hour bookings, just mark the exact slot as occupied
+                occupiedSlots.add(timeSlot);
+            }
+        });
+        
+        console.log(`Total occupied 1-hour slots:`, Array.from(occupiedSlots));
+        
+        // Create all potential 1-hour time slots that are not occupied
+        const availableOneHourSlots = [];
         let currentTime = new Date(startTime);
         
         while (currentTime < endTime) {
@@ -1009,9 +1048,13 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
             if (slotEndTime <= endTime) {
                 const timeSlot = `${formatTime(currentTime)} - ${formatTime(slotEndTime)}`;
                 
-                // Check if this slot is not already booked
-                if (!bookedSlots.has(timeSlot)) {
-                    availableSlots.push(timeSlot);
+                // Check if this slot is not occupied
+                if (!occupiedSlots.has(timeSlot)) {
+                    availableOneHourSlots.push({
+                        slot: timeSlot,
+                        startTimeObj: new Date(currentTime),
+                        endTimeObj: new Date(slotEndTime)
+                    });
                 }
             }
             
@@ -1019,11 +1062,69 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
             currentTime.setMinutes(currentTime.getMinutes() + slotDuration);
         }
         
+        console.log(`Available 1-hour slots: ${availableOneHourSlots.length}`);
+        
+        let availableSlots = [];
+        
+        // Special handling for Home Cleaning with multiple hours
+        if (serviceType === 'Home Cleaning' && bookingHours && bookingHours > 1) {
+            const hoursNeeded = parseInt(bookingHours);
+            const usedStartTimes = new Set();
+            
+            // Find slots that have enough consecutive availability
+            for (let i = 0; i < availableOneHourSlots.length; i++) {
+                const currentStartTime = availableOneHourSlots[i].startTimeObj.getTime();
+                if (usedStartTimes.has(currentStartTime)) {
+                    continue;
+                }
+                
+                // Check if we have enough consecutive slots from this position
+                if (i + hoursNeeded <= availableOneHourSlots.length) {
+                    let hasConsecutiveSlots = true;
+                    
+                    // Check each consecutive slot
+                    for (let j = 0; j < hoursNeeded - 1; j++) {
+                        const currentSlotEnd = availableOneHourSlots[i + j].endTimeObj;
+                        const nextSlotStart = availableOneHourSlots[i + j + 1].startTimeObj;
+                        
+                        // Check if slots are consecutive
+                        if (currentSlotEnd.getTime() !== nextSlotStart.getTime()) {
+                            hasConsecutiveSlots = false;
+                            break;
+                        }
+                    }
+                    
+                    if (hasConsecutiveSlots) {
+                        // This is a valid starting slot for the requested hours
+                        const startSlot = availableOneHourSlots[i].slot.split(' - ')[0];
+                        const endSlot = availableOneHourSlots[i + hoursNeeded - 1].slot.split(' - ')[1];
+                        const combinedSlot = `${startSlot} - ${endSlot}`;
+                        
+                        availableSlots.push(combinedSlot);
+                        
+                        // Mark all the time slots used by this multi-hour booking as unavailable
+                        for (let k = 0; k < hoursNeeded; k++) {
+                            if (i + k < availableOneHourSlots.length) {
+                                usedStartTimes.add(availableOneHourSlots[i + k].startTimeObj.getTime());
+                            }
+                        }
+                    }
+                }
+            }
+            
+            console.log(`Found ${availableSlots.length} non-overlapping ${hoursNeeded}-hour slots for Home Cleaning`);
+        } else {
+            // For other services or 1-hour bookings, use the available 1-hour slots
+            availableSlots = availableOneHourSlots.map(slot => slot.slot);
+        }
+        
         res.json({ 
             slots: availableSlots,
             dayOfWeek: dayName,
             slotDuration: slotDuration,
-            providerHours: `${formatTime(startTime)} - ${formatTime(endTime)}`
+            providerHours: `${formatTime(startTime)} - ${formatTime(endTime)}`,
+            isHomeCleaningMultiHour: serviceType === 'Home Cleaning' && bookingHours > 1,
+            hoursRequested: bookingHours || 1
         });
         
     } catch (error) {
@@ -1031,6 +1132,23 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
         res.status(500).json({ error: 'Failed to get available time slots' });
     }
 });
+
+// Helper function to parse time string like "9:00 AM" into a Date object
+function parseTimeString(timeStr, dateStr) {
+    const [time, period] = timeStr.trim().split(' ');
+    const [hours, minutes] = time.split(':').map(Number);
+    
+    let hour24 = hours;
+    if (period === 'PM' && hours !== 12) {
+        hour24 += 12;
+    } else if (period === 'AM' && hours === 12) {
+        hour24 = 0;
+    }
+    
+    const date = new Date(dateStr);
+    date.setHours(hour24, minutes, 0, 0);
+    return date;
+}
 
 // Debug endpoint to examine image storage
 router.get('/debug-images/:bookingId', isCustomerAuth, async (req, res) => {
