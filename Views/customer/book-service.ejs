@@ -202,6 +202,33 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+
+        /* Validation styles */
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+        }
+
+        .form-control.is-valid {
+            border-color: #28a745;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+        }
+
+        .invalid-feedback {
+            display: block;
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.875em;
+            color: #dc3545;
+        }
+
+        .valid-feedback {
+            display: block;
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.875em;
+            color: #28a745;
+        }
     </style>
 </head>
 <body>
@@ -286,15 +313,6 @@
                                     <strong>No service categories available.</strong> Please contact support.
                                 </div>
                             <% } %>
-
-                            <!-- Enhanced hourly booking for Home Cleaning -->
-                            <!-- <div class="mb-3 home-cleaning-notice" id="homeCleaningNotice" style="display: none;">
-                                <div class="alert alert-info">
-                                    <i class="bi bi-info-circle me-2"></i>
-                                    <strong>Home Cleaning Multi-Hour Booking:</strong>
-                                    <span>When booking for multiple hours, available time slots will show only options with enough consecutive hours available.</span>
-                                </div>
-                            </div> -->
 
                             <!-- Hourly booking section -->
                             <div class="mb-3 hourly-booking-section" id="hourlyBookingSection" style="display: none;">
@@ -442,6 +460,82 @@
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('preferredDate').min = today;
         
+        // Real-time validation for required fields
+        const requiredInputs = document.querySelectorAll('input[required], textarea[required], select[required]');
+
+        requiredInputs.forEach(input => {
+            input.addEventListener('blur', function() {
+                validateField(this);
+            });
+            
+            input.addEventListener('input', function() {
+                // Remove invalid class when user starts typing
+                if (this.classList.contains('is-invalid')) {
+                    this.classList.remove('is-invalid');
+                    const feedback = this.parentNode.querySelector('.invalid-feedback');
+                    if (feedback) {
+                        feedback.remove();
+                    }
+                }
+            });
+        });
+
+        function validateField(field) {
+            const value = field.value.trim();
+            let isValid = true;
+            let message = '';
+            
+            // Check if required field is empty
+            if (field.hasAttribute('required') && !value) {
+                isValid = false;
+                message = `${field.previousElementSibling.textContent.replace('*', '')} is required.`;
+            }
+            
+            // Specific validations
+            if (value && field.type === 'email') {
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailPattern.test(value)) {
+                    isValid = false;
+                    message = 'Please enter a valid email address.';
+                }
+            }
+            
+            if (value && field.type === 'tel') {
+                const phonePattern = /^[\+]?[\d\s\-\(\)]{8,}$/;
+                if (!phonePattern.test(value)) {
+                    isValid = false;
+                    message = 'Please enter a valid phone number.';
+                }
+            }
+            
+            if (value && field.name === 'zipCode') {
+                const zipPattern = /^\d{5}$/;
+                if (!zipPattern.test(value)) {
+                    isValid = false;
+                    message = 'Please enter a valid 5-digit ZIP code.';
+                }
+            }
+            
+            // Update field appearance
+            const existingFeedback = field.parentNode.querySelector('.invalid-feedback');
+            if (existingFeedback) {
+                existingFeedback.remove();
+            }
+            
+            if (!isValid) {
+                field.classList.add('is-invalid');
+                field.classList.remove('is-valid');
+                
+                const feedback = document.createElement('div');
+                feedback.className = 'invalid-feedback';
+                feedback.textContent = message;
+                field.parentNode.appendChild(feedback);
+            } else if (value) {
+                field.classList.add('is-valid');
+                field.classList.remove('is-invalid');
+            }
+        }
+        
         // Image preview functionality
         const imageInput = document.getElementById('problemImages');
         const previewContainer = document.getElementById('imagePreviewContainer');
@@ -470,13 +564,13 @@
         // Service type selection functionality and hourly booking section
         const serviceTypeSelect = document.getElementById('serviceType');
         const hourlyBookingSection = document.getElementById('hourlyBookingSection');
-        // const bookingHoursInput = document.getElementById('bookingHours');
         const hourlyBaseRateSpan = document.getElementById('hourlyBaseRate');
         const totalFeeSpan = document.getElementById('totalFee');
         const totalFeeInput = document.getElementById('totalFeeInput');
         
         // Function to update total fee calculation
         function updateTotalFee() {
+            const bookingHoursInput = document.getElementById('bookingHours');
             const hours = parseInt(bookingHoursInput.value) || 1;
             const baseRate = parseFloat(hourlyBaseRateSpan.textContent) || 0;
             const total = hours * baseRate;
@@ -484,47 +578,41 @@
             totalFeeInput.value = total;
         }
         
-        // Initialize with any existing values
-        // if (bookingHoursInput) {
-        //     bookingHoursInput.addEventListener('change', updateTotalFee);
-        //     updateTotalFee(); // Initial calculation
-        // }
-
         // Add event listener to booking hours input for Home Cleaning
-const bookingHoursInput = document.getElementById('bookingHours');
-if (bookingHoursInput) {
-    bookingHoursInput.addEventListener('change', function() {
-        const serviceTypeInput = document.querySelector('input[name="serviceType"][type="hidden"]') || 
-                               document.getElementById('serviceType');
-                               
-        const serviceType = serviceTypeInput?.value || 
-                         (serviceTypeInput?.options ? serviceTypeInput.options[serviceTypeInput.selectedIndex]?.value : '');
-        
-        // Only reload time slots if Home Cleaning is selected and we have a date selected
-        if (serviceType === 'Home Cleaning' && document.getElementById('preferredDate').value) {
-            // Update UI to show we're refreshing time slots
-            const timeSlotSelect = document.getElementById('timeSlot');
-            const wasDisabled = timeSlotSelect.disabled;
-            
-            if (!wasDisabled) {
-                timeSlotSelect.disabled = true;
-                const originalOptions = timeSlotSelect.innerHTML;
-                timeSlotSelect.innerHTML = '<option value="" disabled selected>Updating for ' + this.value + ' hour booking...</option>';
+        const bookingHoursInput = document.getElementById('bookingHours');
+        if (bookingHoursInput) {
+            bookingHoursInput.addEventListener('change', function() {
+                const serviceTypeInput = document.querySelector('input[name="serviceType"][type="hidden"]') || 
+                                       document.getElementById('serviceType');
+                                       
+                const serviceType = serviceTypeInput?.value || 
+                                 (serviceTypeInput?.options ? serviceTypeInput.options[serviceTypeInput.selectedIndex]?.value : '');
                 
-                // Small delay to ensure the UI updates before potentially heavy operation
-                setTimeout(function() {
-                    loadAvailableTimeSlots();
-                }, 100);
-            } else {
-                // If already disabled (e.g., no date selected), just update the total fee
-                updateTotalFee();
-            }
-        } else {
-            // For other service types, just update the fee
-            updateTotalFee();
+                // Only reload time slots if Home Cleaning is selected and we have a date selected
+                if (serviceType === 'Home Cleaning' && document.getElementById('preferredDate').value) {
+                    // Update UI to show we're refreshing time slots
+                    const timeSlotSelect = document.getElementById('timeSlot');
+                    const wasDisabled = timeSlotSelect.disabled;
+                    
+                    if (!wasDisabled) {
+                        timeSlotSelect.disabled = true;
+                        const originalOptions = timeSlotSelect.innerHTML;
+                        timeSlotSelect.innerHTML = '<option value="" disabled selected>Updating for ' + this.value + ' hour booking...</option>';
+                        
+                        // Small delay to ensure the UI updates before potentially heavy operation
+                        setTimeout(function() {
+                            loadAvailableTimeSlots();
+                        }, 100);
+                    } else {
+                        // If already disabled (e.g., no date selected), just update the total fee
+                        updateTotalFee();
+                    }
+                } else {
+                    // For other service types, just update the fee
+                    updateTotalFee();
+                }
+            });
         }
-    });
-}
         
         if (serviceTypeSelect) {
             serviceTypeSelect.addEventListener('change', function() {
@@ -577,143 +665,143 @@ if (bookingHoursInput) {
         // Function to load available time slots
         function loadAvailableTimeSlots(isManualRefresh = false) {
             const dateInput = document.getElementById('preferredDate');
-    const date = dateInput.value;
-    const providerId = document.querySelector('input[name="providerId"]').value;
-    const serviceTypeInput = document.querySelector('input[name="serviceType"][type="hidden"]') || 
-                           document.getElementById('serviceType');
-    
-    if (date) {
-        // Show loading state
-        const timeSlotSelect = document.getElementById('timeSlot');
-        timeSlotSelect.innerHTML = '<option value="" disabled selected>Loading available slots...</option>';
-        timeSlotSelect.disabled = true;
-        
-        // If it's a manual refresh, show a spinning icon on the refresh button if it exists
-        if (isManualRefresh && document.querySelector('.refresh-slots-btn i')) {
-            const refreshBtn = document.querySelector('.refresh-slots-btn i');
-            refreshBtn.classList.add('refresh-icon');
-        }
-        
-        // Get day of week from selected date
-        const selectedDate = new Date(date);
-        const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
-        
-        // Get service type and booking hours
-        let serviceType = '';
-        if (serviceTypeInput) {
-            serviceType = serviceTypeInput.value || (serviceTypeInput.options ? serviceTypeInput.options[serviceTypeInput.selectedIndex]?.value : '');
-        }
-        
-        // Check if we need to handle multi-hour booking for Home Cleaning
-        let bookingHours = 1;
-        const feeType = document.querySelector('input[name="feeType"][type="hidden"]')?.value;
-        const hourlyBookingSection = document.getElementById('hourlyBookingSection');
-        
-        if (serviceType === 'Home Cleaning' && feeType === 'per hour' && hourlyBookingSection && hourlyBookingSection.style.display !== 'none') {
-            bookingHours = parseInt(document.getElementById('bookingHours').value) || 1;
-        }
-        
-        console.log(`Fetching slots for: Service=${serviceType}, Hours=${bookingHours}`);
-        
-        // Fetch available time slots for this date and provider
-        fetch(`/api/available-slots?providerId=${providerId}&date=${date}&dayOfWeek=${dayOfWeek}&serviceType=${encodeURIComponent(serviceType)}&bookingHours=${bookingHours}`)
-            .then(response => response.json())
-            .then(data => {
-                timeSlotSelect.innerHTML = ''; // Clear existing options
-                timeSlotSelect.disabled = false;
+            const date = dateInput.value;
+            const providerId = document.querySelector('input[name="providerId"]').value;
+            const serviceTypeInput = document.querySelector('input[name="serviceType"][type="hidden"]') || 
+                                   document.getElementById('serviceType');
+            
+            if (date) {
+                // Show loading state
+                const timeSlotSelect = document.getElementById('timeSlot');
+                timeSlotSelect.innerHTML = '<option value="" disabled selected>Loading available slots...</option>';
+                timeSlotSelect.disabled = true;
                 
-                if (data.slots && data.slots.length > 0) {
-                    // Add a default option
-                    const defaultOption = document.createElement('option');
-                    defaultOption.value = "";
-                    defaultOption.textContent = "Select a time slot";
-                    defaultOption.disabled = true;
-                    defaultOption.selected = true;
-                    timeSlotSelect.appendChild(defaultOption);
-                    
-                    // Add each available slot
-                    data.slots.forEach(slot => {
-                        const option = document.createElement('option');
-                        option.value = slot;
-                        option.textContent = slot;
-                        timeSlotSelect.appendChild(option);
-                    });
-                    
-                    // Show provider's available hours
-                    const availabilityInfo = document.querySelector('.availability-info');
-                    if (availabilityInfo) {
-                        const providerHours = document.querySelector('.provider-hours');
-                        if (providerHours) {
-                            providerHours.textContent = data.providerHours || `Available on ${dayOfWeek}`;
-                        }
-                        
-                        availabilityInfo.style.display = 'block';
-                        availabilityInfo.classList.add('alert-info');
-                        availabilityInfo.classList.remove('alert-warning');
-                        
-                        const availabilityNote = document.querySelector('.availability-note');
-                        if (availabilityNote) {
-                            if (data.isHomeCleaningMultiHour) {
-                                availabilityNote.textContent = `${data.slots.length} ${data.hoursRequested}-hour time slot${data.slots.length !== 1 ? 's' : ''} available on ${dayOfWeek}.`;
-                            } else {
-                                availabilityNote.textContent = `${data.slots.length} time slot${data.slots.length !== 1 ? 's' : ''} available on ${dayOfWeek}. Each slot is ${data.slotDuration || 60} minutes.`;
-                            }
-                        }
-                    }
-                } else {
-                    const option = document.createElement('option');
-                    option.value = "";
-                    option.textContent = "No available slots for this date";
-                    option.disabled = true;
-                    option.selected = true;
-                    timeSlotSelect.appendChild(option);
-                    
-                    // Show unavailability message
-                    const availabilityInfo = document.querySelector('.availability-info');
-                    if (availabilityInfo) {
-                        availabilityInfo.style.display = 'block';
-                        availabilityInfo.classList.add('alert-warning');
-                        availabilityInfo.classList.remove('alert-info');
-                        
-                        const providerHours = document.querySelector('.provider-hours');
-                        if (providerHours) {
-                            providerHours.textContent = data.providerHours || 'Not available on this date';
-                        }
-                        
-                        const availabilityNote = document.querySelector('.availability-note');
-                        if (availabilityNote) {
-                            if (data.isHomeCleaningMultiHour) {
-                                availabilityNote.textContent = `No ${data.hoursRequested}-hour consecutive slots available for this date. Try a different date or reduce hours.`;
-                            } else {
-                                availabilityNote.textContent = 'All time slots for this date have been booked. Please select another date.';
-                            }
-                        }
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching time slots:', error);
-                timeSlotSelect.innerHTML = '<option value="" disabled selected>Error loading time slots</option>';
-            })
-            .finally(() => {
-                // Remove spinning icon if it was a manual refresh
+                // If it's a manual refresh, show a spinning icon on the refresh button if it exists
                 if (isManualRefresh && document.querySelector('.refresh-slots-btn i')) {
                     const refreshBtn = document.querySelector('.refresh-slots-btn i');
-                    refreshBtn.classList.remove('refresh-icon');
+                    refreshBtn.classList.add('refresh-icon');
                 }
-            });
-    } else {
-        const timeSlotSelect = document.getElementById('timeSlot');
-        timeSlotSelect.innerHTML = '<option value="" disabled selected>Please select a date first</option>';
-        timeSlotSelect.disabled = true;
-        
-        // Hide availability info
-        const availabilityInfo = document.querySelector('.availability-info');
-        if (availabilityInfo) {
-            availabilityInfo.style.display = 'none';
+                
+                // Get day of week from selected date
+                const selectedDate = new Date(date);
+                const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
+                
+                // Get service type and booking hours
+                let serviceType = '';
+                if (serviceTypeInput) {
+                    serviceType = serviceTypeInput.value || (serviceTypeInput.options ? serviceTypeInput.options[serviceTypeInput.selectedIndex]?.value : '');
+                }
+                
+                // Check if we need to handle multi-hour booking for Home Cleaning
+                let bookingHours = 1;
+                const feeType = document.querySelector('input[name="feeType"][type="hidden"]')?.value;
+                const hourlyBookingSection = document.getElementById('hourlyBookingSection');
+                
+                if (serviceType === 'Home Cleaning' && feeType === 'per hour' && hourlyBookingSection && hourlyBookingSection.style.display !== 'none') {
+                    bookingHours = parseInt(document.getElementById('bookingHours').value) || 1;
+                }
+                
+                console.log(`Fetching slots for: Service=${serviceType}, Hours=${bookingHours}`);
+                
+                // Fetch available time slots for this date and provider
+                fetch(`/api/available-slots?providerId=${providerId}&date=${date}&dayOfWeek=${dayOfWeek}&serviceType=${encodeURIComponent(serviceType)}&bookingHours=${bookingHours}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        timeSlotSelect.innerHTML = ''; // Clear existing options
+                        timeSlotSelect.disabled = false;
+                        
+                        if (data.slots && data.slots.length > 0) {
+                            // Add a default option
+                            const defaultOption = document.createElement('option');
+                            defaultOption.value = "";
+                            defaultOption.textContent = "Select a time slot";
+                            defaultOption.disabled = true;
+                            defaultOption.selected = true;
+                            timeSlotSelect.appendChild(defaultOption);
+                            
+                            // Add each available slot
+                            data.slots.forEach(slot => {
+                                const option = document.createElement('option');
+                                option.value = slot;
+                                option.textContent = slot;
+                                timeSlotSelect.appendChild(option);
+                            });
+                            
+                            // Show provider's available hours
+                            const availabilityInfo = document.querySelector('.availability-info');
+                            if (availabilityInfo) {
+                                const providerHours = document.querySelector('.provider-hours');
+                                if (providerHours) {
+                                    providerHours.textContent = data.providerHours || `Available on ${dayOfWeek}`;
+                                }
+                                
+                                availabilityInfo.style.display = 'block';
+                                availabilityInfo.classList.add('alert-info');
+                                availabilityInfo.classList.remove('alert-warning');
+                                
+                                const availabilityNote = document.querySelector('.availability-note');
+                                if (availabilityNote) {
+                                    if (data.isHomeCleaningMultiHour) {
+                                        availabilityNote.textContent = `${data.slots.length} ${data.hoursRequested}-hour time slot${data.slots.length !== 1 ? 's' : ''} available on ${dayOfWeek}.`;
+                                    } else {
+                                        availabilityNote.textContent = `${data.slots.length} time slot${data.slots.length !== 1 ? 's' : ''} available on ${dayOfWeek}. Each slot is ${data.slotDuration || 60} minutes.`;
+                                    }
+                                }
+                            }
+                        } else {
+                            const option = document.createElement('option');
+                            option.value = "";
+                            option.textContent = "No available slots for this date";
+                            option.disabled = true;
+                            option.selected = true;
+                            timeSlotSelect.appendChild(option);
+                            
+                            // Show unavailability message
+                            const availabilityInfo = document.querySelector('.availability-info');
+                            if (availabilityInfo) {
+                                availabilityInfo.style.display = 'block';
+                                availabilityInfo.classList.add('alert-warning');
+                                availabilityInfo.classList.remove('alert-info');
+                                
+                                const providerHours = document.querySelector('.provider-hours');
+                                if (providerHours) {
+                                    providerHours.textContent = data.providerHours || 'Not available on this date';
+                                }
+                                
+                                const availabilityNote = document.querySelector('.availability-note');
+                                if (availabilityNote) {
+                                    if (data.isHomeCleaningMultiHour) {
+                                        availabilityNote.textContent = `No ${data.hoursRequested}-hour consecutive slots available for this date. Try a different date or reduce hours.`;
+                                    } else {
+                                        availabilityNote.textContent = 'All time slots for this date have been booked. Please select another date.';
+                                    }
+                                }
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching time slots:', error);
+                        timeSlotSelect.innerHTML = '<option value="" disabled selected>Error loading time slots</option>';
+                    })
+                    .finally(() => {
+                        // Remove spinning icon if it was a manual refresh
+                        if (isManualRefresh && document.querySelector('.refresh-slots-btn i')) {
+                            const refreshBtn = document.querySelector('.refresh-slots-btn i');
+                            refreshBtn.classList.remove('refresh-icon');
+                        }
+                    });
+            } else {
+                const timeSlotSelect = document.getElementById('timeSlot');
+                timeSlotSelect.innerHTML = '<option value="" disabled selected>Please select a date first</option>';
+                timeSlotSelect.disabled = true;
+                
+                // Hide availability info
+                const availabilityInfo = document.querySelector('.availability-info');
+                if (availabilityInfo) {
+                    availabilityInfo.style.display = 'none';
+                }
+            }
         }
-    }
-}
         
         // Add a refresh button to the availability info box
         const availabilityInfo = document.querySelector('.availability-info');
@@ -775,123 +863,160 @@ if (bookingHoursInput) {
         
         // Form validation with real-time slot check
         const bookingForm = document.querySelector('form[action="/customer/book-service"]');
-if (bookingForm) {
-    bookingForm.addEventListener('submit', function(e) {
-        const timeSlot = document.getElementById('timeSlot').value;
-        const date = document.getElementById('preferredDate').value;
-        const providerId = document.querySelector('input[name="providerId"]').value;
-        
-        if (!date) {
-            e.preventDefault();
-            alert('Please select a preferred date for the service.');
-            return false;
-        }
-        
-        if (!timeSlot) {
-            e.preventDefault();
-            alert('Please select an available time slot.');
-            return false;
-        }
-        
-        // Add validation for hourly bookings
-        const feeType = document.querySelector('input[name="feeType"]').value;
-        if (feeType === 'per hour') {
-            const hours = parseInt(document.getElementById('bookingHours').value);
-            if (!hours || hours < 1) {
-                e.preventDefault();
-                alert('Please specify how many hours you need for the service.');
-                return false;
-            }
-        }
-        
-        // Get service type and booking hours for validation
-        const serviceTypeInput = document.querySelector('input[name="serviceType"][type="hidden"]') || 
-                               document.getElementById('serviceType');
-        const serviceType = serviceTypeInput?.value || 
-                         (serviceTypeInput?.options ? serviceTypeInput.options[serviceTypeInput.selectedIndex]?.value : '');
-        
-        let bookingHours = 1;
-        const hourlyBookingSection = document.getElementById('hourlyBookingSection');
-        if (serviceType === 'Home Cleaning' && feeType === 'per hour' && hourlyBookingSection && hourlyBookingSection.style.display !== 'none') {
-            bookingHours = parseInt(document.getElementById('bookingHours').value) || 1;
-        }
-        
-        // Check if we have the latest slot data and if the selected slot is still valid
-        if (window.lastFetchedSlots && window.lastFetchedSlots.slots) {
-            if (!window.lastFetchedSlots.slots.includes(timeSlot)) {
-                e.preventDefault();
-                alert('Sorry, this time slot is no longer available. It may have been booked by another customer. Please select a different time slot.');
-                
-                // Refresh the available time slots
-                loadAvailableTimeSlots();
-                return false;
-            }
-            
-            // If we have the latest data and the slot is valid, submit immediately
-            return true;
-        }
-        
-        // If we don't have recent slot data, do a final check
-        e.preventDefault(); // Temporarily prevent form submission
-        
-        // Show loading message
-        const submitButton = this.querySelector('button[type="submit"]');
-        const originalButtonText = submitButton.innerHTML;
-        submitButton.disabled = true;
-        submitButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Verifying availability...';
-        
-        // Double check slot availability with the same parameters used for loading
-        fetch(`/api/available-slots?providerId=${providerId}&date=${date}&serviceType=${encodeURIComponent(serviceType)}&bookingHours=${bookingHours}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.slots && data.slots.includes(timeSlot)) {
-                    // Slot is still available, submit the form
-                    submitButton.innerHTML = '<i class="bi bi-check-circle me-2"></i> Booking...';
-                    
-                    // Store the validation data
-                    window.lastFetchedSlots = data;
-                    
-                    // Submit the form
-                    bookingForm.submit();
-                } else {
-                    // Slot is no longer available
-                    submitButton.disabled = false;
-                    submitButton.innerHTML = originalButtonText;
-                    
-                    alert('Sorry, this time slot is no longer available. It may have been booked by another customer. Please select a different time slot.');
-                    
-                    // Refresh the available time slots
-                    loadAvailableTimeSlots();
+        if (bookingForm) {
+            bookingForm.addEventListener('submit', function(e) {
+                // Validate required fields
+                const requiredFields = [
+                    { id: 'issueDescription', name: 'Issue Description' },
+                    { id: 'streetAddress', name: 'Street Address' },
+                    { id: 'city', name: 'City' },
+                    { id: 'state', name: 'State' },
+                    { id: 'zipCode', name: 'ZIP Code' },
+                    { id: 'fullName', name: 'Full Name' },
+                    { id: 'phoneNumber', name: 'Phone Number' },
+                    { id: 'email', name: 'Email Address' }
+                ];
+
+                // Check each required field
+                for (let field of requiredFields) {
+                    const element = document.getElementById(field.id);
+                    if (!element.value.trim()) {
+                        e.preventDefault();
+                        alert(`Please fill in the ${field.name} field.`);
+                        element.focus();
+                        return false;
+                    }
                 }
-            })
-            .catch(error => {
-                console.error('Error verifying time slot:', error);
-                submitButton.disabled = false;
-                submitButton.innerHTML = originalButtonText;
-                
-                // In case of error, allow form submission but warn the user
-                if (confirm('There was an error verifying the availability of this time slot. Do you want to proceed with booking anyway?')) {
-                    bookingForm.submit();
+
+                // Validate email format
+                const emailField = document.getElementById('email');
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailPattern.test(emailField.value)) {
+                    e.preventDefault();
+                    alert('Please enter a valid email address.');
+                    emailField.focus();
+                    return false;
                 }
+
+                // Validate phone number (basic validation for Malaysian numbers)
+                const phoneField = document.getElementById('phoneNumber');
+                const phonePattern = /^[\+]?[\d\s\-\(\)]{8,}$/;
+                if (!phonePattern.test(phoneField.value)) {
+                    e.preventDefault();
+                    alert('Please enter a valid phone number.');
+                    phoneField.focus();
+                    return false;
+                }
+
+                // Validate ZIP code (basic validation)
+                const zipField = document.getElementById('zipCode');
+                const zipPattern = /^\d{5}$/;
+                if (!zipPattern.test(zipField.value)) {
+                    e.preventDefault();
+                    alert('Please enter a valid 5-digit ZIP code.');
+                    zipField.focus();
+                    return false;
+                }
+
+                const timeSlot = document.getElementById('timeSlot').value;
+                const date = document.getElementById('preferredDate').value;
+                const providerId = document.querySelector('input[name="providerId"]').value;
+                
+                if (!date) {
+                    e.preventDefault();
+                    alert('Please select a preferred date for the service.');
+                    return false;
+                }
+                
+                if (!timeSlot) {
+                    e.preventDefault();
+                    alert('Please select an available time slot.');
+                    return false;
+                }
+                
+                // Add validation for hourly bookings
+                const feeType = document.querySelector('input[name="feeType"]').value;
+                if (feeType === 'per hour') {
+                    const hours = parseInt(document.getElementById('bookingHours').value);
+                    if (!hours || hours < 1) {
+                        e.preventDefault();
+                        alert('Please specify how many hours you need for the service.');
+                        return false;
+                    }
+                }
+                
+                // Get service type and booking hours for validation
+                const serviceTypeInput = document.querySelector('input[name="serviceType"][type="hidden"]') || 
+                                       document.getElementById('serviceType');
+                const serviceType = serviceTypeInput?.value || 
+                                 (serviceTypeInput?.options ? serviceTypeInput.options[serviceTypeInput.selectedIndex]?.value : '');
+                
+                let bookingHours = 1;
+                const hourlyBookingSection = document.getElementById('hourlyBookingSection');
+                if (serviceType === 'Home Cleaning' && feeType === 'per hour' && hourlyBookingSection && hourlyBookingSection.style.display !== 'none') {
+                    bookingHours = parseInt(document.getElementById('bookingHours').value) || 1;
+                }
+                
+                // Check if we have the latest slot data and if the selected slot is still valid
+                if (window.lastFetchedSlots && window.lastFetchedSlots.slots) {
+                    if (!window.lastFetchedSlots.slots.includes(timeSlot)) {
+                        e.preventDefault();
+                        alert('Sorry, this time slot is no longer available. It may have been booked by another customer. Please select a different time slot.');
+                        
+                        // Refresh the available time slots
+                        loadAvailableTimeSlots();
+                        return false;
+                    }
+                    
+                    // If we have the latest data and the slot is valid, submit immediately
+                    return true;
+                }
+                
+                // If we don't have recent slot data, do a final check
+                e.preventDefault(); // Temporarily prevent form submission
+                
+                // Show loading message
+                const submitButton = this.querySelector('button[type="submit"]');
+                const originalButtonText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Verifying availability...';
+                
+                // Double check slot availability with the same parameters used for loading
+                fetch(`/api/available-slots?providerId=${providerId}&date=${date}&serviceType=${encodeURIComponent(serviceType)}&bookingHours=${bookingHours}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.slots && data.slots.includes(timeSlot)) {
+                            // Slot is still available, submit the form
+                            submitButton.innerHTML = '<i class="bi bi-check-circle me-2"></i> Booking...';
+                            
+                            // Store the validation data
+                            window.lastFetchedSlots = data;
+                            
+                            // Submit the form
+                            bookingForm.submit();
+                        } else {
+                            // Slot is no longer available
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = originalButtonText;
+                            
+                            alert('Sorry, this time slot is no longer available. It may have been booked by another customer. Please select a different time slot.');
+                            
+                            // Refresh the available time slots
+                            loadAvailableTimeSlots();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error verifying time slot:', error);
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalButtonText;
+                        
+                        // In case of error, allow form submission but warn the user
+                        if (confirm('There was an error verifying the availability of this time slot. Do you want to proceed with booking anyway?')) {
+                            bookingForm.submit();
+                        }
+                    });
             });
-    });
-}
-        
-        // Add some CSS styles for the refresh animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-            .refresh-icon {
-                animation: spin 1s linear infinite;
-            }
-            .availability-info {
-                transition: all 0.3s ease;
-            }
-        `;
-        document.head.appendChild(style);
+        }
     });
 
      // Ensure this runs after the main document loads
