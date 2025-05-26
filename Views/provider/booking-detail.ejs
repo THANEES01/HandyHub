@@ -428,28 +428,30 @@
             </div>
 
             <!-- Action Buttons - Only show for New/Pending/Accepted statuses -->
-            <% if (booking.status !== 'Completed' && booking.status !== 'Cancelled') { %>
-                <div class="booking-action-wrapper">
-                    <% if (booking.status === 'New' || booking.status === 'Confirmed') { %>
-                        <form action="/provider/booking/<%= booking.id %>/accept" method="POST">
-                            <button type="submit" class="btn btn-action-custom btn-accept">
-                                <i class="bi bi-check-circle"></i> Accept Booking
-                            </button>
-                        </form>
-                    <% } %>
-                    
-                    <% if (booking.status === 'Accepted') { %>
-                        <form action="/provider/booking/<%= booking.id %>/complete" method="POST">
-                            <button type="submit" class="btn btn-action-custom btn-complete">
-                                <i class="bi bi-check2-all"></i> Complete Service
-                            </button>
-                        </form>
-                    <% } %>
-                    
-                    <!-- Cancel Button - Available for New/Pending/Accepted statuses -->
+           <% if (booking.status !== 'Completed' && booking.status !== 'Cancelled') { %>
+            <div class="booking-action-wrapper">
+                <% if (booking.status === 'New' || booking.status === 'Confirmed') { %>
+                    <form action="/provider/booking/<%= booking.id %>/accept" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-action-custom btn-accept">
+                            <i class="bi bi-check-circle"></i> Accept Booking
+                        </button>
+                    </form>
+                <% } %>
+                
+                <% if (booking.status === 'Accepted') { %>
+                    <form action="/provider/booking/<%= booking.id %>/complete" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-action-custom btn-complete">
+                            <i class="bi bi-check2-all"></i> Complete Service
+                        </button>
+                    </form>
+                <% } %>
+                
+                <!-- Cancel Button - Available for New/Confirmed/Pending/Accepted statuses -->
+                <% if (['New', 'Confirmed', 'Pending', 'Accepted'].includes(booking.status)) { %>
                     <a href="/provider/booking/<%= booking.id %>/cancel" class="btn btn-action-custom btn-cancel">
                         <i class="bi bi-x-circle"></i> Cancel
                     </a>
+                <% } %>
                 </div>
             <% } %>
         </div>

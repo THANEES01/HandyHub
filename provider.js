@@ -1004,19 +1004,19 @@ router.get('/booking/:bookingId/cancel', isProvider, async (req, res) => {
         
         console.log(`Loading cancellation page for booking ${bookingId} by provider ${providerId}`);
         
-        // Get booking details
+        // Get booking details - Allow cancellation for New, Confirmed, Pending, and Accepted statuses
         const bookingResult = await pool.query(`
             SELECT 
                 sb.*,
                 c.first_name || ' ' || c.last_name AS customer_name
             FROM service_bookings sb
             JOIN customers c ON sb.customer_id = c.user_id
-            WHERE sb.id = $1 AND sb.provider_id = $2 AND sb.status IN ('New', 'Pending', 'Accepted')
+            WHERE sb.id = $1 AND sb.provider_id = $2 AND sb.status IN ('New', 'Confirmed', 'Pending', 'Accepted')
         `, [bookingId, providerId]);
         
         if (bookingResult.rows.length === 0) {
             console.error(`Booking ${bookingId} not found, not authorized, or cannot be cancelled`);
-            // req.session.error = 'Booking not found, not authorized, or cannot be cancelled';
+            req.session.error = 'Booking not found, not authorized, or cannot be cancelled';
             return res.redirect('/provider/bookings');
         }
         
@@ -1038,6 +1038,60 @@ router.get('/booking/:bookingId/cancel', isProvider, async (req, res) => {
         console.error('Error loading cancellation page:', error);
         req.session.error = 'Failed to load cancellation page. Please try again.';
         res.redirect('/provider/bookings');
+    }
+});
+
+// Route for processing the actual cancellation (POST)
+router.post('/booking/:bookingId/cancel', isProvider, async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const providerId = req.session.user.providerId;
+        const { cancellationReason } = req.body;
+        
+        console.log(`Processing cancellation for booking ${bookingId} by provider ${providerId}`);
+        console.log(`Cancellation reason: ${cancellationReason}`);
+        
+        // Verify booking belongs to this provider and can be cancelled
+        const checkResult = await pool.query(
+            'SELECT id, status FROM service_bookings WHERE id = $1 AND provider_id = $2',
+            [bookingId, providerId]
+        );
+        
+        if (checkResult.rows.length === 0) {
+            console.log(`Booking not found or not authorized: ${bookingId}`);
+            req.session.error = 'Booking not found or not authorized';
+            return res.redirect('/provider/bookings');
+        }
+        
+        const currentStatus = checkResult.rows[0].status;
+        console.log(`Current booking status: ${currentStatus}`);
+        
+        // Check if booking can be cancelled
+        if (!['New', 'Confirmed', 'Pending', 'Accepted'].includes(currentStatus)) {
+            req.session.error = 'This booking cannot be cancelled anymore';
+            return res.redirect('/provider/booking/' + bookingId);
+        }
+        
+        // Update booking status to Cancelled
+        await pool.query(
+            'UPDATE service_bookings SET status = $1, updated_at = NOW(), cancellation_reason = $2, cancelled_at = NOW(), cancelled_by = $3 WHERE id = $4',
+            ['Cancelled', cancellationReason || 'Cancelled by service provider', 'provider', bookingId]
+        );
+        
+        // Add status history record
+        await pool.query(
+            'INSERT INTO booking_status_history (booking_id, status, notes, created_by) VALUES ($1, $2, $3, $4)',
+            [bookingId, 'Cancelled', `Booking cancelled by provider. Reason: ${cancellationReason || 'Not specified'}`, req.session.user.id]
+        );
+        
+        console.log(`Successfully cancelled booking ${bookingId}`);
+        req.session.success = 'Booking has been cancelled successfully';
+        res.redirect('/provider/bookings');
+        
+    } catch (error) {
+        console.error('Error cancelling booking:', error);
+        req.session.error = 'Failed to cancel booking. Please try again.';
+        res.redirect('/provider/booking/' + req.params.bookingId);
     }
 });
 
