@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
+import { storage } from './config/cloudinary.js'; // Import Cloudinary storage
 
 // Get current file path (for ES modules)
 const __filename = fileURLToPath(import.meta.url);
@@ -12,31 +13,31 @@ const __dirname = path.dirname(__filename);
 const router = express.Router();
 
 // Create upload directory if it doesn't exist and check permissions
-const uploadDir = 'C:\\Users\\ASUS\\OneDrive\\Desktop\\HandyHub_fyp\\public\\uploads\\booking_images\\';
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-    console.log(`Created upload directory: ${uploadDir}`);
-}
-// Check permissions
-try {
-    fs.accessSync(uploadDir, fs.constants.W_OK);
-    console.log(`Upload directory ${uploadDir} is writable`);
-} catch (err) {
-    console.error(`Upload directory ${uploadDir} is not writable:`, err);
-}
+// const uploadDir = 'C:\\Users\\ASUS\\OneDrive\\Desktop\\HandyHub_fyp\\public\\uploads\\booking_images\\';
+// if (!fs.existsSync(uploadDir)) {
+//     fs.mkdirSync(uploadDir, { recursive: true });
+//     console.log(`Created upload directory: ${uploadDir}`);
+// }
+// // Check permissions
+// try {
+//     fs.accessSync(uploadDir, fs.constants.W_OK);
+//     console.log(`Upload directory ${uploadDir} is writable`);
+// } catch (err) {
+//     console.error(`Upload directory ${uploadDir} is not writable:`, err);
+// }
 
 // Configure storage for Multer
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        // Generate unique filename with timestamp
-        const timestamp = Date.now();
-        const originalName = file.originalname.replace(/\s+/g, '_');
-        cb(null, `${timestamp}_${originalName}`);
-    }
-});
+// const storage = multer.diskStorage({
+//     destination: function (req, file, cb) {
+//         cb(null, uploadDir);
+//     },
+//     filename: function (req, file, cb) {
+//         // Generate unique filename with timestamp
+//         const timestamp = Date.now();
+//         const originalName = file.originalname.replace(/\s+/g, '_');
+//         cb(null, `${timestamp}_${originalName}`);
+//     }
+// });
 
 // File filter to only allow images
 const fileFilter = (req, file, cb) => {
@@ -49,12 +50,28 @@ const fileFilter = (req, file, cb) => {
 };
 
 // Create the Multer middleware
+// const upload = multer({
+//     storage: storage,
+//     limits: {
+//         fileSize: 10 * 1024 * 1024 // 10MB max file size
+//     },
+//     fileFilter: fileFilter
+// });
+
+// Configure Multer to use Cloudinary storage
 const upload = multer({
-    storage: storage,
+    storage: storage, // Use Cloudinary storage instead of local
     limits: {
         fileSize: 10 * 1024 * 1024 // 10MB max file size
     },
-    fileFilter: fileFilter
+    fileFilter: (req, file, cb) => {
+        // Accept only image files
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'), false);
+        }
+    }
 });
 
 // Middleware to handle Multer errors
@@ -176,7 +193,7 @@ router.get('/customer/book-service/:providerId', isCustomerAuth, async (req, res
 
 // Handle service booking submission with Multer
 router.post('/customer/book-service', isCustomerAuth, upload.array('problemImages', 5), handleMulterErrors, async (req, res) => {
-    try {
+   try {
         const { 
             providerId, 
             serviceType,
@@ -252,21 +269,18 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
 
         console.log(`Calculated fees: Base=${calculatedFee}, Service=${serviceCharge}, Total=${totalAmount}`);
         
-        // Process uploaded files
-        console.log('Files received:', req.files); // Debug uploaded files
+        // Process uploaded files from Cloudinary
+        console.log('Cloudinary files received:', req.files); // Debug uploaded files
 
         let imageFiles = [];
         if (req.files && req.files.length > 0) {
-            // Make sure paths are correct for web access
+            // Extract Cloudinary URLs from uploaded files
             imageFiles = req.files.map(file => {
-                // Extract the filename from the full path
-                const filename = file.filename;
-                
-                // Use a consistent web path format starting with /
-                return `/uploads/booking_images/${filename}`;
+                // Cloudinary provides the secure_url in the file object
+                return file.path; // This is the Cloudinary URL
             });
             
-            console.log('Processed image files:', imageFiles); // Debug processed paths
+            console.log('Processed Cloudinary image URLs:', imageFiles); // Debug processed URLs
         }
 
         // Format full address
@@ -298,7 +312,7 @@ router.post('/customer/book-service', isCustomerAuth, upload.array('problemImage
             phoneNumber, 
             email, 
             'Pending',
-            imageFilesJson, // Store the stringified JSON
+            imageFilesJson, // Store the stringified JSON with Cloudinary URLs
             calculatedFee, // Store the calculated fee
             finalFeeType || 'per visit',
             finalFeeType === 'per hour' ? parseInt(bookingHours) : null, // Only store hours for hourly services

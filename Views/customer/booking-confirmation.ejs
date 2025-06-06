@@ -113,11 +113,13 @@
             margin-top: 30px;
             display: flex;
             gap: 15px;
+            flex-wrap: wrap;
         }
         
         .action-buttons .btn {
             flex: 1;
             padding: 12px 15px;
+            min-width: 180px;
         }
         
         .btn-view-booking {
@@ -205,6 +207,20 @@
             color: white;
         }
 
+        /* Download Receipt Button */
+        .btn-download {
+            background-color: #17a2b8;
+            color: white;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-download:hover {
+            background-color: #138496;
+            transform: translateY(-2px);
+            color: white;
+        }
+
         /* Make the Make Payment button stand out more */
         .action-buttons .btn-success {
             font-weight: 500;
@@ -261,6 +277,29 @@
             font-family: monospace;
             white-space: pre-wrap;
             word-break: break-all;
+        }
+
+        /* Loading spinner for download button */
+        .btn-loading {
+            position: relative;
+            pointer-events: none;
+        }
+
+        .btn-loading .spinner-border {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-buttons .btn {
+                flex: none;
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -460,6 +499,13 @@
                             <i class="bi bi-list-ul me-2"></i> View All Bookings
                         </a>
                         
+                        <% if (locals.booking) { %>
+                            <!-- Download Receipt Button - always show if booking exists -->
+                            <button class="btn btn-download" id="downloadReceiptBtn">
+                                <i class="bi bi-download me-2"></i> Download Receipt
+                            </button>
+                        <% } %>
+                        
                         <% if (locals.booking && booking.payment_status !== 'Paid') { %>
                             <!-- Show Make Payment button when payment is pending -->
                             <a href="/customer/payment/<%= booking.id %>" class="btn btn-success">
@@ -483,6 +529,10 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Include jsPDF library for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <% if (locals.booking) { %>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -525,7 +575,208 @@
                 document.getElementById('outlookCalendarBtn').href = outlookLink;
             }
             
-            // Call the function to generate the links
+            // Function to download receipt as PDF
+            function downloadReceipt() {
+                const downloadBtn = document.getElementById('downloadReceiptBtn');
+                const originalContent = downloadBtn.innerHTML;
+                
+                // Show loading state
+                downloadBtn.classList.add('btn-loading');
+                downloadBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Generating...';
+                downloadBtn.disabled = true;
+                
+                // Create receipt content
+                const receiptContent = generateReceiptHTML();
+                
+                // Create a temporary div to hold the receipt
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = receiptContent;
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.left = '-9999px';
+                tempDiv.style.width = '794px'; // A4 width in pixels at 96 DPI
+                tempDiv.style.backgroundColor = 'white';
+                tempDiv.style.padding = '30px'; // Reduced padding
+                tempDiv.style.fontFamily = 'Arial, sans-serif';
+                document.body.appendChild(tempDiv);
+                
+                // Generate PDF using html2canvas and jsPDF
+                html2canvas(tempDiv, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff'
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+                    
+                    // Calculate dimensions
+                    const imgWidth = 210; // A4 width in mm
+                    const pageHeight = 295; // A4 height in mm
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                    let heightLeft = imgHeight;
+                    let position = 0;
+                    
+                    // Add first page
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                    
+                    // Add additional pages if needed
+                    while (heightLeft >= 0) {
+                        position = heightLeft - imgHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                        heightLeft -= pageHeight;
+                    }
+                    
+                    // Download the PDF
+                    const filename = `HandyHub-Receipt-${document.querySelector('.booking-id strong').textContent.replace('Booking #:', '').trim()}.pdf`;
+                    pdf.save(filename);
+                    
+                    // Clean up
+                    document.body.removeChild(tempDiv);
+                    
+                    // Reset button state
+                    downloadBtn.classList.remove('btn-loading');
+                    downloadBtn.innerHTML = originalContent;
+                    downloadBtn.disabled = false;
+                }).catch(error => {
+                    console.error('Error generating PDF:', error);
+                    alert('Error generating receipt. Please try again.');
+                    
+                    // Reset button state
+                    downloadBtn.classList.remove('btn-loading');
+                    downloadBtn.innerHTML = originalContent;
+                    downloadBtn.disabled = false;
+                    
+                    // Clean up
+                    if (document.body.contains(tempDiv)) {
+                        document.body.removeChild(tempDiv);
+                    }
+                });
+            }
+            
+            // Function to generate receipt HTML
+            function generateReceiptHTML() {
+                const currentDate = new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                return `
+                    <div style="max-width: 700px; margin: 0 auto; font-family: Arial, sans-serif; font-size: 12px;">
+                        <!-- Header -->
+                        <div style="text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #0066cc;">
+                            <h1 style="color: #0066cc; font-size: 20px; margin-bottom: 3px;">HandyHub</h1>
+                            <p style="color: #666; font-size: 13px; margin: 0;">Service Booking Receipt</p>
+                        </div>
+                        
+                        <!-- Receipt Info -->
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                            <div>
+                                <h3 style="color: #333; margin-bottom: 8px; font-size: 14px;">Receipt Details</h3>
+                                <p style="margin: 3px 0; font-size: 11px;"><strong>Receipt Date:</strong> ${currentDate}</p>
+                                <p style="margin: 3px 0; font-size: 11px;"><strong>Booking ID:</strong> <%= booking.id %></p>
+                                <p style="margin: 3px 0; font-size: 11px;"><strong>Status:</strong> 
+                                    <span style="background-color: <%= booking.payment_status === 'Paid' ? '#d4edda' : '#fff3cd' %>; 
+                                                 color: <%= booking.payment_status === 'Paid' ? '#155724' : '#856404' %>; 
+                                                 padding: 2px 6px; border-radius: 8px; font-size: 10px;">
+                                        <%= booking.payment_status === 'Paid' ? 'Payment Completed' : 'Payment Pending' %>
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Service Details -->
+                        <div style="margin-bottom: 18px;">
+                            <h3 style="color: #0066cc; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px; font-size: 14px;">Service Details</h3>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                    <td style="padding: 4px 0; width: 130px; font-weight: bold; color: #333; font-size: 11px;">Service Type:</td>
+                                    <td style="padding: 4px 0; font-size: 11px;"><%= booking.service_type %></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 4px 0; font-weight: bold; color: #333; font-size: 11px;">Provider:</td>
+                                    <td style="padding: 4px 0; font-size: 11px;"><%= booking.provider_name %></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 4px 0; font-weight: bold; color: #333; font-size: 11px;">Description:</td>
+                                    <td style="padding: 4px 0; font-size: 11px;"><%= booking.issue_description %></td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <!-- Schedule -->
+                        <div style="margin-bottom: 18px;">
+                            <h3 style="color: #0066cc; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px; font-size: 14px;">Schedule</h3>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                    <td style="padding: 4px 0; width: 130px; font-weight: bold; color: #333; font-size: 11px;">Date:</td>
+                                    <td style="padding: 4px 0; font-size: 11px;"><%= new Date(booking.preferred_date).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) %></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 4px 0; font-weight: bold; color: #333; font-size: 11px;">Time:</td>
+                                    <td style="padding: 4px 0; font-size: 11px;"><%= booking.time_slot %></td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <!-- Service Location -->
+                        <div style="margin-bottom: 18px;">
+                            <h3 style="color: #0066cc; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px; font-size: 14px;">Service Location</h3>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                    <td style="padding: 4px 0; width: 130px; font-weight: bold; color: #333; font-size: 11px;">Address:</td>
+                                    <td style="padding: 4px 0; font-size: 11px;"><%= booking.service_address %></td>
+                                </tr>
+                                <% if (booking.access_instructions) { %>
+                                <tr>
+                                    <td style="padding: 4px 0; font-weight: bold; color: #333; font-size: 11px;">Access Instructions:</td>
+                                    <td style="padding: 4px 0; font-size: 11px;"><%= booking.access_instructions %></td>
+                                </tr>
+                                <% } %>
+                            </table>
+                        </div>
+                        
+                        <!-- Payment Summary -->
+                        <div style="margin-bottom: 20px;">
+                            <h3 style="color: #0066cc; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px; font-size: 14px;">Payment Summary</h3>
+                            <table style="width: 100%; border-collapse: collapse; background-color: #f8f9fa; border-radius: 6px;">
+                                <tr>
+                                    <td style="padding: 6px 12px; font-weight: bold; color: #333; font-size: 11px;">Base Fee:</td>
+                                    <td style="padding: 6px 12px; text-align: right; font-size: 11px;">RM <%= parseFloat(booking.base_fee || 0).toFixed(2) %></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 12px; font-weight: bold; color: #333; font-size: 11px;">Service Fee (5%):</td>
+                                    <td style="padding: 6px 12px; text-align: right; font-size: 11px;">RM <%= parseFloat(booking.service_charge || 0).toFixed(2) %></td>
+                                </tr>
+                                <tr style="border-top: 1px solid #0066cc;">
+                                    <td style="padding: 8px 12px 6px 12px; font-weight: bold; color: #0066cc; font-size: 13px;">Total Amount:</td>
+                                    <td style="padding: 8px 12px 6px 12px; text-align: right; font-weight: bold; color: #0066cc; font-size: 13px;">RM <%= parseFloat(booking.total_amount || 0).toFixed(2) %></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 12px; font-weight: bold; color: #333; font-size: 11px;">Payment Method:</td>
+                                    <td style="padding: 6px 12px; text-align: right; font-size: 11px;"><%= booking.payment_method || 'Online Payment' %></td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div style="text-align: center; margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; color: #666; font-size: 10px;">
+                            <p style="margin: 3px 0;">Thank you for choosing HandyHub!</p>
+                            <p style="margin: 3px 0;">For support, contact us at support@handyhub.com</p>
+                            <p style="margin: 3px 0;">This is an electronically generated receipt.</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Add event listener for download button
+            document.getElementById('downloadReceiptBtn').addEventListener('click', downloadReceipt);
+            
+            // Call the function to generate the calendar links
             generateCalendarLinks();
         });
     </script>
