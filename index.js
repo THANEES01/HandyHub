@@ -12,7 +12,6 @@ import adminRoutes from './admin.js'; // Import adminRoutes
 import customerRoutes from './customer.js';
 import bookingRoutes from './booking.js';
 import paymentRoutes from './payment.js';
-import setupSocketIO from './socketio.js';
 // Conditionally import chat routes only in development
 let chatRoutes = null;
 let chatProviderRoutes = null;
@@ -98,34 +97,35 @@ app.use((req, res, next) => {
 });
 
 // Socket.IO setup - only in development
-let setupSocketIO = null;
 let io = null;
 
 // Only load Socket.IO in development (not on Vercel)
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     try {
-        const socketModule = await import('./socketio.js');
-        setupSocketIO = socketModule.default;
-        
         // Load chat routes only in development
         const chatModule = await import('./chat.js');
         const chatProviderModule = await import('./chat-provider.js');
         chatRoutes = chatModule.default;
         chatProviderRoutes = chatProviderModule.default;
         
-        console.log('Socket.IO and chat features loaded for development');
+        console.log('Chat features loaded for development');
     } catch (error) {
-        console.log('Socket.IO not available, running without real-time features');
+        console.log('Chat features not available, running without real-time features');
     }
 }
 
 // Set up Socket.IO with session middleware for authentication (development only)
-if (setupSocketIO && process.env.NODE_ENV !== 'production') {
-    io = setupSocketIO(server, sessionMiddleware);
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    // Socket.IO setup removed for production compatibility
+    console.log('Development mode - Socket.IO would be available here');
     
     // Make io available to request objects
     app.use((req, res, next) => {
-        req.io = io;
+        req.io = {
+            emit: () => {},
+            to: () => ({ emit: () => {} }),
+            in: () => ({ emit: () => {} })
+        };
         next();
     });
 } else {
@@ -309,9 +309,4 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     server.listen(PORT, () => {
         console.log(`Server running at http://localhost:${PORT}`);
     });
-}
-
-// Export io for potential external use (development only)
-if (io) {
-    export { io };
 }
