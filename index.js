@@ -6,13 +6,16 @@ import { dirname } from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import http from 'http';
-import authRoutes from './auth.js'; // Import authRoutes
-import providerRoutes from './provider.js'; // Import providerRoutes
-import adminRoutes from './admin.js'; // Import adminRoutes
+import pool from './config/database.js';
+
+// Import route modules
+import authRoutes from './auth.js';
+import providerRoutes from './provider.js';
+import adminRoutes from './admin.js';
 import customerRoutes from './customer.js';
 import bookingRoutes from './booking.js';
 import paymentRoutes from './payment.js';
-import pool from './config/database.js';
+
 // Conditionally import chat routes only in development
 let chatRoutes = null;
 let chatProviderRoutes = null;
@@ -27,65 +30,57 @@ const app = express();
 // Create HTTP server
 const server = http.createServer(app);
 
-// Add this in your middleware setup section, before setting up routes
-// This is important for Stripe webhook handling (raw body needed)
+// ============= MIDDLEWARE SETUP =============
+
+// Raw body for Stripe webhooks (must be before other body parsers)
 app.use('/customer/webhook', express.raw({ type: 'application/json' }));
 
-// Middleware
+// Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// Serve static files from the public directory
+
+// Static file serving
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
-
-// For common image placeholders
 app.use('/img', express.static(path.join(__dirname, 'public/img')));
 
 // View engine setup
 app.set('view engine', 'ejs');
-// Fixed: Use correct views folder case - should be lowercase
 app.set('views', path.join(__dirname, 'views'));
 
-// Define session middleware once with more secure settings
+// Session configuration
 const sessionMiddleware = session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key', // Use environment variable in production
-  resave: false, // Don't save session if unmodified
-  saveUninitialized: false, // Don't create session until something stored
-  cookie: { 
-    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    httpOnly: true, // Helps prevent XSS attacks
-    sameSite: 'lax' // Helps prevent CSRF attacks
-  }
+    secret: process.env.SESSION_SECRET || 'handyhub-fallback-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        httpOnly: true,
+        sameSite: 'lax'
+    }
 });
 
-// Apply middleware
 app.use(sessionMiddleware);
 
-// Flash message middleware
+// Improved flash message middleware
 app.use((req, res, next) => {
-    // Make sure session exists before accessing it
-    if (req.session) {
-        // Set locals for views
-        res.locals.user = req.session.user || null;
-        res.locals.success = req.session.success || null;
-        res.locals.error = req.session.error || null;
-        
-        // Log messages for debugging
-        if (req.session.success || req.session.error) {
-            console.log('Session messages found:', {
-                success: req.session.success,
-                error: req.session.error
-            });
-        }
-        
-        // IMPORTANT: Don't delete the messages here
-        // They will be deleted in the controller functions after rendering
+    // Initialize session if needed
+    if (!req.session) {
+        console.warn('⚠️ Session middleware not working properly');
     }
     
-    // Custom flash function for setting messages
+    // Set locals for views with safe defaults
+    res.locals.user = req.session?.user || null;
+    res.locals.success = req.session?.success || null;
+    res.locals.error = req.session?.error || null;
+    
+    // Custom flash function
     req.flash = function(type, message) {
-        if (!req.session) return;
+        if (!req.session) {
+            console.warn('⚠️ Cannot set flash message: session unavailable');
+            return;
+        }
         
         if (type === 'success') {
             req.session.success = message;
@@ -94,55 +89,185 @@ app.use((req, res, next) => {
         }
     };
     
+    // Function to clear flash messages
+    req.clearFlash = function() {
+        if (req.session) {
+            delete req.session.success;
+            delete req.session.error;
+        }
+    };
+    
     next();
 });
 
-// Socket.IO setup - only in development
-let io = null;
+// ============= SOCKET.IO SETUP (Development Only) =============
 
-// Only load Socket.IO in development (not on Vercel)
+// Load chat routes conditionally
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     try {
-        // Load chat routes only in development
         const chatModule = await import('./chat.js');
         const chatProviderModule = await import('./chat-provider.js');
         chatRoutes = chatModule.default;
         chatProviderRoutes = chatProviderModule.default;
-        
-        console.log('Chat features loaded for development');
+        console.log('✅ Chat features loaded for development');
     } catch (error) {
-        console.log('Chat features not available, running without real-time features');
+        console.log('ℹ️ Chat features not available in production mode');
     }
 }
 
-// Set up Socket.IO with session middleware for authentication (development only)
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-    // Socket.IO setup removed for production compatibility
-    console.log('Development mode - Socket.IO would be available here');
-    
-    // Make io available to request objects
-    app.use((req, res, next) => {
-        req.io = {
-            emit: () => {},
-            to: () => ({ emit: () => {} }),
-            in: () => ({ emit: () => {} })
-        };
-        next();
-    });
-} else {
-    // Provide a dummy io object for production
-    app.use((req, res, next) => {
-        req.io = {
-            emit: () => {},
-            to: () => ({ emit: () => {} }),
-            in: () => ({ emit: () => {} })
-        };
-        next();
-    });
-    console.log('Running in production mode without Socket.IO');
-}
+// Provide dummy Socket.IO object for production
+app.use((req, res, next) => {
+    req.io = {
+        emit: () => {},
+        to: () => ({ emit: () => {} }),
+        in: () => ({ emit: () => {} })
+    };
+    next();
+});
 
-// Routes
+// ============= DEBUG AND TEST ROUTES =============
+
+// Fix favicon 404 error
+app.get('/favicon.ico', (req, res) => {
+    res.status(204).send();
+});
+
+// Environment variables debug route
+app.get('/debug-env', (req, res) => {
+    res.json({
+        status: 'Environment Variables Check',
+        node_env: process.env.NODE_ENV,
+        vercel_env: process.env.VERCEL_ENV,
+        vercel_url: process.env.VERCEL_URL,
+        // Database variables
+        db_host: process.env.DB_HOST?.substring(0, 30) + '...',
+        db_port: process.env.DB_PORT,
+        db_name: process.env.DB_NAME,
+        db_user: process.env.DB_USER,
+        db_password_exists: !!process.env.DB_PASSWORD,
+        db_password_length: process.env.DB_PASSWORD?.length || 0,
+        // Session
+        session_secret_exists: !!process.env.SESSION_SECRET,
+        session_secret_length: process.env.SESSION_SECRET?.length || 0,
+        // All relevant env vars
+        relevant_env_vars: Object.keys(process.env).filter(key => 
+            key.includes('DB_') || 
+            key.includes('SESSION_') || 
+            key.includes('STRIPE_') ||
+            key.includes('VERCEL_')
+        ),
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Database connection test route
+app.get('/test-db', async (req, res) => {
+    let client;
+    try {
+        console.log('🔍 Testing database connection via API...');
+        
+        if (!pool) {
+            return res.status(500).json({
+                status: 'error',
+                message: 'Database pool not initialized',
+                debug: {
+                    db_host: !!process.env.DB_HOST,
+                    db_name: !!process.env.DB_NAME,
+                    db_user: !!process.env.DB_USER,
+                    db_password: !!process.env.DB_PASSWORD
+                }
+            });
+        }
+
+        client = await pool.connect();
+        console.log('✅ Database connection successful via API');
+        
+        // Basic connectivity test
+        const timeResult = await client.query('SELECT NOW() as current_time, version() as pg_version');
+        
+        // Check tables
+        const tablesResult = await client.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+            ORDER BY table_name
+        `);
+        
+        res.json({ 
+            status: 'success', 
+            message: 'Database connected successfully',
+            timestamp: timeResult.rows[0].current_time,
+            postgresql_version: timeResult.rows[0].pg_version.split(' ')[0],
+            tables_found: tablesResult.rows.length,
+            tables: tablesResult.rows.map(row => row.table_name),
+            connection_info: {
+                host: process.env.DB_HOST?.substring(0, 30) + '...',
+                database: process.env.DB_NAME,
+                user: process.env.DB_USER,
+                port: process.env.DB_PORT
+            }
+        });
+    } catch (error) {
+        console.error('❌ Database test failed via API:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Database connection failed',
+            error: {
+                message: error.message,
+                code: error.code,
+                detail: error.detail
+            },
+            environment_check: {
+                db_host: !!process.env.DB_HOST,
+                db_name: !!process.env.DB_NAME,
+                db_user: !!process.env.DB_USER,
+                db_password: !!process.env.DB_PASSWORD,
+                session_secret: !!process.env.SESSION_SECRET
+            }
+        });
+    } finally {
+        if (client) {
+            client.release();
+        }
+    }
+});
+
+// Routes test endpoint
+app.get('/test-routes', (req, res) => {
+    const routes = [];
+    
+    // Extract routes from Express router
+    function extractRoutes(stack, prefix = '') {
+        stack.forEach(middleware => {
+            if (middleware.route) {
+                routes.push({
+                    path: prefix + middleware.route.path,
+                    methods: Object.keys(middleware.route.methods)
+                });
+            } else if (middleware.name === 'router' && middleware.handle?.stack) {
+                const routerPrefix = middleware.regexp.source
+                    .replace(/\\\//g, '/')
+                    .replace(/\$.*/, '')
+                    .replace(/^\^/, '');
+                extractRoutes(middleware.handle.stack, routerPrefix);
+            }
+        });
+    }
+    
+    extractRoutes(app._router.stack);
+    
+    res.json({
+        status: 'success',
+        total_routes: routes.length,
+        routes: routes.slice(0, 20), // Limit output
+        auth_routes_found: routes.filter(r => r.path.includes('/auth')).length,
+        customer_routes_found: routes.filter(r => r.path.includes('/customer')).length
+    });
+});
+
+// ============= APPLICATION ROUTES =============
+
+// Main application routes
 app.use('/auth', authRoutes);
 app.use('/provider', providerRoutes);
 app.use('/admin', adminRoutes);
@@ -150,13 +275,13 @@ app.use('/customer', customerRoutes);
 app.use(bookingRoutes);
 app.use('/customer', paymentRoutes);
 
-// Only use chat routes in development
+// Chat routes (development only)
 if (chatRoutes && process.env.NODE_ENV !== 'production') {
     app.use('/', chatRoutes);
     app.use('/provider', chatProviderRoutes);
-    console.log('Chat routes enabled for development');
+    console.log('✅ Chat routes enabled for development');
 } else {
-    // Provide basic chat endpoints that return "feature disabled" message
+    // Disabled chat endpoints for production
     app.get('/chat/*', (req, res) => {
         res.json({ 
             message: 'Chat features are disabled in production. Contact support for real-time communication.' 
@@ -176,63 +301,77 @@ app.get('/', (req, res) => {
     });
 });
 
-// Chat test route - only in development
+// ============= DEVELOPMENT-ONLY ROUTES =============
+
 if (process.env.NODE_ENV !== 'production') {
+    // Session test route
+    app.get('/test-session', (req, res) => {
+        req.session.success = 'Test success message';
+        req.session.error = 'Test error message';
+        
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ error: 'Session save failed', details: err.message });
+            }
+            
+            res.redirect('/auth/customer-login');
+        });
+    });
+
+    // Chat test route
     app.get('/chat-test', (req, res) => {
         res.send(`
             <!DOCTYPE html>
             <html>
             <head>
                 <title>Chat Test</title>
-                <script src="/socket.io/socket.io.js"></script>
-                <script>
-                    document.addEventListener('DOMContentLoaded', function() {
-                        const socket = io({
-                            auth: {
-                                userType: 'customer'
-                            }
-                        });
-                        
-                        socket.on('connect', function() {
-                            console.log('Connected to Socket.IO server');
-                            document.getElementById('status').textContent = 'Connected';
-                            document.getElementById('status').style.color = 'green';
-                        });
-                        
-                        socket.on('connect_error', function(err) {
-                            console.error('Connection error:', err);
-                            document.getElementById('status').textContent = 'Error: ' + err.message;
-                            document.getElementById('status').style.color = 'red';
-                        });
-                        
-                        socket.on('disconnect', function() {
-                            console.log('Disconnected from Socket.IO server');
-                            document.getElementById('status').textContent = 'Disconnected';
-                            document.getElementById('status').style.color = 'red';
-                        });
-                        
-                        document.getElementById('test-btn').addEventListener('click', function() {
-                            console.log('Sending test event');
-                            socket.emit('test', { message: 'Hello from the client!' });
-                        });
-                    });
-                </script>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; }
+                    .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+                    .success { background: #d4edda; color: #155724; }
+                    .error { background: #f8d7da; color: #721c24; }
+                </style>
             </head>
             <body>
-                <h1>Socket.IO Test Page</h1>
-                <p>Status: <span id="status">Connecting...</span></p>
-                <button id="test-btn">Send Test Event</button>
+                <h1>Socket.IO Test Page (Development Only)</h1>
+                <div id="status" class="status">Testing connection...</div>
+                <button onclick="testConnection()">Test Connection</button>
+                <div id="log"></div>
+                
+                <script>
+                    function testConnection() {
+                        const status = document.getElementById('status');
+                        const log = document.getElementById('log');
+                        
+                        if (typeof io === 'undefined') {
+                            status.className = 'status error';
+                            status.textContent = 'Socket.IO not available in production mode';
+                            return;
+                        }
+                        
+                        status.className = 'status';
+                        status.textContent = 'Attempting connection...';
+                        log.innerHTML = '<p>Connection test started...</p>';
+                    }
+                </script>
             </body>
             </html>
         `);
     });
 }
 
-// Error handling for 404
+// ============= ERROR HANDLING =============
+
+// 404 handler
 app.use((req, res, next) => {
+    console.log(`404 - Route not found: ${req.method} ${req.path}`);
     res.status(404).render('error', {
         title: 'Page Not Found',
-        error: { status: 404, message: 'The page you are looking for does not exist.' }
+        error: { 
+            status: 404, 
+            message: `The page you are looking for does not exist: ${req.path}` 
+        }
     });
 });
 
@@ -241,136 +380,26 @@ app.use((err, req, res, next) => {
     console.error('Server error:', err);
     res.status(err.status || 500).render('error', {
         title: 'Error',
-        error: { status: err.status || 500, message: err.message || 'An unexpected error occurred' }
-    });
-});
-
-// Add this route to your index.js file for testing database connection
-app.get('/test-db', async (req, res) => {
-    let client;
-    try {
-        console.log('Testing database connection...');
-        client = await pool.connect();
-        
-        // Test basic query
-        const result = await client.query('SELECT NOW() as current_time, version() as pg_version');
-        
-        // Test if your tables exist
-        const tablesResult = await client.query(`
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-            ORDER BY table_name
-        `);
-        
-        res.json({ 
-            status: 'success', 
-            message: 'Database connected successfully',
-            timestamp: result.rows[0].current_time,
-            postgresql_version: result.rows[0].pg_version.split(' ')[0],
-            tables: tablesResult.rows.map(row => row.table_name),
-            connection_info: {
-                host: process.env.DB_HOST,
-                database: process.env.DB_NAME,
-                user: process.env.DB_USER,
-                port: process.env.DB_PORT
-            }
-        });
-    } catch (error) {
-        console.error('Database test failed:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Database connection failed',
-            error: error.message,
-            code: error.code,
-            detail: error.detail
-        });
-    } finally {
-        if (client) {
-            client.release();
+        error: { 
+            status: err.status || 500, 
+            message: err.message || 'An unexpected error occurred' 
         }
-    }
-});
-
-// Add environment variables check route
-app.get('/test-env', (req, res) => {
-    res.json({
-        node_env: process.env.NODE_ENV,
-        db_host_set: !!process.env.DB_HOST,
-        db_name_set: !!process.env.DB_NAME,
-        db_user_set: !!process.env.DB_USER,
-        db_password_set: !!process.env.DB_PASSWORD,
-        session_secret_set: !!process.env.SESSION_SECRET,
-        // Show actual values for debugging (remove in production)
-        db_host: process.env.DB_HOST,
-        db_name: process.env.DB_NAME,
-        db_user: process.env.DB_USER
     });
 });
 
-// ===== DEBUGGING ROUTES - only in development =====
-if (process.env.NODE_ENV !== 'production') {
-    // Add this temporary route to test sessions
-    app.get('/test-session', (req, res) => {
-        // Set test messages
-        req.session.success = 'This is a test success message';
-        req.session.error = 'This is a test error message';
-        
-        console.log('Test messages set in session:', {
-            success: req.session.success,
-            error: req.session.error
-        });
-        
-        // Save session explicitly
-        req.session.save((err) => {
-            if (err) {
-                console.error('Session save error:', err);
-                return res.status(500).send('Session save error');
-            }
-            
-            // Redirect to a page to see if messages appear
-            res.redirect('/auth/customer-login');
-        });
-    });
+// ============= SERVER STARTUP =============
 
-    // Add this route to test direct file access
-    app.get('/test-image-access', (req, res) => {
-        const uploadDir = path.join(__dirname, 'public/uploads/chat_attachments');
-        
-        // List all files in the directory
-        fs.readdir(uploadDir, (err, files) => {
-            if (err) {
-                return res.status(500).json({ 
-                    error: 'Error reading directory', 
-                    details: err.message,
-                    path: uploadDir
-                });
-            }
-            
-            const imageFiles = files.filter(file => 
-                file.endsWith('.jpg') || 
-                file.endsWith('.jpeg') || 
-                file.endsWith('.png') || 
-                file.endsWith('.gif')
-            );
-            
-            res.json({
-                directory: uploadDir,
-                files: files,
-                imageFiles: imageFiles,
-                testUrl: imageFiles.length > 0 ? `/uploads/chat_attachments/${imageFiles[0]}` : null
-            });
-        });
-    });
-}
-
-// For Vercel deployment - export the Express app
+// Export for Vercel
 export default app;
 
-// Modify server startup for serverless
+// Local development server
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     const PORT = process.env.PORT || 3000;
     server.listen(PORT, () => {
-        console.log(`Server running at http://localhost:${PORT}`);
+        console.log(`🚀 Server running at http://localhost:${PORT}`);
+        console.log(`📊 Test routes available:`);
+        console.log(`   - http://localhost:${PORT}/debug-env`);
+        console.log(`   - http://localhost:${PORT}/test-db`);
+        console.log(`   - http://localhost:${PORT}/test-routes`);
     });
 }

@@ -4,16 +4,26 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Log environment variables for debugging (remove passwords in production)
+// Validate required environment variables
+const requiredEnvVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+    console.error('❌ Missing required environment variables:', missingVars);
+    console.error('Available env vars:', Object.keys(process.env).filter(key => key.startsWith('DB_')));
+}
+
+// Log database configuration (hide sensitive data)
 console.log('Database configuration:', {
-    host: process.env.DB_HOST,
+    host: process.env.DB_HOST?.substring(0, 20) + '...',
     port: process.env.DB_PORT,
     database: process.env.DB_NAME,
     user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD ? '***HIDDEN***' : 'NOT SET'
+    password: process.env.DB_PASSWORD ? '***HIDDEN***' : 'NOT SET',
+    ssl_enabled: true
 });
 
-// Create connection pool for PostgreSQL (Neon)
+// Create connection pool optimized for Vercel serverless
 const pool = new Pool({
     host: process.env.DB_HOST,
     port: parseInt(process.env.DB_PORT) || 5432,
@@ -23,45 +33,64 @@ const pool = new Pool({
     ssl: {
         rejectUnauthorized: false
     },
-    // Optimized for serverless
-    max: 10,
+    // Serverless optimized settings
+    max: 1, // Reduced for serverless
     min: 0,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
-    acquireTimeoutMillis: 60000,
-    createTimeoutMillis: 30000,
-    destroyTimeoutMillis: 5000,
-    reapIntervalMillis: 1000,
-    createRetryIntervalMillis: 200,
+    idleTimeoutMillis: 10000, // 10 seconds
+    connectionTimeoutMillis: 5000, // 5 seconds
+    acquireTimeoutMillis: 10000, // 10 seconds
+    statement_timeout: 30000, // 30 seconds
+    query_timeout: 30000, // 30 seconds
+    application_name: 'handyhub-vercel'
 });
 
 // Test connection function with detailed logging
 async function testConnection() {
     let client;
     try {
-        console.log('🔄 Attempting database connection...');
+        console.log('🔄 Testing database connection...');
+        
         client = await pool.connect();
         console.log('✅ Database connected successfully');
         
-        // Test query
+        // Test basic query
         const result = await client.query('SELECT NOW() as current_time, version() as pg_version');
         console.log('🕒 Database time:', result.rows[0].current_time);
         console.log('📊 PostgreSQL version:', result.rows[0].pg_version.split(' ')[0]);
+        
+        // Check if tables exist
+        const tablesResult = await client.query(`
+            SELECT COUNT(*) as table_count 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+        `);
+        console.log('📋 Tables in database:', tablesResult.rows[0].table_count);
         
         return true;
     } catch (error) {
         console.error('❌ Database connection failed:');
         console.error('Error code:', error.code);
         console.error('Error message:', error.message);
-        console.error('Error details:', error.detail);
         
-        // Common error solutions
-        if (error.code === 'ENOTFOUND') {
-            console.error('💡 Solution: Check if DB_HOST is correct');
-        } else if (error.code === 'ECONNREFUSED') {
-            console.error('💡 Solution: Check if DB_PORT is correct and database is running');
-        } else if (error.message.includes('password authentication failed')) {
-            console.error('💡 Solution: Check DB_USER and DB_PASSWORD');
+        // Specific error diagnostics
+        switch (error.code) {
+            case 'ENOTFOUND':
+                console.error('💡 DNS resolution failed. Check DB_HOST value.');
+                break;
+            case 'ECONNREFUSED':
+                console.error('💡 Connection refused. Check DB_HOST and DB_PORT.');
+                break;
+            case '28P01':
+                console.error('💡 Authentication failed. Check DB_USER and DB_PASSWORD.');
+                break;
+            case '3D000':
+                console.error('💡 Database does not exist. Check DB_NAME.');
+                break;
+            case 'ETIMEDOUT':
+                console.error('💡 Connection timeout. Database might be slow or unreachable.');
+                break;
+            default:
+                console.error('💡 Unknown error. Check all database credentials.');
         }
         
         return false;
@@ -72,39 +101,40 @@ async function testConnection() {
     }
 }
 
-// Handle pool errors
-pool.on('error', (err, client) => {
-    console.error('❌ Unexpected error on idle client', err);
+// Handle pool events
+pool.on('error', (err) => {
+    console.error('❌ Database pool error:', err.message);
 });
 
-pool.on('connect', (client) => {
-    console.log('🔗 New client connected');
+pool.on('connect', () => {
+    console.log('🔗 New database client connected');
 });
 
-pool.on('remove', (client) => {
-    console.log('🔌 Client removed');
+pool.on('remove', () => {
+    console.log('🔌 Database client removed');
 });
 
-// Test connection on startup
-testConnection().then(success => {
-    if (success) {
-        console.log('🚀 Database ready for queries');
-    } else {
-        console.log('⚠️ Database connection failed - app may not function properly');
+// Test connection on startup (only log, don't block)
+if (process.env.DB_HOST) {
+    testConnection().catch(err => {
+        console.error('Database startup test failed:', err.message);
+    });
+} else {
+    console.error('❌ DB_HOST environment variable not found');
+}
+
+// Graceful shutdown handlers
+const shutdown = async () => {
+    console.log('🔄 Shutting down database connections...');
+    try {
+        await pool.end();
+        console.log('✅ Database connections closed');
+    } catch (err) {
+        console.error('❌ Error during database shutdown:', err.message);
     }
-});
+};
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-    console.log('🔄 Gracefully shutting down database connections...');
-    await pool.end();
-    process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-    console.log('🔄 Gracefully shutting down database connections...');
-    await pool.end();
-    process.exit(0);
-});
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 export default pool;
