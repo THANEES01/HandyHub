@@ -769,11 +769,8 @@ router.get('/check-session', (req, res) => {
 
 // NEW: General login route (fixes the 404 error)
 router.get('/login', (req, res) => {
-    res.render('auth/login-selection', { 
-        title: 'Login to HandyHub',
-        error: null,
-        success: null
-    });
+    // Simple redirect - no template dependency
+    res.redirect('/auth/customer-login');
 });
 
 // If you don't have a login-selection.ejs template, use this simple redirect instead:

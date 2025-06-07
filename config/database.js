@@ -4,126 +4,145 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Validate required environment variables
-const requiredEnvVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'];
-const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-
-if (missingVars.length > 0) {
-    console.error('❌ Missing required environment variables:', missingVars);
-    console.error('Available env vars:', Object.keys(process.env).filter(key => key.startsWith('DB_')));
+// Validate DATABASE_URL exists
+if (!process.env.DATABASE_URL) {
+    console.error('❌ DATABASE_URL environment variable is required');
+    process.exit(1);
 }
 
-// Log database configuration (hide sensitive data)
+// Log database configuration (hide sensitive parts)
 console.log('Database configuration:', {
-    host: process.env.DB_HOST?.substring(0, 20) + '...',
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD ? '***HIDDEN***' : 'NOT SET',
-    ssl_enabled: true
+    url_preview: process.env.DATABASE_URL.substring(0, 30) + '...',
+    ssl_enabled: true,
+    environment: process.env.NODE_ENV || 'development'
 });
 
-// Create connection pool optimized for Vercel serverless
+// Create connection pool with timeout-resistant settings for Neon
 const pool = new Pool({
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT) || 5432,
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
+    connectionString: process.env.DATABASE_URL,
     ssl: {
         rejectUnauthorized: false
     },
-    // Serverless optimized settings
-    max: 1, // Reduced for serverless
+    // FIXED: Better settings for Neon + Vercel
+    max: 1, // Single connection for serverless
     min: 0,
-    idleTimeoutMillis: 10000, // 10 seconds
-    connectionTimeoutMillis: 5000, // 5 seconds
-    acquireTimeoutMillis: 10000, // 10 seconds
-    statement_timeout: 30000, // 30 seconds
-    query_timeout: 30000, // 30 seconds
+    idleTimeoutMillis: 30000, // 30 seconds
+    connectionTimeoutMillis: 20000, // 20 seconds (increased)
+    acquireTimeoutMillis: 30000, // 30 seconds (increased)
+    createTimeoutMillis: 20000, // 20 seconds
+    destroyTimeoutMillis: 5000,
+    reapIntervalMillis: 1000,
+    createRetryIntervalMillis: 200,
+    // Neon-specific settings
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 0,
+    statement_timeout: 60000, // 1 minute
+    query_timeout: 60000, // 1 minute
     application_name: 'handyhub-vercel'
 });
 
-// Test connection function with detailed logging
+// Enhanced test connection function
 async function testConnection() {
-    let client;
-    try {
-        console.log('🔄 Testing database connection...');
-        
-        client = await pool.connect();
-        console.log('✅ Database connected successfully');
-        
-        // Test basic query
-        const result = await client.query('SELECT NOW() as current_time, version() as pg_version');
-        console.log('🕒 Database time:', result.rows[0].current_time);
-        console.log('📊 PostgreSQL version:', result.rows[0].pg_version.split(' ')[0]);
-        
-        // Check if tables exist
-        const tablesResult = await client.query(`
-            SELECT COUNT(*) as table_count 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        `);
-        console.log('📋 Tables in database:', tablesResult.rows[0].table_count);
-        
-        return true;
-    } catch (error) {
-        console.error('❌ Database connection failed:');
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
-        
-        // Specific error diagnostics
-        switch (error.code) {
-            case 'ENOTFOUND':
-                console.error('💡 DNS resolution failed. Check DB_HOST value.');
-                break;
-            case 'ECONNREFUSED':
-                console.error('💡 Connection refused. Check DB_HOST and DB_PORT.');
-                break;
-            case '28P01':
-                console.error('💡 Authentication failed. Check DB_USER and DB_PASSWORD.');
-                break;
-            case '3D000':
-                console.error('💡 Database does not exist. Check DB_NAME.');
-                break;
-            case 'ETIMEDOUT':
-                console.error('💡 Connection timeout. Database might be slow or unreachable.');
-                break;
-            default:
-                console.error('💡 Unknown error. Check all database credentials.');
-        }
-        
-        return false;
-    } finally {
-        if (client) {
-            client.release();
+    const maxRetries = 3;
+    let attempt = 0;
+    
+    while (attempt < maxRetries) {
+        let client;
+        try {
+            attempt++;
+            console.log(`🔄 Testing database connection (attempt ${attempt}/${maxRetries})...`);
+            
+            // Use pool.connect with timeout
+            client = await Promise.race([
+                pool.connect(),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Connection timeout after 15 seconds')), 15000)
+                )
+            ]);
+            
+            console.log('✅ Database connected successfully');
+            
+            // Test basic query with timeout
+            const result = await Promise.race([
+                client.query('SELECT NOW() as current_time, version() as pg_version'),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
+                )
+            ]);
+            
+            console.log('🕒 Database time:', result.rows[0].current_time);
+            console.log('📊 PostgreSQL version:', result.rows[0].pg_version.split(' ')[0]);
+            
+            // Quick table check
+            const tablesResult = await client.query(`
+                SELECT COUNT(*) as table_count 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public'
+            `);
+            console.log('📋 Tables in database:', tablesResult.rows[0].table_count);
+            
+            return true;
+            
+        } catch (error) {
+            console.error(`❌ Database connection attempt ${attempt} failed:`, error.message);
+            
+            if (attempt === maxRetries) {
+                console.error('💡 Troubleshooting tips:');
+                console.error('   - Check if DATABASE_URL is correct');
+                console.error('   - Verify Neon database is active');
+                console.error('   - Check network connectivity');
+                console.error('   - Ensure database accepts connections');
+            }
+            
+            // Wait before retry
+            if (attempt < maxRetries) {
+                console.log(`⏳ Waiting 2 seconds before retry...`);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        } finally {
+            if (client) {
+                client.release();
+            }
         }
     }
+    
+    return false;
 }
 
-// Handle pool events
+// Handle pool events with better logging
 pool.on('error', (err) => {
     console.error('❌ Database pool error:', err.message);
+    console.error('Error code:', err.code);
 });
 
-pool.on('connect', () => {
-    console.log('🔗 New database client connected');
+pool.on('connect', (client) => {
+    console.log('🔗 New database client connected to Neon');
 });
 
-pool.on('remove', () => {
-    console.log('🔌 Database client removed');
+pool.on('acquire', (client) => {
+    console.log('📥 Database client acquired from pool');
 });
 
-// Test connection on startup (only log, don't block)
-if (process.env.DB_HOST) {
-    testConnection().catch(err => {
-        console.error('Database startup test failed:', err.message);
+pool.on('remove', (client) => {
+    console.log('🔌 Database client removed from pool');
+});
+
+// Test connection on startup (don't block if it fails)
+if (process.env.DATABASE_URL) {
+    testConnection().then(success => {
+        if (success) {
+            console.log('🚀 Database ready for queries');
+        } else {
+            console.log('⚠️ Database connection failed - will retry on first query');
+        }
+    }).catch(err => {
+        console.error('Database startup test error:', err.message);
     });
 } else {
-    console.error('❌ DB_HOST environment variable not found');
+    console.error('❌ DATABASE_URL not found in environment variables');
 }
 
-// Graceful shutdown handlers
+// Graceful shutdown
 const shutdown = async () => {
     console.log('🔄 Shutting down database connections...');
     try {
