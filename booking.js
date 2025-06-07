@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
-import { storage } from './config/cloudinary.js'; // Import Cloudinary storage
+import { bookingStorage } from './config/cloudinary.js'; // Import booking-specific Cloudinary storage
 
 // Get current file path (for ES modules)
 const __filename = fileURLToPath(import.meta.url);
@@ -60,7 +60,7 @@ const fileFilter = (req, file, cb) => {
 
 // Configure Multer to use Cloudinary storage
 const upload = multer({
-    storage: storage, // Use Cloudinary storage instead of local
+    storage: bookingStorage, // Use booking-specific Cloudinary storage
     limits: {
         fileSize: 10 * 1024 * 1024 // 10MB max file size
     },

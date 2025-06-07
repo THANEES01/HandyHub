@@ -107,7 +107,7 @@ const getDashboard = async (req, res) => {
 };
 
 const getProviderDetails = async (req, res) => {
-    try {
+     try {
         // Updated query to include pricing, availability, and coverage information with correct GROUP BY handling
         const query = `
             SELECT 
@@ -200,10 +200,17 @@ const getProviderDetails = async (req, res) => {
         console.log('Provider ID:', providerData.id);
         console.log('Coverage locations data:', JSON.stringify(providerData.coverage_locations, null, 2));
         
-        // Remove the duplicate '/uploads/certifications/' prefix
+        // Handle Cloudinary URLs - no need to modify path as Cloudinary returns full URLs
         if (providerData.certification_url) {
-            const cleanPath = providerData.certification_url.replace(/^\/uploads\/certifications\//, '');
-            providerData.certification_file = `/uploads/certifications/${cleanPath}`;
+            // Check if it's already a full Cloudinary URL
+            if (providerData.certification_url.startsWith('http')) {
+                // It's already a full URL from Cloudinary
+                providerData.certification_file = providerData.certification_url;
+            } else {
+                // Legacy local file path - keep existing logic for backward compatibility
+                const cleanPath = providerData.certification_url.replace(/^\/uploads\/certifications\//, '');
+                providerData.certification_file = `/uploads/certifications/${cleanPath}`;
+            }
         }
 
         // Send the response

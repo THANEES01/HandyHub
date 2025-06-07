@@ -5,46 +5,16 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { storage as cloudinaryStorage } from './config/cloudinary.js'; // Import Cloudinary storage
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const router = express.Router();
 
-// Configure multer for file storage
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'public/uploads/certifications')
-    },
-    filename: function (req, file, cb) {
-        // Create unique filename: timestamp-originalname
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
-
-// File filter
-const fileFilter = (req, file, cb) => {
-    const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    
-    if (allowedTypes.includes(ext)) {
-        cb(null, true);
-    } else {
-        cb(new Error('Invalid file type. Only PDF, JPG, and PNG files are allowed.'));
-    }
-};
-
-const upload = multer({ 
-    storage: multer.diskStorage({
-        destination: function (req, file, cb) {
-            cb(null, 'public/uploads/certifications')
-        },
-        filename: function (req, file, cb) {
-            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-            cb(null, uniqueSuffix + path.extname(file.originalname));
-        }
-    }),
+// Configure multer to use Cloudinary storage for certifications
+const certificationStorage = multer({
+    storage: cloudinaryStorage, // Use Cloudinary storage instead of local
     fileFilter: (req, file, cb) => {
         const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png'];
         const ext = path.extname(file.originalname).toLowerCase();
@@ -365,13 +335,14 @@ const showProviderRegister = (req, res) => {
     });
 };
 
-// Service Provider Registration
+// Service Provider Registration with Cloudinary
 const providerRegister = async (req, res) => {
     const client = await pool.connect();
     try {
         // Log full request body for debugging
         console.log("Full request body:", req.body);
         console.log("Request body structure:", Object.keys(req.body));
+        console.log("Uploaded file from Cloudinary:", req.file); // Log Cloudinary file info
 
         const {
             businessName,
@@ -391,7 +362,8 @@ const providerRegister = async (req, res) => {
             phoneNumber,
             serviceCategories: Array.isArray(serviceCategories) ? serviceCategories.length + " categories" : "1 category",
             servicesCount: services ? JSON.parse(services).length : 0,
-            coverageAreas: coverageAreas ? JSON.parse(coverageAreas).length : 0
+            coverageAreas: coverageAreas ? JSON.parse(coverageAreas).length : 0,
+            cloudinaryFile: req.file ? req.file.path : 'No file uploaded'
         });
 
         await client.query('BEGIN');
@@ -415,12 +387,14 @@ const providerRegister = async (req, res) => {
             [email, hashedPassword, 'provider']
         );
 
-        // Create provider profile with certification file path
-        const certificationPath = req.file ? `/uploads/certifications/${req.file.filename}` : null;
+        // Create provider profile with Cloudinary URL
+        const certificationUrl = req.file ? req.file.path : null; // Use Cloudinary URL
+        
+        console.log("Certification URL from Cloudinary:", certificationUrl);
         
         const newProvider = await client.query(
             'INSERT INTO service_providers (user_id, business_name, phone_number, certification_url) VALUES ($1, $2, $3, $4) RETURNING id',
-            [newUser.rows[0].id, businessName, phoneNumber, certificationPath]
+            [newUser.rows[0].id, businessName, phoneNumber, certificationUrl]
         );
 
         const providerId = newProvider.rows[0].id;
@@ -811,7 +785,7 @@ router.get('/logout', logout);
 router.get('/provider-login', isGuest, showProviderLogin);
 router.post('/provider-login', providerLogin);
 router.get('/provider-register', isGuest, showProviderRegister);
-router.post('/provider-register', upload.single('certification'), providerRegister);
+router.post('/provider-register', certificationStorage.single('certification'), providerRegister); // Use Cloudinary storage
 
 // Admin routes
 router.get('/admin-login', isGuest, (req, res) => {

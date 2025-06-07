@@ -13,7 +13,7 @@ cloudinary.config({
 });
 
 // Create storage engine for multer specifically for booking images
-const storage = new CloudinaryStorage({
+const bookingStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'booking_images', // Store booking images in this folder on Cloudinary
@@ -34,6 +34,28 @@ const storage = new CloudinaryStorage({
   }
 });
 
+// Create storage engine for provider certifications
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'provider_certifications', // Store certification files in this folder on Cloudinary
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf'], // Allow both images and PDFs for certifications
+    resource_type: 'auto', // Auto-detect resource type (image, raw for PDFs, etc.)
+    // Add optional transformation for images only
+    transformation: [
+      { width: 1500, height: 1500, crop: 'limit' }, // Resize large images to reasonable dimensions
+      { quality: 'auto', fetch_format: 'auto' } // Optimize quality and format
+    ],
+    // Generate a unique filename
+    public_id: (req, file) => {
+      const timestamp = Date.now();
+      const originalName = file.originalname.replace(/\.[^/.]+$/, ""); // Remove extension
+      const sanitizedName = originalName.replace(/[^a-zA-Z0-9]/g, '_'); // Replace special chars
+      return `certification_${timestamp}_${sanitizedName}`;
+    }
+  }
+});
+
 // Create storage for chat attachments (if you need it elsewhere)
 const chatStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
@@ -43,8 +65,15 @@ const chatStorage = new CloudinaryStorage({
     resource_type: 'auto',
     transformation: [
       { width: 1000, height: 1000, crop: 'limit' }
-    ]
+    ],
+    // Generate a unique filename
+    public_id: (req, file) => {
+      const timestamp = Date.now();
+      const originalName = file.originalname.replace(/\.[^/.]+$/, ""); // Remove extension
+      const sanitizedName = originalName.replace(/[^a-zA-Z0-9]/g, '_'); // Replace special chars
+      return `chat_${timestamp}_${sanitizedName}`;
+    }
   }
 });
 
-export { cloudinary, storage, chatStorage };
+export { cloudinary, storage, bookingStorage, chatStorage };
