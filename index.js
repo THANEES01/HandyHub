@@ -12,6 +12,7 @@ import adminRoutes from './admin.js'; // Import adminRoutes
 import customerRoutes from './customer.js';
 import bookingRoutes from './booking.js';
 import paymentRoutes from './payment.js';
+import pool from './config/database.js';
 // Conditionally import chat routes only in development
 let chatRoutes = null;
 let chatProviderRoutes = null;
