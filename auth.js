@@ -73,26 +73,26 @@ const isProvider = (req, res, next) => {
 };
 
 // ====== Controllers ======
+
+// FIXED: Customer Login Controller
 const showCustomerLogin = (req, res) => {
-     // Get messages from session
-    const error = req.session.error;
-    const success = req.session.success;
+    // Get messages from session and provide safe defaults
+    const error = req.session?.error || null;
+    const success = req.session?.success || null;
     
-    console.log('Rendering customer login with messages before clearing:', { 
+    console.log('Customer login - Messages from session:', { 
         error: error, 
-        success: success 
+        success: success,
+        sessionExists: !!req.session
     });
     
-    // Clear messages from session AFTER saving them
-    delete req.session.error;
-    delete req.session.success;
+    // Clear messages from session AFTER getting them
+    if (req.session) {
+        delete req.session.error;
+        delete req.session.success;
+    }
     
-    // Force session save
-    req.session.save((err) => {
-        if (err) console.error('Session save error in customer login page:', err);
-    });
-    
-    // Always pass the error and success, even if null
+    // Render with explicit null values if no messages
     res.render('auth/customer-login', {
         title: 'Customer Login',
         error: error,
@@ -100,31 +100,29 @@ const showCustomerLogin = (req, res) => {
     });
 };
 
+// FIXED: Customer Register Controller
 const showCustomerRegister = (req, res) => {
-     // Get messages from session
-     const error = req.session.error;
-     const success = req.session.success;
-     
-     console.log('Rendering customer register with messages before clearing:', { 
-         error: error, 
-         success: success 
-     });
-     
-     // Clear messages from session AFTER saving them
-     delete req.session.error;
-     delete req.session.success;
-     
-     // Force session save
-     req.session.save((err) => {
-         if (err) console.error('Session save error in customer register page:', err);
-     });
-     
-     // Always pass the error and success, even if null
-     res.render('auth/customer-register', {
-         title: 'Customer Registration',
-         error: error,
-         success: success
-     });
+    // Get messages from session and provide safe defaults
+    const error = req.session?.error || null;
+    const success = req.session?.success || null;
+    
+    console.log('Customer register - Messages from session:', { 
+        error: error, 
+        success: success,
+        sessionExists: !!req.session
+    });
+    
+    // Clear messages from session AFTER getting them
+    if (req.session) {
+        delete req.session.error;
+        delete req.session.success;
+    }
+    
+    res.render('auth/customer-register', {
+        title: 'Customer Registration',
+        error: error,
+        success: success
+    });
 };
 
 // Customer Registration
@@ -279,55 +277,49 @@ const logout = (req, res) => {
     });
 };
 
-// Show provider login page
+// FIXED: Provider Login Controller
 const showProviderLogin = (req, res) => {
-   // Get messages from session
-   const error = req.session.error;
-   const success = req.session.success;
-   
-   console.log('Rendering provider login with messages before clearing:', { 
-       error: error, 
-       success: success 
-   });
-   
-   // Clear messages from session AFTER saving them
-   delete req.session.error;
-   delete req.session.success;
-   
-   // Force session save
-   req.session.save((err) => {
-       if (err) console.error('Session save error in provider login page:', err);
-   });
-   
-   // Render page with messages
-   res.render('auth/provider-login', {
-       title: 'Service Provider Login',
-       error: error,
-       success: success
-   });
+    // Get messages from session and provide safe defaults
+    const error = req.session?.error || null;
+    const success = req.session?.success || null;
+    
+    console.log('Provider login - Messages from session:', { 
+        error: error, 
+        success: success,
+        sessionExists: !!req.session
+    });
+    
+    // Clear messages from session AFTER getting them
+    if (req.session) {
+        delete req.session.error;
+        delete req.session.success;
+    }
+    
+    res.render('auth/provider-login', {
+        title: 'Service Provider Login',
+        error: error,
+        success: success
+    });
 };
 
-// Show provider registration page
+// FIXED: Provider Register Controller
 const showProviderRegister = (req, res) => {
-    // Get messages from session
-    const error = req.session.error;
-    const success = req.session.success;
+    // Get messages from session and provide safe defaults
+    const error = req.session?.error || null;
+    const success = req.session?.success || null;
     
-    console.log('Rendering provider register with messages before clearing:', { 
+    console.log('Provider register - Messages from session:', { 
         error: error, 
-        success: success 
+        success: success,
+        sessionExists: !!req.session
     });
     
-    // Clear messages from session AFTER saving them
-    delete req.session.error;
-    delete req.session.success;
+    // Clear messages from session AFTER getting them
+    if (req.session) {
+        delete req.session.error;
+        delete req.session.success;
+    }
     
-    // Force session save
-    req.session.save((err) => {
-        if (err) console.error('Session save error in provider register page:', err);
-    });
-    
-    // Render page with messages
     res.render('auth/provider-register', {
         title: 'Service Provider Registration',
         error: error,
@@ -774,6 +766,21 @@ router.get('/check-session', (req, res) => {
 });
 
 // ====== Routes ======
+
+// NEW: General login route (fixes the 404 error)
+router.get('/login', (req, res) => {
+    res.render('auth/login-selection', { 
+        title: 'Login to HandyHub',
+        error: null,
+        success: null
+    });
+});
+
+// If you don't have a login-selection.ejs template, use this simple redirect instead:
+// router.get('/login', (req, res) => {
+//     res.redirect('/auth/customer-login');
+// });
+
 // Customer authentication routes
 router.get('/customer-login', isGuest, showCustomerLogin);
 router.post('/customer-login', customerLogin);
@@ -787,27 +794,24 @@ router.post('/provider-login', providerLogin);
 router.get('/provider-register', isGuest, showProviderRegister);
 router.post('/provider-register', certificationStorage.single('certification'), providerRegister); // Use Cloudinary storage
 
-// Admin routes
+// FIXED: Admin login route
 router.get('/admin-login', isGuest, (req, res) => {
-    // Get messages from session
-    const error = req.session.error;
-    const success = req.session.success;
+    // Get messages from session and provide safe defaults
+    const error = req.session?.error || null;
+    const success = req.session?.success || null;
     
-    console.log('Rendering admin login with messages before clearing:', { 
+    console.log('Admin login - Messages from session:', { 
         error: error, 
-        success: success 
+        success: success,
+        sessionExists: !!req.session
     });
     
-    // Clear messages from session AFTER saving them
-    delete req.session.error;
-    delete req.session.success;
+    // Clear messages from session AFTER getting them
+    if (req.session) {
+        delete req.session.error;
+        delete req.session.success;
+    }
     
-    // Force session save
-    req.session.save((err) => {
-        if (err) console.error('Session save error in admin login page:', err);
-    });
-    
-    // Always pass the error and success, even if null
     res.render('auth/admin-login', {
         title: 'Admin Login',
         error: error,
