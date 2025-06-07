@@ -4,8 +4,14 @@
   "description": "",
   "main": "index.js",
   "type": "module",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "node index.js",
+    "build": "echo 'No build step required'",
+    "vercel-build": "echo 'No build step required'"
   },
   "keywords": [],
   "author": "",
