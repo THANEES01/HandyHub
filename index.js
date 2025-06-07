@@ -12,9 +12,9 @@ import adminRoutes from './admin.js'; // Import adminRoutes
 import customerRoutes from './customer.js';
 import bookingRoutes from './booking.js';
 import paymentRoutes from './payment.js';
-import chatRoutes from './chat.js';
-import setupSocketIO from './socketio.js';
-import chatProviderRoutes from './chat-provider.js'; // Import the new chat routes
+// Conditionally import chat routes only in development
+let chatRoutes = null;
+let chatProviderRoutes = null;
 
 dotenv.config();
 
@@ -42,7 +42,8 @@ app.use('/img', express.static(path.join(__dirname, 'public/img')));
 
 // View engine setup
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+// Fixed: Use correct views folder case
+app.set('views', path.join(__dirname, 'Views'));
 
 // Define session middleware once with more secure settings
 const sessionMiddleware = session({
@@ -95,14 +96,49 @@ app.use((req, res, next) => {
     next();
 });
 
-// Set up Socket.IO with session middleware for authentication
-const io = setupSocketIO(server, sessionMiddleware);
+// Socket.IO setup - only in development
+let setupSocketIO = null;
+let io = null;
 
-// Make io available to request objects
-app.use((req, res, next) => {
-    req.io = io;
-    next();
-});
+// Only load Socket.IO in development (not on Vercel)
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    try {
+        const socketModule = await import('./socketio.js');
+        setupSocketIO = socketModule.default;
+        
+        // Load chat routes only in development
+        const chatModule = await import('./chat.js');
+        const chatProviderModule = await import('./chat-provider.js');
+        chatRoutes = chatModule.default;
+        chatProviderRoutes = chatProviderModule.default;
+        
+        console.log('Socket.IO and chat features loaded for development');
+    } catch (error) {
+        console.log('Socket.IO not available, running without real-time features');
+    }
+}
+
+// Set up Socket.IO with session middleware for authentication (development only)
+if (setupSocketIO && process.env.NODE_ENV !== 'production') {
+    io = setupSocketIO(server, sessionMiddleware);
+    
+    // Make io available to request objects
+    app.use((req, res, next) => {
+        req.io = io;
+        next();
+    });
+} else {
+    // Provide a dummy io object for production
+    app.use((req, res, next) => {
+        req.io = {
+            emit: () => {},
+            to: () => ({ emit: () => {} }),
+            in: () => ({ emit: () => {} })
+        };
+        next();
+    });
+    console.log('Running in production mode without Socket.IO');
+}
 
 // Routes
 app.use('/auth', authRoutes);
@@ -111,8 +147,25 @@ app.use('/admin', adminRoutes);
 app.use('/customer', customerRoutes);
 app.use(bookingRoutes);
 app.use('/customer', paymentRoutes);
-app.use('/', chatRoutes);
-app.use('/provider', chatProviderRoutes); // This should be after the main provider routes
+
+// Only use chat routes in development
+if (chatRoutes && process.env.NODE_ENV !== 'production') {
+    app.use('/', chatRoutes);
+    app.use('/provider', chatProviderRoutes);
+    console.log('Chat routes enabled for development');
+} else {
+    // Provide basic chat endpoints that return "feature disabled" message
+    app.get('/chat/*', (req, res) => {
+        res.json({ 
+            message: 'Chat features are disabled in production. Contact support for real-time communication.' 
+        });
+    });
+    app.post('/chat/*', (req, res) => {
+        res.json({ 
+            message: 'Chat features are disabled in production. Contact support for real-time communication.' 
+        });
+    });
+}
 
 // Home route
 app.get('/', (req, res) => {
@@ -121,55 +174,57 @@ app.get('/', (req, res) => {
     });
 });
 
-// Chat public page - create a special endpoint for socket.io testing
-app.get('/chat-test', (req, res) => {
-    res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Chat Test</title>
-            <script src="/socket.io/socket.io.js"></script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    const socket = io({
-                        auth: {
-                            userType: 'customer'
-                        }
+// Chat test route - only in development
+if (process.env.NODE_ENV !== 'production') {
+    app.get('/chat-test', (req, res) => {
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Chat Test</title>
+                <script src="/socket.io/socket.io.js"></script>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const socket = io({
+                            auth: {
+                                userType: 'customer'
+                            }
+                        });
+                        
+                        socket.on('connect', function() {
+                            console.log('Connected to Socket.IO server');
+                            document.getElementById('status').textContent = 'Connected';
+                            document.getElementById('status').style.color = 'green';
+                        });
+                        
+                        socket.on('connect_error', function(err) {
+                            console.error('Connection error:', err);
+                            document.getElementById('status').textContent = 'Error: ' + err.message;
+                            document.getElementById('status').style.color = 'red';
+                        });
+                        
+                        socket.on('disconnect', function() {
+                            console.log('Disconnected from Socket.IO server');
+                            document.getElementById('status').textContent = 'Disconnected';
+                            document.getElementById('status').style.color = 'red';
+                        });
+                        
+                        document.getElementById('test-btn').addEventListener('click', function() {
+                            console.log('Sending test event');
+                            socket.emit('test', { message: 'Hello from the client!' });
+                        });
                     });
-                    
-                    socket.on('connect', function() {
-                        console.log('Connected to Socket.IO server');
-                        document.getElementById('status').textContent = 'Connected';
-                        document.getElementById('status').style.color = 'green';
-                    });
-                    
-                    socket.on('connect_error', function(err) {
-                        console.error('Connection error:', err);
-                        document.getElementById('status').textContent = 'Error: ' + err.message;
-                        document.getElementById('status').style.color = 'red';
-                    });
-                    
-                    socket.on('disconnect', function() {
-                        console.log('Disconnected from Socket.IO server');
-                        document.getElementById('status').textContent = 'Disconnected';
-                        document.getElementById('status').style.color = 'red';
-                    });
-                    
-                    document.getElementById('test-btn').addEventListener('click', function() {
-                        console.log('Sending test event');
-                        socket.emit('test', { message: 'Hello from the client!' });
-                    });
-                });
-            </script>
-        </head>
-        <body>
-            <h1>Socket.IO Test Page</h1>
-            <p>Status: <span id="status">Connecting...</span></p>
-            <button id="test-btn">Send Test Event</button>
-        </body>
-        </html>
-    `);
-});
+                </script>
+            </head>
+            <body>
+                <h1>Socket.IO Test Page</h1>
+                <p>Status: <span id="status">Connecting...</span></p>
+                <button id="test-btn">Send Test Event</button>
+            </body>
+            </html>
+        `);
+    });
+}
 
 // Error handling for 404
 app.use((req, res, next) => {
@@ -188,59 +243,61 @@ app.use((err, req, res, next) => {
     });
 });
 
-// ===== DEBUGGING ROUTE =====
-// Add this temporary route to test sessions
-app.get('/test-session', (req, res) => {
-    // Set test messages
-    req.session.success = 'This is a test success message';
-    req.session.error = 'This is a test error message';
-    
-    console.log('Test messages set in session:', {
-        success: req.session.success,
-        error: req.session.error
-    });
-    
-    // Save session explicitly
-    req.session.save((err) => {
-        if (err) {
-            console.error('Session save error:', err);
-            return res.status(500).send('Session save error');
-        }
+// ===== DEBUGGING ROUTES - only in development =====
+if (process.env.NODE_ENV !== 'production') {
+    // Add this temporary route to test sessions
+    app.get('/test-session', (req, res) => {
+        // Set test messages
+        req.session.success = 'This is a test success message';
+        req.session.error = 'This is a test error message';
         
-        // Redirect to a page to see if messages appear
-        res.redirect('/auth/customer-login');
-    });
-});
-
-// Add this route to your index.js to test direct file access
-app.get('/test-image-access', (req, res) => {
-    const uploadDir = path.join(__dirname, 'public/uploads/chat_attachments');
-    
-    // List all files in the directory
-    fs.readdir(uploadDir, (err, files) => {
-        if (err) {
-            return res.status(500).json({ 
-                error: 'Error reading directory', 
-                details: err.message,
-                path: uploadDir
-            });
-        }
+        console.log('Test messages set in session:', {
+            success: req.session.success,
+            error: req.session.error
+        });
         
-        const imageFiles = files.filter(file => 
-            file.endsWith('.jpg') || 
-            file.endsWith('.jpeg') || 
-            file.endsWith('.png') || 
-            file.endsWith('.gif')
-        );
-        
-        res.json({
-            directory: uploadDir,
-            files: files,
-            imageFiles: imageFiles,
-            testUrl: imageFiles.length > 0 ? `/uploads/chat_attachments/${imageFiles[0]}` : null
+        // Save session explicitly
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).send('Session save error');
+            }
+            
+            // Redirect to a page to see if messages appear
+            res.redirect('/auth/customer-login');
         });
     });
-});
+
+    // Add this route to test direct file access
+    app.get('/test-image-access', (req, res) => {
+        const uploadDir = path.join(__dirname, 'public/uploads/chat_attachments');
+        
+        // List all files in the directory
+        fs.readdir(uploadDir, (err, files) => {
+            if (err) {
+                return res.status(500).json({ 
+                    error: 'Error reading directory', 
+                    details: err.message,
+                    path: uploadDir
+                });
+            }
+            
+            const imageFiles = files.filter(file => 
+                file.endsWith('.jpg') || 
+                file.endsWith('.jpeg') || 
+                file.endsWith('.png') || 
+                file.endsWith('.gif')
+            );
+            
+            res.json({
+                directory: uploadDir,
+                files: files,
+                imageFiles: imageFiles,
+                testUrl: imageFiles.length > 0 ? `/uploads/chat_attachments/${imageFiles[0]}` : null
+            });
+        });
+    });
+}
 
 // For Vercel deployment - export the Express app
 export default app;
@@ -253,5 +310,7 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     });
 }
 
-// // Export io for potential external use
-// export { io };
+// Export io for potential external use (development only)
+// if (io) {
+//     export { io };
+// }
