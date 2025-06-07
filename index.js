@@ -244,6 +244,69 @@ app.use((err, req, res, next) => {
     });
 });
 
+// Add this route to your index.js file for testing database connection
+app.get('/test-db', async (req, res) => {
+    let client;
+    try {
+        console.log('Testing database connection...');
+        client = await pool.connect();
+        
+        // Test basic query
+        const result = await client.query('SELECT NOW() as current_time, version() as pg_version');
+        
+        // Test if your tables exist
+        const tablesResult = await client.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+            ORDER BY table_name
+        `);
+        
+        res.json({ 
+            status: 'success', 
+            message: 'Database connected successfully',
+            timestamp: result.rows[0].current_time,
+            postgresql_version: result.rows[0].pg_version.split(' ')[0],
+            tables: tablesResult.rows.map(row => row.table_name),
+            connection_info: {
+                host: process.env.DB_HOST,
+                database: process.env.DB_NAME,
+                user: process.env.DB_USER,
+                port: process.env.DB_PORT
+            }
+        });
+    } catch (error) {
+        console.error('Database test failed:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Database connection failed',
+            error: error.message,
+            code: error.code,
+            detail: error.detail
+        });
+    } finally {
+        if (client) {
+            client.release();
+        }
+    }
+});
+
+// Add environment variables check route
+app.get('/test-env', (req, res) => {
+    res.json({
+        node_env: process.env.NODE_ENV,
+        db_host_set: !!process.env.DB_HOST,
+        db_name_set: !!process.env.DB_NAME,
+        db_user_set: !!process.env.DB_USER,
+        db_password_set: !!process.env.DB_PASSWORD,
+        session_secret_set: !!process.env.SESSION_SECRET,
+        // Show actual values for debugging (remove in production)
+        db_host: process.env.DB_HOST,
+        db_name: process.env.DB_NAME,
+        db_user: process.env.DB_USER
+    });
+});
+
 // ===== DEBUGGING ROUTES - only in development =====
 if (process.env.NODE_ENV !== 'production') {
     // Add this temporary route to test sessions
