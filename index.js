@@ -242,10 +242,16 @@ app.get('/test-image-access', (req, res) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-});
+// For Vercel deployment - export the Express app
+export default app;
 
-// Export io for potential external use
-export { io };
+// Modify server startup for serverless
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, () => {
+        console.log(`Server running at http://localhost:${PORT}`);
+    });
+}
+
+// // Export io for potential external use
+// export { io };
