@@ -12,6 +12,7 @@ import adminRoutes from './admin.js'; // Import adminRoutes
 import customerRoutes from './customer.js';
 import bookingRoutes from './booking.js';
 import paymentRoutes from './payment.js';
+import setupSocketIO from './socketio.js';
 // Conditionally import chat routes only in development
 let chatRoutes = null;
 let chatProviderRoutes = null;
@@ -42,8 +43,8 @@ app.use('/img', express.static(path.join(__dirname, 'public/img')));
 
 // View engine setup
 app.set('view engine', 'ejs');
-// Fixed: Use correct views folder case
-app.set('views', path.join(__dirname, 'Views'));
+// Fixed: Use correct views folder case - should be lowercase
+app.set('views', path.join(__dirname, 'views'));
 
 // Define session middleware once with more secure settings
 const sessionMiddleware = session({
@@ -311,6 +312,6 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
 }
 
 // Export io for potential external use (development only)
-// if (io) {
-//     export { io };
-// }
+if (io) {
+    export { io };
+}
