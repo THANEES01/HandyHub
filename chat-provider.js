@@ -4,6 +4,7 @@ import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import dotenv from 'dotenv';
+import { triggerPusherEvent } from './pusher-config.js';
 
 // Load environment variables
 dotenv.config();
@@ -21,11 +22,11 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'chat_attachments', // Store files in this folder on Cloudinary
-    resource_type: 'auto', // Auto-detect resource type (image, raw, etc.)
+    folder: 'chat_attachments',
+    resource_type: 'auto',
     allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx'],
     transformation: [
-      { width: 1000, height: 1000, crop: 'limit' } // Resize large images to reasonable dimensions
+      { width: 1000, height: 1000, crop: 'limit' }
     ]
   }
 });
@@ -37,7 +38,6 @@ const upload = multer({
         fileSize: 5 * 1024 * 1024 // 5MB max file size
     },
     fileFilter: (req, file, cb) => {
-        // Accept only images and common document types
         const allowedFileTypes = [
             'image/jpeg', 'image/png', 'image/gif', 'image/webp',
             'application/pdf', 'application/msword',
@@ -57,7 +57,6 @@ const upload = multer({
 // Middleware to handle Multer errors
 const handleMulterErrors = (err, req, res, next) => {
     if (err instanceof multer.MulterError) {
-        // A Multer error occurred during file upload
         let errorMessage = 'An error occurred during file upload.';
         
         if (err.code === 'LIMIT_FILE_SIZE') {
@@ -68,11 +67,9 @@ const handleMulterErrors = (err, req, res, next) => {
         
         return res.status(400).json({ success: false, error: errorMessage });
     } else if (err) {
-        // Other errors
         return res.status(500).json({ success: false, error: err.message || 'An unexpected error occurred.' });
     }
     
-    // If no error, continue
     next();
 };
 
@@ -84,8 +81,8 @@ const logUploadDetails = async (req, res, next) => {
       originalname: req.file.originalname,
       mimetype: req.file.mimetype,
       size: req.file.size,
-      cloudinaryUrl: req.file.path, // Cloudinary URL
-      publicId: req.file.filename // Cloudinary public ID
+      cloudinaryUrl: req.file.path,
+      publicId: req.file.filename
     });
     console.log('=========================================');
   }
@@ -111,7 +108,7 @@ const isProvider = (req, res, next) => {
     }
 };
 
-// Add this at the top of your routes in chat-provider.js before other routes
+// Debug session endpoint
 router.get('/debug-session', (req, res) => {
     res.json({
         session: req.session,
@@ -156,13 +153,11 @@ router.get('/conversations', isProvider, async (req, res) => {
         const conversationsResult = await pool.query(conversationsQuery, [providerId]);
         const conversations = conversationsResult.rows;
         
-        // Variables for active conversation and messages
         let activeConversation = null;
         let messages = [];
         
         // If a conversation is requested, fetch its details and messages
         if (requestedConversationId) {
-            // Get conversation details
             const conversationQuery = `
                 SELECT 
                     cc.id,
@@ -179,7 +174,6 @@ router.get('/conversations', isProvider, async (req, res) => {
             if (conversationResult.rows.length > 0) {
                 activeConversation = conversationResult.rows[0];
                 
-                // Get messages with attachment details
                 const messagesQuery = `
                     SELECT *
                     FROM chat_messages
@@ -204,12 +198,20 @@ router.get('/conversations', isProvider, async (req, res) => {
                             conv.unread_count = 0;
                         }
                     });
+
+                    // **PUSHER: Trigger read receipt**
+                    try {
+                        await triggerPusherEvent(`conversation-${requestedConversationId}`, 'messages-read', {
+                            conversationId: requestedConversationId,
+                            readBy: 'provider'
+                        });
+                    } catch (pusherError) {
+                        console.error('Error triggering read receipt:', pusherError);
+                    }
                 }
             }
         }
         
-        // FIXED: Make sure the path matches where your template actually is
-        // If your template is directly in the views folder and called "integrated-messaging.ejs"
         res.render('provider/integrated-messaging', {
             title: 'Messages',
             conversations: conversations,
@@ -217,10 +219,12 @@ router.get('/conversations', isProvider, async (req, res) => {
             messages: messages,
             currentPage: 'conversations',
             error: req.session.error,
-            success: req.session.success
+            success: req.session.success,
+            // Add Pusher configuration for frontend
+            pusherKey: process.env.PUSHER_KEY,
+            pusherCluster: process.env.PUSHER_CLUSTER
         });
         
-        // Clear session messages
         delete req.session.error;
         delete req.session.success;
         
@@ -236,7 +240,6 @@ router.get('/api/unread-count', isProvider, async (req, res) => {
      try {
         const providerId = req.session.user.providerId;
         
-        // Get unread message count
         const countQuery = `
             SELECT COUNT(*) as unread_count
             FROM chat_messages cm
@@ -268,7 +271,6 @@ router.get('/api/messages/:conversationId', isProvider, async (req, res) => {
         const { lastMessageId } = req.query;
         const providerId = req.session.user.providerId;
         
-        // Verify the conversation belongs to this provider
         const verifyQuery = `
             SELECT id FROM chat_conversations
             WHERE id = $1 AND provider_id = $2
@@ -283,7 +285,6 @@ router.get('/api/messages/:conversationId', isProvider, async (req, res) => {
             });
         }
         
-        // Get new messages with attachment information
         const messagesQuery = `
             SELECT *
             FROM chat_messages
@@ -306,6 +307,16 @@ router.get('/api/messages/:conversationId', isProvider, async (req, res) => {
                 SET is_read = true
                 WHERE conversation_id = $1 AND sender_type = 'customer' AND is_read = false
             `, [conversationId]);
+
+            // **PUSHER: Trigger read receipt**
+            try {
+                await triggerPusherEvent(`conversation-${conversationId}`, 'messages-read', {
+                    conversationId: conversationId,
+                    readBy: 'provider'
+                });
+            } catch (pusherError) {
+                console.error('Error triggering read receipt:', pusherError);
+            }
         }
         
         res.json({
@@ -337,8 +348,8 @@ router.post('/api/send-message', isProvider, async (req, res) => {
         
         // Verify the conversation belongs to this provider
         const verifyQuery = `
-            SELECT id FROM chat_conversations
-            WHERE id = $1 AND provider_id = $2
+            SELECT cc.id, cc.customer_id, cc.provider_id FROM chat_conversations cc
+            WHERE cc.id = $1 AND cc.provider_id = $2
         `;
         
         const verifyResult = await pool.query(verifyQuery, [conversationId, providerId]);
@@ -349,8 +360,8 @@ router.post('/api/send-message', isProvider, async (req, res) => {
                 error: 'Conversation not found or not authorized'
             });
         }
-        
-        // Set default message text if empty
+
+        const conversation = verifyResult.rows[0];
         const messageText = message || '';
         
         // Insert the message
@@ -394,6 +405,24 @@ router.post('/api/send-message', isProvider, async (req, res) => {
             SET last_message_at = NOW()
             WHERE id = $1
         `, [conversationId]);
+
+        // **PUSHER: Trigger real-time event**
+        try {
+            // Send to conversation channel
+            await triggerPusherEvent(`conversation-${conversationId}`, 'new-message', newMessage);
+            
+            // Send notification to customer
+            await triggerPusherEvent(`user-customer-${conversation.customer_id}`, 'message-notification', {
+                conversationId: conversationId,
+                from_user_type: 'provider',
+                has_attachment: false,
+                messagePreview: messageText.substring(0, 50)
+            });
+            
+            console.log('Pusher events triggered successfully');
+        } catch (pusherError) {
+            console.error('Error triggering Pusher events:', pusherError);
+        }
         
         res.json({
             success: true,
@@ -431,8 +460,8 @@ router.post('/api/send-message-with-attachment', isProvider, upload.single('atta
         
         // Verify the conversation belongs to this provider
         const verifyQuery = `
-            SELECT id FROM chat_conversations
-            WHERE id = $1 AND provider_id = $2
+            SELECT cc.id, cc.customer_id, cc.provider_id FROM chat_conversations cc
+            WHERE cc.id = $1 AND cc.provider_id = $2
         `;
         
         const verifyResult = await pool.query(verifyQuery, [conversationId, providerId]);
@@ -443,6 +472,8 @@ router.post('/api/send-message-with-attachment', isProvider, upload.single('atta
                 error: 'Conversation not found or not authorized'
             });
         }
+
+        const conversation = verifyResult.rows[0];
         
         // Process file attachment
         let hasAttachment = false;
@@ -453,13 +484,10 @@ router.post('/api/send-message-with-attachment', isProvider, upload.single('atta
         
         if (req.file) {
             hasAttachment = true;
-            
-            // Use the Cloudinary URL provided by multer-storage-cloudinary
-            attachmentUrl = req.file.path; // This contains the full Cloudinary URL
+            attachmentUrl = req.file.path;
             attachmentType = req.file.mimetype;
             attachmentName = req.file.originalname;
             
-            // If no message text is provided, set a default based on file type
             if (!messageText || messageText.trim() === '') {
                 if (attachmentType.startsWith('image/')) {
                     messageText = "📷 Image";
@@ -525,6 +553,24 @@ router.post('/api/send-message-with-attachment', isProvider, upload.single('atta
             SET last_message_at = NOW()
             WHERE id = $1
         `, [conversationId]);
+
+        // **PUSHER: Trigger real-time event**
+        try {
+            // Send to conversation channel
+            await triggerPusherEvent(`conversation-${conversationId}`, 'new-message', newMessage);
+            
+            // Send notification to customer
+            await triggerPusherEvent(`user-customer-${conversation.customer_id}`, 'message-notification', {
+                conversationId: conversationId,
+                from_user_type: 'provider',
+                has_attachment: hasAttachment,
+                messagePreview: messageText.substring(0, 50)
+            });
+            
+            console.log('Pusher events triggered successfully');
+        } catch (pusherError) {
+            console.error('Error triggering Pusher events:', pusherError);
+        }
         
         res.json({
             success: true,
@@ -565,7 +611,6 @@ router.post('/api/mark-messages-read', isProvider, async (req, res) => {
             });
         }
         
-        // Verify the conversation belongs to this provider
         const verifyQuery = `
             SELECT id FROM chat_conversations
             WHERE id = $1 AND provider_id = $2
@@ -586,6 +631,16 @@ router.post('/api/mark-messages-read', isProvider, async (req, res) => {
             SET is_read = true
             WHERE conversation_id = $1 AND sender_type = 'customer' AND is_read = false
         `, [conversationId]);
+
+        // **PUSHER: Trigger read receipt**
+        try {
+            await triggerPusherEvent(`conversation-${conversationId}`, 'messages-read', {
+                conversationId: conversationId,
+                readBy: 'provider'
+            });
+        } catch (pusherError) {
+            console.error('Error triggering read receipt:', pusherError);
+        }
         
         res.json({
             success: true,

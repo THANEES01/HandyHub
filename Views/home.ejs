@@ -12,6 +12,184 @@
 </head>
 
 <style>
+ :root {
+    --primary-blue: #0077be;
+    --secondary-blue: #00a2e8;
+    --dark-blue: #003366;
+    --light-blue: #e6f2ff;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    color: var(--dark-blue);
+    margin: 0;
+    padding: 0;
+}
+
+/* Hero Section */
+.hero {
+    background: linear-gradient(135deg, rgba(140, 166, 181, 0.95), rgba(5, 168, 238, 0.95));
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 120px 0;
+}
+
+.hero-content {
+    text-align: center;
+    color: white;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.hero h1 {
+    font-size: 4rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.hero p {
+    font-size: 1.4rem;
+    margin-bottom: 30px;
+}
+
+.btn-explore {
+    background-color: white;
+    color: var(--primary-blue);
+    border: none;
+    padding: 15px 40px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+}
+
+.btn-explore:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    background-color: var(--light-blue);
+}
+
+/* Stats Section */
+.stats {
+    padding: 40px 0;
+    background-color: var(--primary-blue);
+    color: white;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 20px;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.stat-label {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+/* Services Section */
+.services {
+    padding: 100px 0;
+    background-color: white;
+}
+
+.section-title {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.section-title h2 {
+    font-size: 2.5rem;
+    color: var(--dark-blue);
+    margin-bottom: 20px;
+}
+
+.section-title p {
+    color: #666;
+    font-size: 1.2rem;
+}
+
+.service-card {
+    background-color: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.service-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+}
+
+/* Features Section */
+.features {
+    padding: 80px 0;
+    background-color: var(--light-blue);
+}
+
+.feature-item {
+    text-align: center;
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.feature-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.feature-icon {
+    font-size: 2.5rem;
+    color: var(--primary-blue);
+    margin-bottom: 20px;
+}
+
+/* Navbar */
+.navbar {
+    background-color: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+    color: var(--primary-blue) !important;
+}
+
+.nav-link {
+    color: var(--dark-blue) !important;
+    margin-right: 15px;
+    transition: color 0.3s ease;
+    font-weight: 500;
+}
+
+.btn-login {
+    background-color: var(--primary-blue);
+    color: white !important;
+    border: none;
+    padding: 8px 24px;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.btn-login:hover {
+    background-color: var(--dark-blue);
+    transform: translateY(-2px);
+} 
   /* Services Section Styling */
 .services {
     padding: 100px 0;

@@ -3,18 +3,16 @@ import pool from './config/database.js';
 
 const router = express.Router();
 
-// Middleware
 const isProvider = (req, res, next) => {
-    if (req.session.user && req.session.user.userType === 'provider') {
+    if (req.session?.user && req.session.user.userType === 'provider') {
         return next();
     }
     req.session.error = 'Please login as a service provider';
     res.redirect('/auth/provider-login');
 };
 
-// Middleware to check if provider is authenticated
 const isAuthenticated = (req, res, next) => {
-    if (req.session.user && req.session.user.userType === 'provider') {
+    if (req.session?.user && req.session.user.userType === 'provider') {
         next();
     } else {
         req.session.error = 'Please login to access this page';

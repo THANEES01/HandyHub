@@ -969,8 +969,10 @@ router.get('/customer/bookings', isCustomerAuth, async (req, res) => {
 
 // API endpoint to get available time slots
 router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
-       try {
+      try {
         const { providerId, date, dayOfWeek, serviceType, bookingHours } = req.query;
+        
+        console.log('Available slots request:', { providerId, date, dayOfWeek, serviceType, bookingHours });
         
         if (!providerId || !date) {
             return res.status(400).json({ error: 'Provider ID and date are required' });
@@ -980,20 +982,64 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
         const selectedDate = new Date(date);
         const dayName = dayOfWeek || ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()];
         
-        // Get provider's availability for this day
+        console.log('Calculated day name:', dayName);
+        
+        // FIXED: Enhanced query with case-insensitive matching and debugging
         const availabilityResult = await pool.query(
-            'SELECT * FROM provider_availability WHERE provider_id = $1 AND day_of_week = $2 AND is_available = true',
+            `SELECT * FROM provider_availability 
+             WHERE provider_id = $1 
+             AND LOWER(day_of_week) = LOWER($2) 
+             AND is_available = true`,
             [providerId, dayName]
         );
         
+        console.log('Availability query result:', availabilityResult.rows);
+        
+        // FIXED: Also check if there's any availability data for this provider at all
         if (availabilityResult.rows.length === 0) {
-            return res.json({ 
-                slots: [],
-                message: `No availability for ${dayName}`
-            });
+            // Check if provider has any availability data
+            const allAvailabilityResult = await pool.query(
+                'SELECT * FROM provider_availability WHERE provider_id = $1',
+                [providerId]
+            );
+            
+            console.log('All availability for provider:', allAvailabilityResult.rows);
+            
+            if (allAvailabilityResult.rows.length === 0) {
+                return res.json({ 
+                    slots: [],
+                    message: `No availability schedule set for this provider`,
+                    debug: {
+                        providerId,
+                        dayName,
+                        hasAnyAvailability: false
+                    }
+                });
+            } else {
+                return res.json({ 
+                    slots: [],
+                    message: `Provider is not available on ${dayName}`,
+                    debug: {
+                        providerId,
+                        dayName,
+                        availableDays: allAvailabilityResult.rows.map(row => row.day_of_week),
+                        hasAnyAvailability: true
+                    }
+                });
+            }
         }
         
         const availability = availabilityResult.rows[0];
+        console.log('Provider availability:', availability);
+        
+        // FIXED: Better time parsing and validation
+        if (!availability.start_time || !availability.end_time) {
+            console.error('Invalid start_time or end_time:', availability);
+            return res.json({ 
+                slots: [],
+                message: `Invalid schedule configuration for ${dayName}`
+            });
+        }
         
         // Get ALL existing bookings for this provider and date, regardless of status
         const bookingsResult = await pool.query(
@@ -1005,9 +1051,33 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
         
         console.log(`Found ${bookingsResult.rows.length} existing bookings for ${date}:`, bookingsResult.rows);
         
+        // FIXED: Improved time parsing to handle different time formats
+        const parseTime = (timeStr) => {
+            if (!timeStr) return null;
+            
+            // Handle both "HH:MM:SS" and "HH:MM" formats
+            const timeOnly = timeStr.split('.')[0]; // Remove milliseconds if present
+            const [hours, minutes] = timeOnly.split(':').map(Number);
+            
+            const time = new Date(`${date}T00:00:00`);
+            time.setHours(hours, minutes, 0, 0);
+            return time;
+        };
+        
         // Generate all possible 1-hour time slots for the day
-        const startTime = new Date(`${date}T${availability.start_time}`);
-        const endTime = new Date(`${date}T${availability.end_time}`);
+        const startTime = parseTime(availability.start_time);
+        const endTime = parseTime(availability.end_time);
+        
+        if (!startTime || !endTime) {
+            console.error('Failed to parse start/end times:', { start_time: availability.start_time, end_time: availability.end_time });
+            return res.json({ 
+                slots: [],
+                message: `Invalid time format in schedule`
+            });
+        }
+        
+        console.log('Parsed times:', { startTime, endTime });
+        
         const slotDuration = parseInt(availability.slot_duration) || 60; // in minutes
         
         // Create a Set to track all occupied 1-hour slots
@@ -1132,36 +1202,55 @@ router.get('/api/available-slots', isCustomerAuth, async (req, res) => {
             availableSlots = availableOneHourSlots.map(slot => slot.slot);
         }
         
+        console.log('Final available slots:', availableSlots);
+        
         res.json({ 
             slots: availableSlots,
             dayOfWeek: dayName,
             slotDuration: slotDuration,
             providerHours: `${formatTime(startTime)} - ${formatTime(endTime)}`,
             isHomeCleaningMultiHour: serviceType === 'Home Cleaning' && bookingHours > 1,
-            hoursRequested: bookingHours || 1
+            hoursRequested: bookingHours || 1,
+            debug: {
+                providerId,
+                date,
+                dayName,
+                rawAvailability: availability,
+                occupiedSlots: Array.from(occupiedSlots),
+                totalOneHourSlots: availableOneHourSlots.length
+            }
         });
         
     } catch (error) {
         console.error('Error getting available slots:', error);
-        res.status(500).json({ error: 'Failed to get available time slots' });
+        res.status(500).json({ 
+            error: 'Failed to get available time slots',
+            details: error.message,
+            stack: error.stack
+        });
     }
 });
 
 // Helper function to parse time string like "9:00 AM" into a Date object
 function parseTimeString(timeStr, dateStr) {
-    const [time, period] = timeStr.trim().split(' ');
-    const [hours, minutes] = time.split(':').map(Number);
-    
-    let hour24 = hours;
-    if (period === 'PM' && hours !== 12) {
-        hour24 += 12;
-    } else if (period === 'AM' && hours === 12) {
-        hour24 = 0;
+      try {
+        const [time, period] = timeStr.trim().split(' ');
+        const [hours, minutes] = time.split(':').map(Number);
+        
+        let hour24 = hours;
+        if (period === 'PM' && hours !== 12) {
+            hour24 += 12;
+        } else if (period === 'AM' && hours === 12) {
+            hour24 = 0;
+        }
+        
+        const date = new Date(dateStr);
+        date.setHours(hour24, minutes, 0, 0);
+        return date;
+    } catch (error) {
+        console.error('Error parsing time string:', timeStr, error);
+        return null;
     }
-    
-    const date = new Date(dateStr);
-    date.setHours(hour24, minutes, 0, 0);
-    return date;
 }
 
 // Debug endpoint to examine image storage
@@ -1368,10 +1457,35 @@ router.get('/check-image-path', (req, res) => {
         staticServing: 'Check if these paths match your Express static middleware configuration'
     });
 });
+
+// Add this temporary debug route
+router.get('/debug-availability/:providerId', isCustomerAuth, async (req, res) => {
+    try {
+        const providerId = req.params.providerId;
+        
+        const result = await pool.query(
+            'SELECT * FROM provider_availability WHERE provider_id = $1',
+            [providerId]
+        );
+        
+        res.json({
+            providerId,
+            availabilityCount: result.rows.length,
+            availability: result.rows
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
     
 
 // Helper function to format time as "HH:MM AM/PM"
 function formatTime(date) {
+     if (!date || !(date instanceof Date)) {
+        console.error('Invalid date object:', date);
+        return 'Invalid Time';
+    }
+    
     let hours = date.getHours();
     const minutes = date.getMinutes();
     const ampm = hours >= 12 ? 'PM' : 'AM';

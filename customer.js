@@ -4,19 +4,20 @@ import pool from './config/database.js';
 const router = express.Router();
 
 // Middleware to check if user is logged in
-const isAuthenticated = (req, res, next) => {
-    if (req.session.user) {
+const isCustomerAuth = (req, res, next) => {
+    if (req.session?.user && req.session.user.userType === 'customer') {
         next();
     } else {
-        res.redirect('/auth/login');
+        req.session.error = 'Please login as a customer to access this page';
+        res.redirect('/auth/customer-login');
     }
 };
 
-// Middleware to check if user is logged in as customer
-const isCustomerAuth = (req, res, next) => {
-    if (req.session.user && req.session.user.userType === 'customer') {
+const isAuthenticated = (req, res, next) => {
+    if (req.session?.user) {
         next();
     } else {
+        req.session.error = 'Please login to access this page';
         res.redirect('/auth/customer-login');
     }
 };

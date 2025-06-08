@@ -7,6 +7,7 @@ import fs from 'fs';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import dotenv from 'dotenv';
+import { triggerPusherEvent } from './pusher-config.js';
 
 // Load environment variables
 dotenv.config();
@@ -28,12 +29,11 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'chat_attachments', // Store files in this folder on Cloudinary
-    resource_type: 'auto', // Auto-detect resource type (image, raw, etc.)
+    folder: 'chat_attachments',
+    resource_type: 'auto',
     allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx'],
-    // Add optional transformation for images
     transformation: [
-      { width: 1000, height: 1000, crop: 'limit' } // Resize large images to reasonable dimensions
+      { width: 1000, height: 1000, crop: 'limit' }
     ]
   }
 });
@@ -45,7 +45,6 @@ const upload = multer({
         fileSize: 5 * 1024 * 1024 // 5MB max file size
     },
     fileFilter: (req, file, cb) => {
-        // Accept only images and common document types
         const allowedFileTypes = [
             'image/jpeg', 'image/png', 'image/gif', 'image/webp',
             'application/pdf', 'application/msword',
@@ -65,7 +64,6 @@ const upload = multer({
 // Middleware to handle Multer errors
 const handleMulterErrors = (err, req, res, next) => {
     if (err instanceof multer.MulterError) {
-        // A Multer error occurred during file upload
         let errorMessage = 'An error occurred during file upload.';
         
         if (err.code === 'LIMIT_FILE_SIZE') {
@@ -76,11 +74,9 @@ const handleMulterErrors = (err, req, res, next) => {
         
         return res.status(400).json({ success: false, error: errorMessage });
     } else if (err) {
-        // Other errors
         return res.status(500).json({ success: false, error: err.message || 'An unexpected error occurred.' });
     }
     
-    // If no error, continue
     next();
 };
 
@@ -119,8 +115,8 @@ const logUploadDetails = async (req, res, next) => {
       originalname: req.file.originalname,
       mimetype: req.file.mimetype,
       size: req.file.size,
-      cloudinaryUrl: req.file.path, // The full Cloudinary URL
-      publicId: req.file.filename // Cloudinary public ID
+      cloudinaryUrl: req.file.path,
+      publicId: req.file.filename
     });
     console.log('=========================================');
   }
@@ -129,14 +125,12 @@ const logUploadDetails = async (req, res, next) => {
 
 /**
  * Route to initiate a conversation with a provider from the provider details page
- * This handles the "Message Provider" button click
  */
 router.get('/customer/start-chat/:providerId', isCustomerAuth, async (req, res) => {
     try {
         const customerId = req.session.user.id;
         const providerId = req.params.providerId;
         
-        // Check if a conversation already exists
         const conversationResult = await pool.query(`
             SELECT id FROM chat_conversations
             WHERE customer_id = $1 AND provider_id = $2
@@ -145,10 +139,8 @@ router.get('/customer/start-chat/:providerId', isCustomerAuth, async (req, res) 
         let conversationId;
         
         if (conversationResult.rows.length > 0) {
-            // Conversation exists, use existing conversation
             conversationId = conversationResult.rows[0].id;
         } else {
-            // Create a new conversation
             const newConversationResult = await pool.query(`
                 INSERT INTO chat_conversations (customer_id, provider_id, created_at, last_message_at)
                 VALUES ($1, $2, NOW(), NOW())
@@ -158,7 +150,6 @@ router.get('/customer/start-chat/:providerId', isCustomerAuth, async (req, res) 
             conversationId = newConversationResult.rows[0].id;
         }
         
-        // Redirect to the chat page
         res.redirect(`/customer/conversations?provider=${providerId}`);
         
     } catch (error) {
@@ -173,7 +164,6 @@ router.get('/customer/conversations', isCustomerAuth, async (req, res) => {
         const userId = req.session.user.id;
         const requestedProviderId = req.query.provider;
         
-        // Get all conversations for this customer with unread count and last message
         const conversationsQuery = `
             SELECT 
                 cc.id as conversation_id,
@@ -205,14 +195,11 @@ router.get('/customer/conversations', isCustomerAuth, async (req, res) => {
         const conversationsResult = await pool.query(conversationsQuery, [userId, requestedProviderId || -1]);
         const conversations = conversationsResult.rows;
         
-        // Variables for active provider, conversation, and messages
         let activeProvider = null;
         let conversationId = null;
         let messages = [];
         
-        // If a provider is requested, fetch conversation details and messages
         if (requestedProviderId) {
-            // First get the provider details
             const providerResult = await pool.query(`
                 SELECT sp.id, sp.business_name, sp.is_verified
                 FROM service_providers sp
@@ -222,17 +209,14 @@ router.get('/customer/conversations', isCustomerAuth, async (req, res) => {
             if (providerResult.rows.length > 0) {
                 activeProvider = providerResult.rows[0];
                 
-                // Get or create a conversation with this provider
                 const conversationResult = await pool.query(`
                     SELECT id FROM chat_conversations
                     WHERE customer_id = $1 AND provider_id = $2
                 `, [userId, requestedProviderId]);
                 
                 if (conversationResult.rows.length > 0) {
-                    // Existing conversation
                     conversationId = conversationResult.rows[0].id;
                 } else {
-                    // Create a new conversation
                     const newConversationResult = await pool.query(`
                         INSERT INTO chat_conversations (customer_id, provider_id, created_at, last_message_at)
                         VALUES ($1, $2, NOW(), NOW())
@@ -242,7 +226,6 @@ router.get('/customer/conversations', isCustomerAuth, async (req, res) => {
                     conversationId = newConversationResult.rows[0].id;
                 }
                 
-                // Get messages for this conversation
                 const messagesResult = await pool.query(`
                     SELECT *
                     FROM chat_messages
@@ -252,7 +235,6 @@ router.get('/customer/conversations', isCustomerAuth, async (req, res) => {
                 
                 messages = messagesResult.rows;
                 
-                // Mark unread messages as read
                 if (messages.some(m => m.sender_type === 'provider' && !m.is_read)) {
                     await pool.query(`
                         UPDATE chat_messages
@@ -260,7 +242,6 @@ router.get('/customer/conversations', isCustomerAuth, async (req, res) => {
                         WHERE conversation_id = $1 AND sender_type = 'provider' AND is_read = false
                     `, [conversationId]);
                     
-                    // Update the unread count for this conversation in our result set
                     conversations.forEach(conv => {
                         if (conv.provider_id == requestedProviderId) {
                             conv.unread_count = 0;
@@ -270,7 +251,6 @@ router.get('/customer/conversations', isCustomerAuth, async (req, res) => {
             }
         }
         
-        // Render the integrated messaging template
         res.render('customer/integrated-messaging', {
             title: 'My Conversations',
             user: req.session.user,
@@ -279,10 +259,12 @@ router.get('/customer/conversations', isCustomerAuth, async (req, res) => {
             conversationId: conversationId,
             messages: messages,
             success: req.session.success,
-            error: req.session.error
+            error: req.session.error,
+            // Add Pusher configuration for frontend
+            pusherKey: process.env.PUSHER_KEY,
+            pusherCluster: process.env.PUSHER_CLUSTER
         });
         
-        // Clear session messages
         delete req.session.success;
         delete req.session.error;
         
@@ -292,130 +274,6 @@ router.get('/customer/conversations', isCustomerAuth, async (req, res) => {
         res.redirect('/customer/dashboard');
     }
 });
-
-// Provider chat routes
-// router.get('/provider/conversations', isProviderAuth, async (req, res) => {
-//     try {
-//         const providerId = req.session.user.providerId;
-        
-//         // Get all conversations for this provider with customer information
-//         const conversationsQuery = `
-//             SELECT 
-//                 cc.id as conversation_id,
-//                 cc.customer_id,
-//                 c.first_name || ' ' || c.last_name as customer_name,
-//                 (SELECT message_text FROM chat_messages 
-//                  WHERE conversation_id = cc.id 
-//                  ORDER BY created_at DESC LIMIT 1) as last_message,
-//                 (SELECT has_attachment FROM chat_messages
-//                  WHERE conversation_id = cc.id
-//                  ORDER BY created_at DESC LIMIT 1) as last_message_has_attachment,
-//                 (SELECT created_at FROM chat_messages 
-//                  WHERE conversation_id = cc.id 
-//                  ORDER BY created_at DESC LIMIT 1) as last_message_time,
-//                 (SELECT COUNT(*) FROM chat_messages 
-//                  WHERE conversation_id = cc.id 
-//                  AND sender_type = 'customer' 
-//                  AND is_read = false) as unread_count
-//             FROM chat_conversations cc
-//             JOIN customers c ON cc.customer_id = c.user_id
-//             WHERE cc.provider_id = $1
-//             ORDER BY cc.last_message_at DESC
-//         `;
-        
-//         const conversationsResult = await pool.query(conversationsQuery, [providerId]);
-        
-//         res.render('provider/integrated-messaging', {
-//             title: 'My Conversations',
-//             conversations: conversationsResult.rows,
-//             user: req.session.user,
-//             error: req.session.error,
-//             success: req.session.success,
-//             currentPage: 'conversations'
-//         });
-        
-//         // Clear session messages
-//         delete req.session.error;
-//         delete req.session.success;
-        
-//     } catch (error) {
-//         console.error('Error fetching conversations:', error);
-//         req.session.error = 'Failed to load conversations';
-//         res.redirect('/provider/dashboard');
-//     }
-// });
-
-// Get conversation details for a provider
-// router.get('/provider/chat/:conversationId', isProviderAuth, async (req, res) => {
-//     try {
-//         const providerId = req.session.user.providerId;
-//         const conversationId = req.params.conversationId;
-        
-//         // Verify this conversation belongs to this provider
-//         const conversationResult = await pool.query(`
-//             SELECT 
-//                 cc.id, 
-//                 cc.customer_id,
-//                 c.first_name || ' ' || c.last_name as customer_name
-//             FROM chat_conversations cc
-//             JOIN customers c ON cc.customer_id = c.user_id
-//             WHERE cc.id = $1 AND cc.provider_id = $2
-//         `, [conversationId, providerId]);
-        
-//         if (conversationResult.rows.length === 0) {
-//             req.session.error = 'Conversation not found';
-//             return res.redirect('/provider/conversations');
-//         }
-        
-//         const conversation = conversationResult.rows[0];
-        
-//         // Get messages for this conversation
-//         const messagesResult = await pool.query(`
-//             SELECT 
-//                 id, 
-//                 sender_id,
-//                 sender_type,
-//                 message_text,
-//                 created_at,
-//                 is_read,
-//                 has_attachment,
-//                 attachment_url,
-//                 attachment_type,
-//                 attachment_name
-//             FROM chat_messages
-//             WHERE conversation_id = $1
-//             ORDER BY created_at ASC
-//         `, [conversationId]);
-        
-//         // Mark messages as read if they are from the customer
-//         if (messagesResult.rows.some(msg => msg.sender_type === 'customer' && !msg.is_read)) {
-//             await pool.query(`
-//                 UPDATE chat_messages
-//                 SET is_read = true
-//                 WHERE conversation_id = $1 AND sender_type = 'customer' AND is_read = false
-//             `, [conversationId]);
-//         }
-        
-//         res.render('provider/chat', {
-//             title: `Chat with ${conversation.customer_name}`,
-//             user: req.session.user,
-//             conversation: conversation,
-//             messages: messagesResult.rows,
-//             currentPage: 'conversations',
-//             error: req.session.error,
-//             success: req.session.success
-//         });
-        
-//         // Clear session messages
-//         delete req.session.error;
-//         delete req.session.success;
-        
-//     } catch (error) {
-//         console.error('Error loading chat:', error);
-//         req.session.error = 'Failed to load chat';
-//         res.redirect('/provider/conversations');
-//     }
-// });
 
 // API endpoint to send a message with file attachment (for both customer and provider)
 router.post('/api/send-message', isAuthenticated, upload.single('attachment'), handleMulterErrors, logUploadDetails, async (req, res) => {
@@ -438,7 +296,6 @@ router.post('/api/send-message', isAuthenticated, upload.single('attachment'), h
             });
         }
         
-        // Allow empty message if file is attached
         if (!message && !req.file) {
             console.warn('Missing message and no file attached');
             return res.status(400).json({ 
@@ -453,18 +310,17 @@ router.post('/api/send-message', isAuthenticated, upload.single('attachment'), h
         
         if (userType === 'customer') {
             conversationQuery = `
-                SELECT id FROM chat_conversations
-                WHERE id = $1 AND customer_id = $2
+                SELECT cc.id, cc.provider_id, cc.customer_id FROM chat_conversations cc
+                WHERE cc.id = $1 AND cc.customer_id = $2
             `;
             queryParams = [conversationId, userId];
         } else if (userType === 'provider') {
-            // For providers, we need to use providerId
             const providerId = req.session.user.providerId;
             console.log('Provider ID for conversation query:', providerId);
             
             conversationQuery = `
-                SELECT id FROM chat_conversations
-                WHERE id = $1 AND provider_id = $2
+                SELECT cc.id, cc.provider_id, cc.customer_id FROM chat_conversations cc
+                WHERE cc.id = $1 AND cc.provider_id = $2
             `;
             queryParams = [conversationId, providerId];
         } else {
@@ -486,23 +342,22 @@ router.post('/api/send-message', isAuthenticated, upload.single('attachment'), h
                 error: 'Conversation not found or not authorized' 
             });
         }
+
+        const conversation = conversationResult.rows[0];
         
         // Process file attachment if present
         let hasAttachment = false;
         let attachmentUrl = null;
         let attachmentType = null;
         let attachmentName = null;
-        let messageText = message || ''; // Default to empty string instead of null
+        let messageText = message || '';
         
         if (req.file) {
             hasAttachment = true;
-            
-            // Use the Cloudinary URL provided by multer-storage-cloudinary
-            attachmentUrl = req.file.path; // This contains the full Cloudinary URL
+            attachmentUrl = req.file.path;
             attachmentType = req.file.mimetype;
             attachmentName = req.file.originalname;
             
-            // If no message text is provided, set a default based on file type
             if (!messageText) {
                 if (attachmentType.startsWith('image/')) {
                     messageText = "📷 Image";
@@ -525,7 +380,6 @@ router.post('/api/send-message', isAuthenticated, upload.single('attachment'), h
             });
         }
         
-        // Insert the message with attachment information if present
         console.log('Inserting message into database with message_text:', messageText);
         const messageResult = await pool.query(`
             INSERT INTO chat_messages 
@@ -537,12 +391,12 @@ router.post('/api/send-message', isAuthenticated, upload.single('attachment'), h
             conversationId, 
             userId, 
             userType, 
-            messageText, // Use messageText instead of message || null
+            messageText,
             hasAttachment,
             attachmentUrl,
             attachmentType,
             attachmentName,
-            false // Messages are unread by default
+            false
         ]);
         
         console.log('Message inserted, result:', messageResult.rows[0]);
@@ -567,6 +421,28 @@ router.post('/api/send-message', isAuthenticated, upload.single('attachment'), h
             attachment_type: attachmentType,
             attachment_name: attachmentName
         };
+
+        // **PUSHER: Trigger real-time event**
+        try {
+            // Send to conversation channel
+            await triggerPusherEvent(`conversation-${conversationId}`, 'new-message', messageData);
+            
+            // Send notification to the recipient
+            const recipientType = userType === 'customer' ? 'provider' : 'customer';
+            const recipientId = userType === 'customer' ? conversation.provider_id : conversation.customer_id;
+            
+            await triggerPusherEvent(`user-${recipientType}-${recipientId}`, 'message-notification', {
+                conversationId: conversationId,
+                from_user_type: userType,
+                has_attachment: hasAttachment,
+                messagePreview: messageText.substring(0, 50)
+            });
+            
+            console.log('Pusher events triggered successfully');
+        } catch (pusherError) {
+            console.error('Error triggering Pusher events:', pusherError);
+            // Continue execution even if Pusher fails
+        }
         
         // Send successful response
         res.json({
@@ -591,7 +467,6 @@ router.get('/api/messages/:conversationId', isAuthenticated, async (req, res) =>
         const userId = req.session.user.id;
         const userType = req.session.user.userType;
         
-        // Verify the conversation exists and belongs to this user
         let conversationQuery;
         let queryParams;
         
@@ -618,7 +493,6 @@ router.get('/api/messages/:conversationId', isAuthenticated, async (req, res) =>
             return res.status(404).json({ error: 'Conversation not found' });
         }
         
-        // Get new messages
         let messagesQuery = `
             SELECT 
                 id, 
@@ -646,7 +520,6 @@ router.get('/api/messages/:conversationId', isAuthenticated, async (req, res) =>
         
         const messagesResult = await pool.query(messagesQuery, messagesParams);
         
-        // Mark messages as read if they are from the other user
         const otherUserType = userType === 'customer' ? 'provider' : 'customer';
         
         if (messagesResult.rows.some(msg => msg.sender_type === otherUserType && !msg.is_read)) {
@@ -655,6 +528,16 @@ router.get('/api/messages/:conversationId', isAuthenticated, async (req, res) =>
                 SET is_read = true
                 WHERE conversation_id = $1 AND sender_type = $2 AND is_read = false
             `, [conversationId, otherUserType]);
+
+            // **PUSHER: Trigger read receipt**
+            try {
+                await triggerPusherEvent(`conversation-${conversationId}`, 'messages-read', {
+                    conversationId: conversationId,
+                    readBy: userType
+                });
+            } catch (pusherError) {
+                console.error('Error triggering read receipt:', pusherError);
+            }
         }
         
         res.json({
@@ -730,7 +613,6 @@ router.post('/api/mark-messages-read', isAuthenticated, async (req, res) => {
             });
         }
         
-        // Verify the conversation exists and belongs to this user
         let conversationQuery;
         let queryParams;
         
@@ -763,7 +645,6 @@ router.post('/api/mark-messages-read', isAuthenticated, async (req, res) => {
             });
         }
         
-        // Mark messages as read from the other party
         const otherParty = userType === 'customer' ? 'provider' : 'customer';
         
         await pool.query(`
@@ -771,6 +652,16 @@ router.post('/api/mark-messages-read', isAuthenticated, async (req, res) => {
             SET is_read = true
             WHERE conversation_id = $1 AND sender_type = $2 AND is_read = false
         `, [conversationId, otherParty]);
+
+        // **PUSHER: Trigger read receipt**
+        try {
+            await triggerPusherEvent(`conversation-${conversationId}`, 'messages-read', {
+                conversationId: conversationId,
+                readBy: userType
+            });
+        } catch (pusherError) {
+            console.error('Error triggering read receipt:', pusherError);
+        }
         
         res.json({
             success: true,
@@ -786,18 +677,63 @@ router.post('/api/mark-messages-read', isAuthenticated, async (req, res) => {
     }
 });
 
+// Pusher authentication endpoint for private channels
+router.post('/pusher/auth', isAuthenticated, (req, res) => {
+    try {
+        const socketId = req.body.socket_id;
+        const channel = req.body.channel_name;
+        const userId = req.session.user.id;
+        const userType = req.session.user.userType;
+        
+        console.log('Pusher auth request:', { socketId, channel, userId, userType });
+        
+        // Verify user has access to this channel
+        if (channel.startsWith('conversation-')) {
+            const conversationId = channel.split('-')[1];
+            
+            // Here you could add additional verification that the user has access to this conversation
+            // For now, we'll trust that the middleware has verified authentication
+            
+            const authData = {
+                user_id: userId,
+                user_info: {
+                    type: userType,
+                    id: userId
+                }
+            };
+            
+            const auth = pusher.authenticate(socketId, channel, authData);
+            res.send(auth);
+        } else if (channel.startsWith(`user-${userType}-${userId}`)) {
+            // User's personal notification channel
+            const authData = {
+                user_id: userId,
+                user_info: {
+                    type: userType,
+                    id: userId
+                }
+            };
+            
+            const auth = pusher.authenticate(socketId, channel, authData);
+            res.send(auth);
+        } else {
+            res.status(403).json({ error: 'Unauthorized channel access' });
+        }
+    } catch (error) {
+        console.error('Error authenticating Pusher channel:', error);
+        res.status(500).json({ error: 'Authentication failed' });
+    }
+});
+
 // Utility function to delete a file from Cloudinary if needed
 const deleteFileFromCloudinary = async (publicId) => {
     if (!publicId) return;
     
     try {
-        // Extract public ID from the full URL if needed
         let id = publicId;
         if (publicId.includes('cloudinary.com')) {
-            // Example URL: https://res.cloudinary.com/mycloud/image/upload/v1234567890/chat_attachments/abcdef123456
             const parts = publicId.split('/');
             id = parts[parts.length - 1];
-            // If the folder is included in the public ID
             if (id.includes('/')) {
                 id = 'chat_attachments/' + id.split('/').pop();
             }

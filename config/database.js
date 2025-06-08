@@ -4,44 +4,55 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Validate DATABASE_URL exists
+// Validate DATABASE_URL
 if (!process.env.DATABASE_URL) {
     console.error('❌ DATABASE_URL environment variable is required');
     process.exit(1);
 }
 
-// Log database configuration (hide sensitive parts)
-console.log('Database configuration:', {
-    url_preview: process.env.DATABASE_URL.substring(0, 30) + '...',
-    ssl_enabled: true,
-    environment: process.env.NODE_ENV || 'development'
-});
+// Add connection timeout parameters to DATABASE_URL if not present
+let connectionString = process.env.DATABASE_URL;
+if (!connectionString.includes('connect_timeout')) {
+    const separator = connectionString.includes('?') ? '&' : '?';
+    connectionString += `${separator}connect_timeout=30&pool_timeout=30&statement_timeout=30000`;
+}
 
-// Create connection pool with timeout-resistant settings for Neon
+console.log('🔧 Connecting to Neon database with enhanced timeouts...');
+
+// Create pool with Neon-optimized settings for cold starts
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: connectionString,
     ssl: {
         rejectUnauthorized: false
     },
-    // FIXED: Better settings for Neon + Vercel
-    max: 1, // Single connection for serverless
+    // Enhanced settings for Neon cold starts
+    max: 10,
     min: 0,
-    idleTimeoutMillis: 30000, // 30 seconds
-    connectionTimeoutMillis: 20000, // 20 seconds (increased)
-    acquireTimeoutMillis: 30000, // 30 seconds (increased)
-    createTimeoutMillis: 20000, // 20 seconds
-    destroyTimeoutMillis: 5000,
-    reapIntervalMillis: 1000,
-    createRetryIntervalMillis: 200,
-    // Neon-specific settings
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 30000, // Increased for cold starts
+    acquireTimeoutMillis: 30000,    // Increased for cold starts
+    statement_timeout: 30000,
+    query_timeout: 30000,
+    application_name: 'handyhub-app',
+    // Additional Neon-specific settings
     keepAlive: true,
-    keepAliveInitialDelayMillis: 0,
-    statement_timeout: 60000, // 1 minute
-    query_timeout: 60000, // 1 minute
-    application_name: 'handyhub-vercel'
+    keepAliveInitialDelayMillis: 0
 });
 
-// Enhanced test connection function
+// Connection event handlers
+pool.on('connect', (client) => {
+    console.log('✅ Connected to Neon database');
+});
+
+pool.on('error', (err) => {
+    console.error('❌ Database connection error:', err.message);
+    
+    if (err.message.includes('timeout')) {
+        console.error('💡 Database timeout - Neon may be sleeping, will retry automatically');
+    }
+});
+
+// Test connection function with retry logic for cold starts
 async function testConnection() {
     const maxRetries = 3;
     let attempt = 0;
@@ -52,17 +63,17 @@ async function testConnection() {
             attempt++;
             console.log(`🔄 Testing database connection (attempt ${attempt}/${maxRetries})...`);
             
-            // Use pool.connect with timeout
+            // First, try to wake up the database by connecting
             client = await Promise.race([
                 pool.connect(),
                 new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Connection timeout after 15 seconds')), 15000)
+                    setTimeout(() => reject(new Error('Connection timeout after 25 seconds')), 25000)
                 )
             ]);
             
             console.log('✅ Database connected successfully');
             
-            // Test basic query with timeout
+            // Test a simple query with timeout
             const result = await Promise.race([
                 client.query('SELECT NOW() as current_time, version() as pg_version'),
                 new Promise((_, reject) => 
@@ -73,31 +84,24 @@ async function testConnection() {
             console.log('🕒 Database time:', result.rows[0].current_time);
             console.log('📊 PostgreSQL version:', result.rows[0].pg_version.split(' ')[0]);
             
-            // Quick table check
-            const tablesResult = await client.query(`
-                SELECT COUNT(*) as table_count 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public'
-            `);
-            console.log('📋 Tables in database:', tablesResult.rows[0].table_count);
-            
             return true;
             
         } catch (error) {
-            console.error(`❌ Database connection attempt ${attempt} failed:`, error.message);
+            console.error(`❌ Connection attempt ${attempt} failed:`, error.message);
             
-            if (attempt === maxRetries) {
-                console.error('💡 Troubleshooting tips:');
-                console.error('   - Check if DATABASE_URL is correct');
-                console.error('   - Verify Neon database is active');
-                console.error('   - Check network connectivity');
-                console.error('   - Ensure database accepts connections');
-            }
-            
-            // Wait before retry
-            if (attempt < maxRetries) {
-                console.log(`⏳ Waiting 2 seconds before retry...`);
-                await new Promise(resolve => setTimeout(resolve, 2000));
+            if (error.message.includes('timeout') || error.message.includes('ECONNREFUSED')) {
+                console.log('💡 This looks like a cold start issue. Database may be sleeping.');
+                if (attempt < maxRetries) {
+                    console.log(`⏳ Waiting 3 seconds before retry...`);
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                }
+            } else if (attempt === maxRetries) {
+                console.error('💥 All connection attempts failed');
+                console.error('💡 Troubleshooting steps:');
+                console.error('   1. Check if DATABASE_URL is correct');
+                console.error('   2. Verify Neon database is not suspended');
+                console.error('   3. Try connecting from Neon dashboard first');
+                console.error('   4. Check your network/firewall settings');
             }
         } finally {
             if (client) {
@@ -109,47 +113,19 @@ async function testConnection() {
     return false;
 }
 
-// Handle pool events with better logging
-pool.on('error', (err) => {
-    console.error('❌ Database pool error:', err.message);
-    console.error('Error code:', err.code);
+// Test connection on startup
+testConnection().catch(err => {
+    console.error('Database startup test error:', err.message);
 });
-
-pool.on('connect', (client) => {
-    console.log('🔗 New database client connected to Neon');
-});
-
-pool.on('acquire', (client) => {
-    console.log('📥 Database client acquired from pool');
-});
-
-pool.on('remove', (client) => {
-    console.log('🔌 Database client removed from pool');
-});
-
-// Test connection on startup (don't block if it fails)
-if (process.env.DATABASE_URL) {
-    testConnection().then(success => {
-        if (success) {
-            console.log('🚀 Database ready for queries');
-        } else {
-            console.log('⚠️ Database connection failed - will retry on first query');
-        }
-    }).catch(err => {
-        console.error('Database startup test error:', err.message);
-    });
-} else {
-    console.error('❌ DATABASE_URL not found in environment variables');
-}
 
 // Graceful shutdown
 const shutdown = async () => {
-    console.log('🔄 Shutting down database connections...');
+    console.log('🔄 Closing database connections...');
     try {
         await pool.end();
         console.log('✅ Database connections closed');
     } catch (err) {
-        console.error('❌ Error during database shutdown:', err.message);
+        console.error('❌ Error during shutdown:', err.message);
     }
 };
 

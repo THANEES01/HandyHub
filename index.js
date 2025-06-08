@@ -3,7 +3,6 @@ import session from 'express-session';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import fs from 'fs';
 import dotenv from 'dotenv';
 import http from 'http';
 import pool from './config/database.js';
@@ -16,10 +15,6 @@ import customerRoutes from './customer.js';
 import bookingRoutes from './booking.js';
 import paymentRoutes from './payment.js';
 
-// Conditionally import chat routes only in development
-let chatRoutes = null;
-let chatProviderRoutes = null;
-
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,63 +25,135 @@ const app = express();
 // Create HTTP server
 const server = http.createServer(app);
 
+// ============= ENVIRONMENT DETECTION =============
+
+// Smart environment detection
+const isVercelDeployment = !!(process.env.VERCEL_ENV || process.env.VERCEL_URL);
+const isProduction = process.env.NODE_ENV === 'production';
+const isLocalDevelopment = !isVercelDeployment && !isProduction;
+
+// Log environment for debugging
+if (isLocalDevelopment) {
+    console.log('🔧 Environment: Local Development');
+} else if (isVercelDeployment) {
+    console.log('🌐 Environment: Vercel Deployment');
+} else if (isProduction) {
+    console.log('🚀 Environment: Production');
+}
+
+// ============= VERCEL PRODUCTION OPTIMIZATIONS =============
+
+// Trust proxy for Vercel and production
+if (isVercelDeployment || isProduction) {
+    app.set('trust proxy', 1);
+}
+
 // ============= MIDDLEWARE SETUP =============
 
 // Raw body for Stripe webhooks (must be before other body parsers)
 app.use('/customer/webhook', express.raw({ type: 'application/json' }));
 
 // Body parsers
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Static file serving
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
-app.use('/img', express.static(path.join(__dirname, 'public/img')));
+// Static file serving with conditional cache headers
+const staticOptions = isVercelDeployment ? {
+    maxAge: '1y',
+    etag: false,
+    lastModified: false
+} : {
+    maxAge: '1h' // Shorter cache for development
+};
+
+app.use(express.static(path.join(__dirname, 'public'), staticOptions));
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads'), staticOptions));
+app.use('/img', express.static(path.join(__dirname, 'public/img'), staticOptions));
+app.use('/css', express.static(path.join(__dirname, 'public/css'), staticOptions));
+app.use('/js', express.static(path.join(__dirname, 'public/js'), staticOptions));
 
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Session configuration
-const sessionMiddleware = session({
-    secret: process.env.SESSION_SECRET || 'handyhub-fallback-secret-key',
+// ============= SESSION CONFIGURATION =============
+
+// Fixed session configuration for all environments
+// Enhanced session configuration that works for both localhost and Vercel
+const sessionConfig = {
+    secret: process.env.SESSION_SECRET || 'THANEES01',
     resave: false,
     saveUninitialized: false,
+    rolling: true,
+    name: 'handyhub.sid',
     cookie: { 
-        secure: process.env.NODE_ENV === 'production',
+        // FIXED: Different settings for different environments
+        secure: false, // Always false for localhost compatibility
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         httpOnly: true,
-        sameSite: 'lax'
+        sameSite: 'lax' // Always 'lax' for better compatibility
     }
-});
+};
 
-app.use(sessionMiddleware);
+// Override for production environments only
+if (isVercelDeployment || (isProduction && process.env.HTTPS === 'true')) {
+    sessionConfig.cookie.secure = true;
+    sessionConfig.cookie.sameSite = 'none';
+}
 
-// Improved flash message middleware
+// Add session debugging only in local development
+if (isLocalDevelopment) {
+    sessionConfig.genid = function(req) {
+        const sessionId = Math.random().toString(36).substring(2, 15) + 
+                         Math.random().toString(36).substring(2, 15);
+        console.log('🔑 New session created:', sessionId);
+        return sessionId;
+    };
+}
+
+app.use(session(sessionConfig));
+
+// ============= FLASH MESSAGE MIDDLEWARE =============
+
 app.use((req, res, next) => {
-    // Initialize session if needed
-    if (!req.session) {
-        console.warn('⚠️ Session middleware not working properly');
+    // Session logging only in local development
+    if (isLocalDevelopment && req.session) {
+        console.log('📋 Session Info:', {
+            sessionID: req.sessionID?.substring(0, 8) + '...',
+            hasUser: !!req.session.user,
+            userType: req.session.user?.userType,
+            error: !!req.session.error,
+            success: !!req.session.success,
+            url: req.url
+        });
     }
     
-    // Set locals for views with safe defaults
+    // Set locals for views
     res.locals.user = req.session?.user || null;
     res.locals.success = req.session?.success || null;
     res.locals.error = req.session?.error || null;
+    res.locals.isProduction = isProduction;
+    res.locals.isVercel = isVercelDeployment;
     
-    // Custom flash function
+    // Enhanced flash function
     req.flash = function(type, message) {
         if (!req.session) {
-            console.warn('⚠️ Cannot set flash message: session unavailable');
+            if (isLocalDevelopment) console.warn('⚠️ Cannot set flash message: session unavailable');
             return;
         }
+        
+        if (isLocalDevelopment) console.log(`💬 Flash message: ${type} - ${message}`);
         
         if (type === 'success') {
             req.session.success = message;
         } else if (type === 'error') {
             req.session.error = message;
         }
+        
+        // Force session save for better reliability
+        req.session.save((err) => {
+            if (err && isLocalDevelopment) console.error('Flash message session save error:', err);
+        });
     };
     
     // Function to clear flash messages
@@ -94,28 +161,18 @@ app.use((req, res, next) => {
         if (req.session) {
             delete req.session.success;
             delete req.session.error;
+            req.session.save((err) => {
+                if (err && isLocalDevelopment) console.error('Clear flash session save error:', err);
+            });
         }
     };
     
     next();
 });
 
-// ============= SOCKET.IO SETUP (Development Only) =============
+// ============= SOCKET.IO PLACEHOLDER =============
 
-// Load chat routes conditionally
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-    try {
-        const chatModule = await import('./chat.js');
-        const chatProviderModule = await import('./chat-provider.js');
-        chatRoutes = chatModule.default;
-        chatProviderRoutes = chatProviderModule.default;
-        console.log('✅ Chat features loaded for development');
-    } catch (error) {
-        console.log('ℹ️ Chat features not available in production mode');
-    }
-}
-
-// Provide dummy Socket.IO object for production
+// Provide dummy Socket.IO object for compatibility
 app.use((req, res, next) => {
     req.io = {
         emit: () => {},
@@ -125,145 +182,116 @@ app.use((req, res, next) => {
     next();
 });
 
-// ============= DEBUG AND TEST ROUTES =============
+// ============= HEALTH & DEBUG ROUTES =============
+
+// Health check endpoint (always available)
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'healthy', 
+        timestamp: new Date().toISOString(),
+        environment: isVercelDeployment ? 'vercel' : (isProduction ? 'production' : 'development'),
+        node_env: process.env.NODE_ENV || 'development',
+        session_info: {
+            has_session: !!req.session,
+            session_id: req.sessionID?.substring(0, 8) + '...',
+            has_user: !!req.session?.user,
+            user_type: req.session?.user?.userType
+        }
+    });
+});
 
 // Fix favicon 404 error
 app.get('/favicon.ico', (req, res) => {
     res.status(204).send();
 });
 
-// Environment variables debug route
-app.get('/debug-env', (req, res) => {
-    res.json({
-        status: 'Environment Variables Check',
-        node_env: process.env.NODE_ENV,
-        vercel_env: process.env.VERCEL_ENV,
-        vercel_url: process.env.VERCEL_URL,
-        // Database variables
-        db_host: process.env.DB_HOST?.substring(0, 30) + '...',
-        db_port: process.env.DB_PORT,
-        db_name: process.env.DB_NAME,
-        db_user: process.env.DB_USER,
-        db_password_exists: !!process.env.DB_PASSWORD,
-        db_password_length: process.env.DB_PASSWORD?.length || 0,
-        // Session
-        session_secret_exists: !!process.env.SESSION_SECRET,
-        session_secret_length: process.env.SESSION_SECRET?.length || 0,
-        // All relevant env vars
-        relevant_env_vars: Object.keys(process.env).filter(key => 
-            key.includes('DB_') || 
-            key.includes('SESSION_') || 
-            key.includes('STRIPE_') ||
-            key.includes('VERCEL_')
-        ),
-        timestamp: new Date().toISOString()
+// Debug routes (only in local development)
+if (isLocalDevelopment) {
+    console.log('🔧 Debug routes enabled for local development');
+    
+    // Environment variables debug route
+    app.get('/debug-env', (req, res) => {
+        res.json({
+            status: 'Environment Variables Check',
+            environment: {
+                isLocalDevelopment,
+                isVercelDeployment,
+                isProduction,
+                node_env: process.env.NODE_ENV,
+                vercel_env: process.env.VERCEL_ENV,
+                vercel_url: process.env.VERCEL_URL
+            },
+            database: {
+                db_host: process.env.DB_HOST?.substring(0, 30) + '...',
+                db_port: process.env.DB_PORT,
+                db_name: process.env.DB_NAME,
+                db_user: process.env.DB_USER,
+                db_password_exists: !!process.env.DB_PASSWORD
+            },
+            session: {
+                session_secret_exists: !!process.env.SESSION_SECRET,
+                session_secret_length: process.env.SESSION_SECRET?.length || 0,
+                current_session_id: req.sessionID,
+                has_user: !!req.session?.user,
+                user_type: req.session?.user?.userType
+            },
+            timestamp: new Date().toISOString()
+        });
     });
-});
 
-// Database connection test route
-app.get('/test-db', async (req, res) => {
-    let client;
-    try {
-        console.log('🔍 Testing database connection via API...');
-        
-        if (!pool) {
-            return res.status(500).json({
-                status: 'error',
-                message: 'Database pool not initialized',
-                debug: {
-                    db_host: !!process.env.DB_HOST,
-                    db_name: !!process.env.DB_NAME,
-                    db_user: !!process.env.DB_USER,
-                    db_password: !!process.env.DB_PASSWORD
+    // Database connection test route
+    app.get('/test-db', async (req, res) => {
+        let client;
+        try {
+            console.log('🔍 Testing database connection...');
+            
+            if (!pool) {
+                return res.status(500).json({
+                    status: 'error',
+                    message: 'Database pool not initialized'
+                });
+            }
+
+            client = await pool.connect();
+            console.log('✅ Database connection successful');
+            
+            const timeResult = await client.query('SELECT NOW() as current_time, version() as pg_version');
+            const tablesResult = await client.query(`
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public'
+                ORDER BY table_name
+            `);
+            
+            res.json({ 
+                status: 'success', 
+                message: 'Database connected successfully',
+                timestamp: timeResult.rows[0].current_time,
+                postgresql_version: timeResult.rows[0].pg_version.split(' ')[0],
+                tables_found: tablesResult.rows.length,
+                tables: tablesResult.rows.map(row => row.table_name),
+                connection_info: {
+                    host: process.env.DB_HOST?.substring(0, 30) + '...',
+                    database: process.env.DB_NAME,
+                    user: process.env.DB_USER,
+                    port: process.env.DB_PORT
                 }
             });
+        } catch (error) {
+            console.error('❌ Database test failed:', error);
+            res.status(500).json({ 
+                status: 'error', 
+                message: 'Database connection failed',
+                error: error.message
+            });
+        } finally {
+            if (client) {
+                client.release();
+            }
         }
-
-        client = await pool.connect();
-        console.log('✅ Database connection successful via API');
-        
-        // Basic connectivity test
-        const timeResult = await client.query('SELECT NOW() as current_time, version() as pg_version');
-        
-        // Check tables
-        const tablesResult = await client.query(`
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-            ORDER BY table_name
-        `);
-        
-        res.json({ 
-            status: 'success', 
-            message: 'Database connected successfully',
-            timestamp: timeResult.rows[0].current_time,
-            postgresql_version: timeResult.rows[0].pg_version.split(' ')[0],
-            tables_found: tablesResult.rows.length,
-            tables: tablesResult.rows.map(row => row.table_name),
-            connection_info: {
-                host: process.env.DB_HOST?.substring(0, 30) + '...',
-                database: process.env.DB_NAME,
-                user: process.env.DB_USER,
-                port: process.env.DB_PORT
-            }
-        });
-    } catch (error) {
-        console.error('❌ Database test failed via API:', error);
-        res.status(500).json({ 
-            status: 'error', 
-            message: 'Database connection failed',
-            error: {
-                message: error.message,
-                code: error.code,
-                detail: error.detail
-            },
-            environment_check: {
-                db_host: !!process.env.DB_HOST,
-                db_name: !!process.env.DB_NAME,
-                db_user: !!process.env.DB_USER,
-                db_password: !!process.env.DB_PASSWORD,
-                session_secret: !!process.env.SESSION_SECRET
-            }
-        });
-    } finally {
-        if (client) {
-            client.release();
-        }
-    }
-});
-
-// Routes test endpoint
-app.get('/test-routes', (req, res) => {
-    const routes = [];
-    
-    // Extract routes from Express router
-    function extractRoutes(stack, prefix = '') {
-        stack.forEach(middleware => {
-            if (middleware.route) {
-                routes.push({
-                    path: prefix + middleware.route.path,
-                    methods: Object.keys(middleware.route.methods)
-                });
-            } else if (middleware.name === 'router' && middleware.handle?.stack) {
-                const routerPrefix = middleware.regexp.source
-                    .replace(/\\\//g, '/')
-                    .replace(/\$.*/, '')
-                    .replace(/^\^/, '');
-                extractRoutes(middleware.handle.stack, routerPrefix);
-            }
-        });
-    }
-    
-    extractRoutes(app._router.stack);
-    
-    res.json({
-        status: 'success',
-        total_routes: routes.length,
-        routes: routes.slice(0, 20), // Limit output
-        auth_routes_found: routes.filter(r => r.path.includes('/auth')).length,
-        customer_routes_found: routes.filter(r => r.path.includes('/customer')).length
     });
-});
+}
+
 
 // ============= APPLICATION ROUTES =============
 
@@ -275,24 +303,96 @@ app.use('/customer', customerRoutes);
 app.use(bookingRoutes);
 app.use('/customer', paymentRoutes);
 
-// Chat routes (development only)
-if (chatRoutes && process.env.NODE_ENV !== 'production') {
-    app.use('/', chatRoutes);
-    app.use('/provider', chatProviderRoutes);
-    console.log('✅ Chat routes enabled for development');
-} else {
-    // Disabled chat endpoints for production
-    app.get('/chat/*', (req, res) => {
-        res.json({ 
-            message: 'Chat features are disabled in production. Contact support for real-time communication.' 
-        });
+// ============= API ENDPOINTS =============
+
+// API endpoint for unread message count
+app.get('/api/unread-count', (req, res) => {
+    if (isLocalDevelopment) console.log('API call: /api/unread-count');
+    
+    if (!req.session.user) {
+        return res.json({ count: 0, success: true });
+    }
+    
+    res.json({ 
+        count: 0, 
+        success: true,
+        user_type: req.session.user.userType || 'guest'
     });
-    app.post('/chat/*', (req, res) => {
-        res.json({ 
-            message: 'Chat features are disabled in production. Contact support for real-time communication.' 
-        });
+});
+
+// API endpoint for notifications
+app.get('/api/notifications', (req, res) => {
+    if (isLocalDevelopment) console.log('API call: /api/notifications');
+    
+    if (!req.session.user) {
+        return res.json({ notifications: [], success: true });
+    }
+    
+    res.json({ 
+        notifications: [], 
+        success: true,
+        user_type: req.session.user.userType || 'guest'
     });
-}
+});
+
+// API endpoint for user status
+app.get('/api/user/status', (req, res) => {
+    if (isLocalDevelopment) console.log('API call: /api/user/status');
+    
+    if (!req.session.user) {
+        return res.json({ 
+            logged_in: false, 
+            user_type: null,
+            success: true 
+        });
+    }
+    
+    res.json({ 
+        logged_in: true,
+        user_type: req.session.user.userType,
+        user_id: req.session.user.id,
+        success: true
+    });
+});
+
+// API endpoint for chat status
+app.get('/api/chat/*', (req, res) => {
+    res.json({ 
+        message: isVercelDeployment ? 'Chat features are disabled in production' : 'Chat features not available', 
+        success: false,
+        chat_enabled: false
+    });
+});
+
+// General API catch-all
+app.get('/api/*', (req, res) => {
+    if (isLocalDevelopment) console.log(`API call to undefined endpoint: ${req.path}`);
+    res.status(404).json({ 
+        error: 'API endpoint not found',
+        path: req.path,
+        success: false,
+        available_endpoints: [
+            '/api/health',
+            '/api/unread-count',
+            '/api/notifications', 
+            '/api/user/status'
+        ]
+    });
+});
+
+
+// Chat endpoints (disabled in production)
+const chatMessage = isVercelDeployment ? 
+    'Chat features are disabled in production. Contact support for real-time communication.' :
+    'Chat features not available in this environment.';
+
+app.get('/chat/*', (req, res) => {
+    res.json({ message: chatMessage });
+});
+
+app.post('/chat/*', (req, res) => {
+    res.json({ message: chatMessage });
+});
 
 // Home route
 app.get('/', (req, res) => {
@@ -301,71 +401,41 @@ app.get('/', (req, res) => {
     });
 });
 
-// ============= DEVELOPMENT-ONLY ROUTES =============
+// Generic login route handlers
+app.get('/login', (req, res) => {
+    if (isLocalDevelopment) console.log('Generic /login accessed, redirecting to customer login');
+    res.redirect('/auth/customer-login');
+});
 
-if (process.env.NODE_ENV !== 'production') {
-    // Session test route
-    app.get('/test-session', (req, res) => {
-        req.session.success = 'Test success message';
-        req.session.error = 'Test error message';
-        
-        req.session.save((err) => {
-            if (err) {
-                console.error('Session save error:', err);
-                return res.status(500).json({ error: 'Session save failed', details: err.message });
-            }
-            
-            res.redirect('/auth/customer-login');
-        });
-    });
+app.post('/login', (req, res) => {
+    if (isLocalDevelopment) console.log('POST to generic /login, redirecting to customer login');
+    res.redirect('/auth/customer-login');
+});
 
-    // Chat test route
-    app.get('/chat-test', (req, res) => {
-        res.send(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Chat Test</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 40px; }
-                    .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
-                    .success { background: #d4edda; color: #155724; }
-                    .error { background: #f8d7da; color: #721c24; }
-                </style>
-            </head>
-            <body>
-                <h1>Socket.IO Test Page (Development Only)</h1>
-                <div id="status" class="status">Testing connection...</div>
-                <button onclick="testConnection()">Test Connection</button>
-                <div id="log"></div>
-                
-                <script>
-                    function testConnection() {
-                        const status = document.getElementById('status');
-                        const log = document.getElementById('log');
-                        
-                        if (typeof io === 'undefined') {
-                            status.className = 'status error';
-                            status.textContent = 'Socket.IO not available in production mode';
-                            return;
-                        }
-                        
-                        status.className = 'status';
-                        status.textContent = 'Attempting connection...';
-                        log.innerHTML = '<p>Connection test started...</p>';
-                    }
-                </script>
-            </body>
-            </html>
-        `);
-    });
-}
+app.get('/signin', (req, res) => {
+    if (isLocalDevelopment) console.log('Generic /signin accessed, redirecting to customer login');
+    res.redirect('/auth/customer-login');
+});
 
 // ============= ERROR HANDLING =============
 
 // 404 handler
 app.use((req, res, next) => {
-    console.log(`404 - Route not found: ${req.method} ${req.path}`);
+    // Log 404s only in development
+    if (isLocalDevelopment) {
+        console.log(`404 - Route not found: ${req.method} ${req.path}`);
+    }
+    
+    // Handle API requests differently
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({
+            error: 'API endpoint not found',
+            path: req.path,
+            method: req.method
+        });
+    }
+    
+    // Regular page 404
     res.status(404).render('error', {
         title: 'Page Not Found',
         error: { 
@@ -377,29 +447,132 @@ app.use((req, res, next) => {
 
 // General error handler
 app.use((err, req, res, next) => {
-    console.error('Server error:', err);
-    res.status(err.status || 500).render('error', {
+    // Error logging based on environment
+    if (isLocalDevelopment) {
+        console.error('Server error:', err);
+    } else {
+        console.error('Error:', err.message);
+    }
+    
+    const status = err.status || 500;
+    res.status(status);
+    
+    // Handle API errors
+    if (req.path.startsWith('/api/')) {
+        return res.json({
+            error: 'Internal server error',
+            message: isLocalDevelopment ? err.message : 'Something went wrong',
+            status: status
+        });
+    }
+    
+    // Regular page errors
+    res.render('error', {
         title: 'Error',
         error: { 
-            status: err.status || 500, 
-            message: err.message || 'An unexpected error occurred' 
+            status: status, 
+            message: isLocalDevelopment ? err.message : 'An unexpected error occurred'
         }
     });
 });
 
 // ============= SERVER STARTUP =============
 
-// Export for Vercel
+// Export for Vercel (always available)
 export default app;
 
-// Local development server
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+// Local development server (only start if not in Vercel)
+if (!isVercelDeployment) {
     const PORT = process.env.PORT || 3000;
-    server.listen(PORT, () => {
-        console.log(`🚀 Server running at http://localhost:${PORT}`);
-        console.log(`📊 Test routes available:`);
-        console.log(`   - http://localhost:${PORT}/debug-env`);
-        console.log(`   - http://localhost:${PORT}/test-db`);
-        console.log(`   - http://localhost:${PORT}/test-routes`);
+    
+    // Start the server
+    server.listen(PORT, '0.0.0.0', () => {
+        // Clear console for better visibility in development
+        if (isLocalDevelopment) {
+            console.clear();
+        }
+        
+        console.log('\n🎉 HandyHub Server Started Successfully!');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log(`🚀 Server URL: http://localhost:${PORT}`);
+        console.log(`🌍 Environment: ${isLocalDevelopment ? 'Local Development' : 'Production'}`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        if (isLocalDevelopment) {
+            console.log('\n📱 Application Routes:');
+            console.log(`   🏠 Homepage:        http://localhost:${PORT}/`);
+            console.log(`   👤 Customer Login:  http://localhost:${PORT}/auth/customer-login`);
+            console.log(`   🔧 Provider Login:  http://localhost:${PORT}/auth/provider-login`);
+            console.log(`   👑 Admin Login:     http://localhost:${PORT}/auth/admin-login`);
+            
+            console.log('\n🛠️  Development Tools:');
+            console.log(`   🔍 Environment:     http://localhost:${PORT}/debug-env`);
+            console.log(`   💾 Database Test:   http://localhost:${PORT}/test-db`);
+            console.log(`   📊 Session Check:   http://localhost:${PORT}/auth/check-session`);
+            console.log(`   ⚡ Health Check:    http://localhost:${PORT}/api/health`);
+            
+            console.log('\n💡 Login Credentials:');
+            console.log('   Admin: username "admin", password "admin123"');
+            
+            console.log('\n🛑 Stop server: Ctrl+C');
+        }
+        
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        
+        if (isLocalDevelopment) {
+            setTimeout(() => {
+                console.log('✅ Server is ready! Click on any link above to get started.\n');
+            }, 500);
+        }
     });
+    
+    // Enhanced error handling for server startup
+    server.on('error', (err) => {
+        console.error('\n❌ Server startup failed!');
+        
+        if (err.code === 'EADDRINUSE') {
+            console.error(`🔴 Port ${PORT} is already in use.`);
+            console.error('\n💡 Solutions:');
+            console.error(`   1. Kill existing process: npx kill-port ${PORT}`);
+            console.error(`   2. Use different port: PORT=3001 nodemon index.js`);
+            console.error(`   3. Stop other development servers`);
+        } else if (err.code === 'EACCES') {
+            console.error(`🔴 Permission denied on port ${PORT}.`);
+            console.error('\n💡 Try using a port above 1024 (e.g., PORT=3001)');
+        } else {
+            console.error('🔴 Unexpected server error:', err.message);
+        }
+        
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        process.exit(1);
+    });
+    
+    // Graceful shutdown handlers
+    const gracefulShutdown = (signal) => {
+        console.log(`\n🛑 Received ${signal}. Shutting down gracefully...`);
+        
+        server.close(() => {
+            console.log('✅ Server closed successfully');
+            if (pool && pool.end) {
+                pool.end(() => {
+                    console.log('💾 Database connections closed');
+                    process.exit(0);
+                });
+            } else {
+                process.exit(0);
+            }
+        });
+        
+        // Force close after 10 seconds
+        setTimeout(() => {
+            console.error('⚠️  Forcing server shutdown...');
+            process.exit(1);
+        }, 10000);
+    };
+    
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    
+} else {
+    console.log('🌐 Running in Vercel deployment mode - server exported for serverless');
 }
