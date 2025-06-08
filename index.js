@@ -14,6 +14,8 @@ import adminRoutes from './admin.js';
 import customerRoutes from './customer.js';
 import bookingRoutes from './booking.js';
 import paymentRoutes from './payment.js';
+import chatRoutes from './chat.js';
+import chatProviderRoutes from './chat-provider.js';
 
 dotenv.config();
 
@@ -302,6 +304,8 @@ app.use('/admin', adminRoutes);
 app.use('/customer', customerRoutes);
 app.use(bookingRoutes);
 app.use('/customer', paymentRoutes);
+app.use('/', chatRoutes);  // This handles customer chat routes
+app.use('/provider', chatProviderRoutes);  // This handles provider chat routes
 
 // ============= API ENDPOINTS =============
 
@@ -355,14 +359,7 @@ app.get('/api/user/status', (req, res) => {
     });
 });
 
-// API endpoint for chat status
-app.get('/api/chat/*', (req, res) => {
-    res.json({ 
-        message: isVercelDeployment ? 'Chat features are disabled in production' : 'Chat features not available', 
-        success: false,
-        chat_enabled: false
-    });
-});
+
 
 // General API catch-all
 app.get('/api/*', (req, res) => {
@@ -378,20 +375,6 @@ app.get('/api/*', (req, res) => {
             '/api/user/status'
         ]
     });
-});
-
-
-// Chat endpoints (disabled in production)
-const chatMessage = isVercelDeployment ? 
-    'Chat features are disabled in production. Contact support for real-time communication.' :
-    'Chat features not available in this environment.';
-
-app.get('/chat/*', (req, res) => {
-    res.json({ message: chatMessage });
-});
-
-app.post('/chat/*', (req, res) => {
-    res.json({ message: chatMessage });
 });
 
 // Home route
