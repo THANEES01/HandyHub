@@ -149,10 +149,17 @@ const updateProfile = async (req, res) => {
             coverageAreas = '[]'
         } = req.body;
         
-        console.log('Coverage areas data received:', coverageAreas);
-        console.log('Categories data received:', categories);
-        console.log('Base fees data received:', baseFees);
-        console.log('Fee types data received:', feeTypes);
+        console.log('Update request data:', {
+            businessName,
+            phoneNumber,
+            categories,
+            services,
+            baseFees,
+            feeTypes,
+            availableDays,
+            slotDuration,
+            coverageAreas
+        });
         
         await client.query('BEGIN');
         
@@ -171,7 +178,7 @@ const updateProfile = async (req, res) => {
         let insertedCategories = 0;
         if (categories && Array.isArray(categories)) {
             for (const category of categories) {
-                if (category.trim()) { // Skip empty categories
+                if (category.trim()) {
                     // Get base fee for this category (default to 0 if not set)
                     const baseFee = baseFees[category] ? parseFloat(baseFees[category]) : 0;
                     // Get fee type for this category (default to 'per visit' if not set)
@@ -192,7 +199,7 @@ const updateProfile = async (req, res) => {
         let insertedServices = 0;
         if (services && Array.isArray(services)) {
             for (const service of services) {
-                if (service.trim()) { // Skip empty services
+                if (service.trim()) {
                     await client.query(
                         'INSERT INTO services_offered (provider_id, service_name) VALUES ($1, $2)',
                         [providerId, service.trim()]
@@ -324,7 +331,7 @@ const acceptBooking = async (req, res) => {
 
 // Route to display the edit profile page
 router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
-    try {
+   try {
         const providerId = req.session.user.providerId;
         
         console.log('Loading edit profile for provider ID:', providerId);
@@ -344,7 +351,7 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         
         const provider = providerResult.rows[0];
         
-        // 2. Fetch service categories with pricing details - improved query
+        // 2. Fetch service categories with pricing details
         const categoriesResult = await pool.query(`
             SELECT 
                 category_name, 
@@ -389,7 +396,7 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         
         console.log('Availability records found:', availabilityResult.rows.length);
         
-        // 5. Fetch coverage areas - improved query to get IDs properly
+        // 5. Fetch coverage areas with proper state and city information
         const coverageAreasResult = await pool.query(`
             SELECT 
                 pc.id, 
@@ -407,7 +414,7 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         console.log('Coverage areas found:', coverageAreasResult.rows.length);
         console.log('Raw coverage areas:', coverageAreasResult.rows);
         
-        // 6. Format the data for the frontend in a more consistent way
+        // 6. Format the data for the frontend
         
         // Format categories - ensure consistent structure
         const formattedCategories = categoriesResult.rows.map(cat => ({
@@ -421,21 +428,20 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
             service_name: service.service_name
         }));
         
-        // Format availability - ensure consistent structure and types
+        // Format availability - ensure consistent structure and proper time formatting
         const formattedAvailability = availabilityResult.rows.map(day => {
-            // Format start_time to ensure it's in the correct format (HH:MM)
+            // Format time values properly
             let start_time = day.start_time;
+            let end_time = day.end_time;
+            
+            // Ensure proper time format (HH:MM)
             if (typeof start_time === 'string' && start_time.includes(':')) {
-                // Ensure hours part is two digits (09:00 not 9:00)
                 const [hours, minutes] = start_time.split(':');
                 const hoursInt = parseInt(hours, 10);
                 start_time = `${hoursInt < 10 ? '0' + hoursInt : hoursInt}:${minutes}`;
             }
             
-            // Format end_time to ensure it's in the correct format
-            let end_time = day.end_time;
             if (typeof end_time === 'string' && end_time.includes(':')) {
-                // Ensure hours part is two digits
                 const [hours, minutes] = end_time.split(':');
                 const hoursInt = parseInt(hours, 10);
                 end_time = `${hoursInt < 10 ? '0' + hoursInt : hoursInt}:${minutes}`;
@@ -450,7 +456,7 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
             };
         });
         
-        // Format coverage areas
+        // Format coverage areas with proper structure
         const formattedCoverageAreas = coverageAreasResult.rows.map(area => ({
             id: area.id,
             city_id: area.city_id,
@@ -471,7 +477,13 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         provider.availability = formattedAvailability;
         provider.coverageAreas = formattedCoverageAreas;
         
-        // 8. Render the template with the complete provider data
+        // 8. Create selected categories array for easier template processing
+        const selectedCategories = formattedCategories.map(cat => cat.category_name);
+        provider.selectedCategories = selectedCategories;
+        
+        console.log('Selected categories for template:', selectedCategories);
+        
+        // 9. Render the template with the complete provider data
         res.render('provider/edit-profile', {
             title: 'Edit Profile',
             provider: provider,

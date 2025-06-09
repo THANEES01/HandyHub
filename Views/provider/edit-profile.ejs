@@ -168,37 +168,36 @@
         }
 
         .card {
-        border-radius: 10px;
-        border: 1px solid rgba(0, 119, 190, 0.2);
-        transition: all 0.3s ease;
-    }
-    
-    .card:hover {
-        box-shadow: 0 5px 15px rgba(0, 119, 190, 0.1);
-        transform: translateY(-2px);
-    }
-    
-    .card-title {
-        color: var(--dark-blue);
-        font-size: 1.1rem;
-        font-weight: 600;
-    }
-    
-    .input-group-text {
-        background-color: var(--light-blue);
-        color: var(--dark-blue);
-        font-weight: 600;
-        border-color: rgba(0, 119, 190, 0.2);
-    }
-    
-    .form-section-title {
-        color: var(--dark-blue);
-        font-size: 1.3rem;
-        margin-bottom: 10px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #eee;
-    }
-
+            border-radius: 10px;
+            border: 1px solid rgba(0, 119, 190, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 5px 15px rgba(0, 119, 190, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .card-title {
+            color: var(--dark-blue);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .input-group-text {
+            background-color: var(--light-blue);
+            color: var(--dark-blue);
+            font-weight: 600;
+            border-color: rgba(0, 119, 190, 0.2);
+        }
+        
+        .form-section-title {
+            color: var(--dark-blue);
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
     </style>
 </head>
 <body>
@@ -248,7 +247,11 @@
             <h3 class="section-title">Edit Profile</h3>
             
             <!-- Store provider data in hidden inputs for JS access -->
-            <input type="hidden" id="providerData" data-categories="<%= encodeURIComponent(JSON.stringify(provider.categories || [])) %>" data-services="<%= encodeURIComponent(JSON.stringify(provider.services || [])) %>">
+            <input type="hidden" id="providerData" 
+                data-categories="<%= encodeURIComponent(JSON.stringify(provider.categories || [])) %>" 
+                data-services="<%= encodeURIComponent(JSON.stringify(provider.services || [])) %>"
+                data-availability="<%= encodeURIComponent(JSON.stringify(provider.availability || [])) %>"
+                data-coverage-areas="<%= encodeURIComponent(JSON.stringify(provider.coverageAreas || [])) %>">
             
             <form action="/provider/profile/update" method="POST">
                 <!-- Business Profile Section -->
@@ -278,280 +281,183 @@
                     </div>
                 </div>
 
-                
-                <!-- Service Categories Section with Direct Checking -->
-                    <div class="mb-4">
-                        <h4 class="form-section-title">Service Categories</h4>
-                        <p class="text-muted mb-3">Select the categories that best describe your services:</p>
+                <!-- Service Categories Section -->
+                <div class="mb-4">
+                    <h4 class="form-section-title">Service Categories</h4>
+                    <p class="text-muted mb-3">Select the categories that best describe your services:</p>
+                    
+                    <div class="row" id="categories-container">
+                        <% 
+                        // Define all available categories
+                        const availableCategories = [
+                            "Plumbing", 
+                            "Electrical Repairs", 
+                            "Roof Repairs", 
+                            "Pest Control", 
+                            "Carpentry Service", 
+                            "AC Service", 
+                            "Landscaping", 
+                            "Home Cleaning", 
+                            "Appliance Service"
+                        ];
                         
-                        <div class="row" id="categories-container">
-                            <% 
-                            // Define all available categories
-                            const availableCategories = [
-                                "Plumbing", 
-                                "Electrical Repairs", 
-                                "Roof Repairs", 
-                                "Pest Control", 
-                                "Carpentry Service", 
-                                "AC Service", 
-                                "Landscaping", 
-                                "Home Cleaning", 
-                                "Appliance Service"
-                            ];
-                            
-                            // For direct debug output
-                            if (provider && provider.categories && Array.isArray(provider.categories)) {
-                                console.log("Provider categories for checkbox checking:", 
-                                    provider.categories.map(cat => typeof cat === 'string' ? cat : cat.category_name));
-                            }
-                            
-                            // Helper function to check if a category is selected - with improved matching
-                            function isCategorySelected(categoryName) {
-                                if (!provider || !provider.categories || !Array.isArray(provider.categories)) {
-                                    return false;
-                                }
-                                
-                                const normalizedCategory = categoryName.toLowerCase().trim();
-                                
-                                for (const cat of provider.categories) {
-                                    // Get category name from object or string
-                                    const catName = typeof cat === 'string' ? cat : (cat.category_name || '');
-                                    const dbCatLower = catName.toLowerCase().trim();
-                                    
-                                    // Exact match
-                                    if (dbCatLower === normalizedCategory) {
-                                        console.log(`Found exact match for ${categoryName}: ${catName}`);
-                                        return true;
-                                    }
-                                    
-                                    // UI category contains DB category (e.g., "Appliance Service" contains "appliance")
-                                    if (normalizedCategory.includes(dbCatLower)) {
-                                        console.log(`Found UI-contains-DB match for ${categoryName}: ${catName}`);
-                                        return true; 
-                                    }
-                                    
-                                    // DB category contains UI category's key part (e.g., "plumbingservice" contains "plumbing")
-                                    const keyPart = normalizedCategory.split(' ')[0]; // First word is usually the key part
-                                    if (dbCatLower.includes(keyPart)) {
-                                        console.log(`Found DB-contains-key match for ${categoryName}: ${catName}`);
-                                        return true;
-                                    }
-                                }
-                                
+                        // Get selected categories for easy lookup
+                        const selectedCategories = provider.selectedCategories || [];
+                        console.log('Selected categories for display:', selectedCategories);
+                        
+                        // Helper function to check if a category is selected
+                        function isCategorySelected(categoryName) {
+                            if (!selectedCategories || selectedCategories.length === 0) {
                                 return false;
                             }
                             
-                            // Generate checkboxes for each category
-                            availableCategories.forEach((category, index) => { 
-                                const isSelected = isCategorySelected(category);
-                                console.log(`Category checkbox: ${category} => ${isSelected ? 'CHECKED' : 'unchecked'}`);
-                            %>
-                                <div class="col-md-4 mb-2">
-                                    <div class="form-check">
-                                        <input 
-                                            class="form-check-input category-checkbox" 
-                                            type="checkbox" 
-                                            name="categories[]" 
-                                            value="<%= category %>" 
-                                            id="category<%= index %>"
-                                            <%= isSelected ? 'checked' : '' %>
-                                        >
-                                        <label class="form-check-label" for="category<%= index %>">
-                                            <%= category %>
-                                        </label>
-                                    </div>
-                                </div>
-                            <% }); %>
-                        </div>
-                    </div>
-
-                    <!-- Pricing Information Section -->
-                    <div class="mb-4">
-    <h4 class="form-section-title">Pricing Information</h4>
-    <p class="text-muted mb-3">Set your base fees for each service category:</p>
-    
-    <div id="pricing-container">
-        <% 
-        // Directly use provider.categories without filtering through availableCategories
-        if (!provider || !provider.categories || !Array.isArray(provider.categories) || provider.categories.length === 0) {
-        %>
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle"></i> 
-                Select service categories above to set their base fees.
-            </div>
-        <% } else { 
-            // Build pricing cards directly from provider categories
-            provider.categories.forEach((categoryData, index) => {
-                // Extract category name
-                const categoryName = categoryData.category_name || "";
-                
-                // Convert first character to uppercase for display
-                const displayName = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
-                
-                // Set fee and fee type
-                const fee = categoryData.base_fee !== undefined ? categoryData.base_fee : 0;
-                const feeType = categoryData.fee_type || 'per visit';
-                
-                console.log(`Direct pricing for ${displayName}:`, { fee, feeType });
-        %>
-            <div class="card mb-3">
-                <div class="card-body">
-                    <h5 class="card-title"><%= displayName %></h5>
-                    
-                    <div class="row g-3 align-items-center mb-3">
-                        <div class="col-md-6">
-                            <label for="baseFee<%= index %>" class="form-label">Base Fee (RM)</label>
-                            <div class="input-group">
-                                <span class="input-group-text">RM</span>
-                                <input 
-                                    type="number" 
-                                    class="form-control" 
-                                    id="baseFee<%= index %>" 
-                                    name="baseFees[<%= displayName %>]" 
-                                    value="<%= fee %>" 
-                                    min="0" 
-                                    step="0.01"
-                                    placeholder="0.00"
-                                >
-                            </div>
-                            <small class="text-muted">Enter the base fee for this service category</small>
-                        </div>
+                            const normalizedCategory = categoryName.toLowerCase().trim();
+                            
+                            return selectedCategories.some(selected => {
+                                const normalizedSelected = selected.toLowerCase().trim();
+                                
+                                // Exact match
+                                if (normalizedSelected === normalizedCategory) {
+                                    return true;
+                                }
+                                
+                                // Partial matches for variations
+                                if (normalizedCategory.includes(normalizedSelected) || 
+                                    normalizedSelected.includes(normalizedCategory)) {
+                                    return true;
+                                }
+                                
+                                // Special cases for common variations
+                                if ((normalizedCategory.includes('electrical') && normalizedSelected.includes('electrical')) ||
+                                    (normalizedCategory.includes('carpentry') && normalizedSelected.includes('carpentry')) ||
+                                    (normalizedCategory.includes('appliance') && normalizedSelected.includes('appliance')) ||
+                                    (normalizedCategory.includes('cleaning') && normalizedSelected.includes('cleaning'))) {
+                                    return true;
+                                }
+                                
+                                return false;
+                            });
+                        }
                         
-                        <div class="col-md-6">
-                            <label for="feeType<%= index %>" class="form-label">Fee Type</label>
-                            <select class="form-select" id="feeType<%= index %>" name="feeTypes[<%= displayName %>]">
-                                <option value="per visit" <%= feeType === 'per visit' ? 'selected' : '' %>>Per Visit</option>
-                                <option value="per hour" <%= feeType === 'per hour' ? 'selected' : '' %>>Per Hour</option>
-                                <option value="fixed" <%= feeType === 'fixed' ? 'selected' : '' %>>Fixed Price</option>
-                            </select>
-                            <small class="text-muted">Select how you'd like to charge for this service</small>
+                        // Generate checkboxes for each category
+                        availableCategories.forEach((category, index) => { 
+                            const isSelected = isCategorySelected(category);
+                            console.log(`Category checkbox: ${category} => ${isSelected ? 'CHECKED' : 'unchecked'}`);
+                        %>
+                            <div class="col-md-4 mb-2">
+                                <div class="form-check">
+                                    <input 
+                                        class="form-check-input category-checkbox" 
+                                        type="checkbox" 
+                                        name="categories[]" 
+                                        value="<%= category %>" 
+                                        id="category<%= index %>"
+                                        <%= isSelected ? 'checked' : '' %>
+                                        onchange="updatePricingSection()"
+                                    >
+                                    <label class="form-check-label" for="category<%= index %>">
+                                        <%= category %>
+                                    </label>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+
+                <!-- Pricing Information Section -->
+                <div class="mb-4">
+                    <h4 class="form-section-title">Pricing Information</h4>
+                    <p class="text-muted mb-3">Set your base fees for each service category:</p>
+                    
+                    <div id="pricing-container">
+                        <!-- Pricing cards will be generated by JavaScript based on selected categories -->
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> 
+                            Select service categories above to set their base fees.
                         </div>
                     </div>
                 </div>
-            </div>
-        <% }); } %>
-    </div>
-</div>
 
-<!-- Service Coverage Area Section -->
-<div class="mb-4">
-    <h4 class="form-section-title">Service Coverage Area</h4>
-    <p class="text-muted mb-3">Select the states and cities where you provide your services:</p>
-    
-    <div class="card mb-3">
-        <div class="card-body">
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label class="form-label small mb-1">State</label>
-                    <select id="stateSelect" class="form-select" onchange="loadCities()">
-                        <option value="">Select a state</option>
-                        <option value="1" data-code="01">Johor</option>
-                        <option value="2" data-code="02">Kedah</option>
-                        <option value="3" data-code="03">Kelantan</option>
-                        <option value="4" data-code="04">Melaka</option>
-                        <option value="5" data-code="05">Negeri Sembilan</option>
-                        <option value="6" data-code="06">Pahang</option>
-                        <option value="7" data-code="07">Pulau Pinang</option>
-                        <option value="8" data-code="08">Perak</option>
-                        <option value="9" data-code="09">Perlis</option>
-                        <option value="10" data-code="10">Selangor</option>
-                        <option value="11" data-code="11">Terengganu</option>
-                        <option value="12" data-code="12">Sabah</option>
-                        <option value="13" data-code="13">Sarawak</option>
-                        <option value="14" data-code="14">Wilayah Persekutuan Kuala Lumpur</option>
-                        <option value="15" data-code="15">Wilayah Persekutuan Labuan</option>
-                        <option value="16" data-code="16">Wilayah Persekutuan Putrajaya</option>
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small mb-1">City</label>
-                    <select id="citySelect" class="form-select" disabled>
-                        <option value="">Select a state first</option>
-                    </select>
-                </div>
-            </div>
-            
-            <button type="button" class="add-field-btn w-100" onclick="addCoverageArea()">
-                <i class="bi bi-plus-circle me-2"></i> Add to Coverage Area
-            </button>
-        </div>
-    </div>
-    
-    <div class="card">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">Selected Coverage Areas</h5>
-        </div>
-        <div class="card-body p-0">
-            <table class="table mb-0">
-                <thead>
-                    <tr>
-                        <th>State</th>
-                        <th>City</th>
-                        <th width="80px">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="coverageAreasList">
-                    <tr id="noCoverageRow">
-                        <td colspan="3" class="text-center text-muted py-4">No coverage areas selected yet</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    
-    <!-- Hidden input to store coverage area data -->
-    <input type="hidden" name="coverageAreas" id="coverageAreasInput" value="[]">
-</div>
-
-<!-- Services Offered Section - Direct Generation -->
-<div class="mb-4">
-    <h4 class="form-section-title">Services Offered</h4>
-    <div id="services-container">
-        <% 
-        // Log the services data
-        if (provider && provider.services) {
-            console.log("Services for direct generation:", provider.services);
-        }
-        
-        // Check if services data exists
-        if (provider && provider.services && Array.isArray(provider.services) && provider.services.length > 0) {
-            // Add each service
-            provider.services.forEach(service => {
-                // Extract service name from the object
-                let serviceName = '';
-                if (typeof service === 'string') {
-                    serviceName = service;
-                } else if (service.service_name) {
-                    serviceName = service.service_name;
-                }
+                <!-- Service Coverage Area Section -->
+                <div class="mb-4">
+                    <h4 class="form-section-title">Service Coverage Area</h4>
+                    <p class="text-muted mb-3">Select the states and cities where you provide your services:</p>
                     
-                if (serviceName) {
-                    console.log(`Adding service field: ${serviceName}`);
-        %>
-                <div class="dynamic-field">
-                    <input type="text" class="form-control" name="services[]" value="<%= serviceName %>" placeholder="Enter a service" required>
-                    <button type="button" class="remove-field-btn" onclick="removeField(this)">
-                        <i class="bi bi-x-circle"></i>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-1">State</label>
+                                    <select id="stateSelect" class="form-select" onchange="loadCities()">
+                                        <option value="">Select a state</option>
+                                        <option value="1" data-code="01">Johor</option>
+                                        <option value="2" data-code="02">Kedah</option>
+                                        <option value="3" data-code="03">Kelantan</option>
+                                        <option value="4" data-code="04">Melaka</option>
+                                        <option value="5" data-code="05">Negeri Sembilan</option>
+                                        <option value="6" data-code="06">Pahang</option>
+                                        <option value="7" data-code="07">Pulau Pinang</option>
+                                        <option value="8" data-code="08">Perak</option>
+                                        <option value="9" data-code="09">Perlis</option>
+                                        <option value="10" data-code="10">Selangor</option>
+                                        <option value="11" data-code="11">Terengganu</option>
+                                        <option value="12" data-code="12">Sabah</option>
+                                        <option value="13" data-code="13">Sarawak</option>
+                                        <option value="14" data-code="14">Wilayah Persekutuan Kuala Lumpur</option>
+                                        <option value="15" data-code="15">Wilayah Persekutuan Labuan</option>
+                                        <option value="16" data-code="16">Wilayah Persekutuan Putrajaya</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-1">City</label>
+                                    <select id="citySelect" class="form-select" disabled>
+                                        <option value="">Select a state first</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <button type="button" class="add-field-btn w-100" onclick="addCoverageArea()">
+                                <i class="bi bi-plus-circle me-2"></i> Add to Coverage Area
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Selected Coverage Areas</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>State</th>
+                                        <th>City</th>
+                                        <th width="80px">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="coverageAreasList">
+                                    <tr id="noCoverageRow">
+                                        <td colspan="3" class="text-center text-muted py-4">No coverage areas selected yet</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden input to store coverage area data -->
+                    <input type="hidden" name="coverageAreas" id="coverageAreasInput" value="[]">
+                </div>
+
+                <!-- Services Offered Section -->
+                <div class="mb-4">
+                    <h4 class="form-section-title">Services Offered</h4>
+                    <div id="services-container">
+                        <!-- Services will be populated by JavaScript -->
+                    </div>
+                    <button type="button" class="add-field-btn" onclick="addServiceField()">
+                        <i class="bi bi-plus-circle"></i> Add Service
                     </button>
                 </div>
-        <%  }
-            });
-        } else {
-            // Add an empty service field if no services
-            console.log("No services found, adding empty field");
-        %>
-            <div class="dynamic-field">
-                <input type="text" class="form-control" name="services[]" value="" placeholder="Enter a service" required>
-                <button type="button" class="remove-field-btn" onclick="removeField(this)">
-                    <i class="bi bi-x-circle"></i>
-                </button>
-            </div>
-        <% } %>
-    </div>
-    <button type="button" class="add-field-btn" onclick="addServiceField()">
-        <i class="bi bi-plus-circle"></i> Add Service
-    </button>
-</div>
 
                 <!-- Availability Section -->
                 <div class="mb-4">
@@ -582,7 +488,8 @@
                                                     id="<%= day.toLowerCase() %>Available" 
                                                     name="availableDays" 
                                                     value="<%= day %>"
-                                                    <%= dayData.is_available ? 'checked' : '' %>>
+                                                    <%= dayData.is_available ? 'checked' : '' %>
+                                                    onchange="updateDayAvailability('<%= day.toLowerCase() %>', this.checked)">
                                                 <label class="form-check-label" for="<%= day.toLowerCase() %>Available">
                                                     <strong><%= day %></strong>
                                                 </label>
@@ -672,1329 +579,500 @@
         </div>
     </div>
 
-    <input type="hidden" id="providerData" 
-    data-categories="<%= encodeURIComponent(JSON.stringify(provider.categories || [])) %>" 
-    data-services="<%= encodeURIComponent(JSON.stringify(provider.services || [])) %>"
-    data-availability="<%= encodeURIComponent(JSON.stringify(provider.availability || [])) %>"
-    data-coverage-areas="<%= encodeURIComponent(JSON.stringify(provider.coverageAreas || [])) %>">
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script>
-    // Global variable for coverage areas
-    let selectedCoverageAreas = [];
+<script>
+        // Global variables
+        let selectedCoverageAreas = [];
+        let providerData = {};
 
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log("=== DEBUGGING TIME VALUES ===");
-        
-        // 1. Debug all time select elements
-        const timeSelects = document.querySelectorAll('select[name^="startTime_"], select[name^="endTime_"]');
-        
-        console.log(`Found ${timeSelects.length} time select elements`);
-        
-        timeSelects.forEach(select => {
-            console.log(`${select.name}: Current value = ${select.value}`);
-            console.log(`Options count: ${select.options.length}`);
+        // Malaysian cities data structure (complete)
+        const malaysianCities = {
+            // Johor
+            1: [
+                { id: 1, name: 'Johor Bahru' }, { id: 2, name: 'Iskandar Puteri' }, { id: 3, name: 'Pasir Gudang' },
+                { id: 4, name: 'Batu Pahat' }, { id: 5, name: 'Kluang' }, { id: 6, name: 'Segamat' },
+                { id: 7, name: 'Muar' }, { id: 8, name: 'Kulai' }, { id: 9, name: 'Pontian' },
+                { id: 10, name: 'Kota Tinggi' }, { id: 11, name: 'Tangkak' }, { id: 12, name: 'Yong Peng' },
+                { id: 13, name: 'Simpang Renggam' }, { id: 14, name: 'Rengit' }, { id: 15, name: 'Pekan Nanas' },
+                { id: 16, name: 'Ulu Tiram' }, { id: 17, name: 'Skudai' }, { id: 18, name: 'Senai' },
+                { id: 19, name: 'Masai' }, { id: 20, name: 'Labis' }, { id: 21, name: 'Chaah' },
+                { id: 22, name: 'Bakri' }, { id: 23, name: 'Parit Raja' }, { id: 24, name: 'Benut' },
+                { id: 25, name: 'Ayer Hitam' }, { id: 26, name: 'Pagoh' }, { id: 27, name: 'Bukit Gambir' },
+                { id: 28, name: 'Sri Gading' }, { id: 29, name: 'Endau' }, { id: 30, name: 'Pengerang' },
+                { id: 31, name: 'Tenggaroh' }, { id: 32, name: 'Sungai Rengit' }
+            ],
+            // Kedah
+            2: [
+                { id: 33, name: 'Alor Setar' }, { id: 34, name: 'Sungai Petani' }, { id: 35, name: 'Kulim' },
+                { id: 36, name: 'Langkawi' }, { id: 37, name: 'Jitra' }
+            ],
+            // Kelantan
+            3: [
+                { id: 38, name: 'Kota Bharu' }, { id: 39, name: 'Pasir Mas' }, { id: 40, name: 'Tumpat' },
+                { id: 41, name: 'Tanah Merah' }, { id: 42, name: 'Machang' }, { id: 43, name: 'Kuala Krai' },
+                { id: 44, name: 'Gua Musang' }, { id: 45, name: 'Jeli' }, { id: 46, name: 'Bachok' },
+                { id: 47, name: 'Pasir Puteh' }, { id: 48, name: 'Rantau Panjang' }, { id: 49, name: 'Wakaf Bharu' },
+                { id: 50, name: 'Pengkalan Chepa' }, { id: 51, name: 'Ketereh' }, { id: 52, name: 'Dabong' }
+            ],
+            // Melaka
+            4: [
+                { id: 53, name: 'Melaka City' }, { id: 54, name: 'Ayer Keroh' }, { id: 55, name: 'Batu Berendam' },
+                { id: 56, name: 'Alor Gajah' }, { id: 57, name: 'Jasin' }, { id: 58, name: 'Bukit Beruang' },
+                { id: 59, name: 'Masjid Tanah' }, { id: 60, name: 'Merlimau' }, { id: 61, name: 'Durian Tunggal' },
+                { id: 62, name: 'Tangga Batu' }, { id: 63, name: 'Tanjung Kling' }
+            ],
+            // Negeri Sembilan
+            5: [
+                { id: 64, name: 'Seremban' }, { id: 65, name: 'Nilai' }, { id: 66, name: 'Port Dickson' },
+                { id: 67, name: 'Bahau' }, { id: 68, name: 'Kuala Pilah' }, { id: 69, name: 'Tampin' },
+                { id: 70, name: 'Rembau' }, { id: 71, name: 'Gemas' }, { id: 72, name: 'Lukut' },
+                { id: 73, name: 'Mantin' }, { id: 74, name: 'Senawang' }, { id: 75, name: 'Lenggeng' },
+                { id: 76, name: 'Juasseh' }, { id: 77, name: 'Batu Kikir' }, { id: 78, name: 'Pedas' }
+            ],
+            // Pahang
+            6: [
+                { id: 79, name: 'Kuantan' }, { id: 80, name: 'Temerloh' }, { id: 81, name: 'Bentong' },
+                { id: 82, name: 'Raub' }, { id: 83, name: 'Jerantut' }, { id: 84, name: 'Kuala Lipis' },
+                { id: 85, name: 'Maran' }, { id: 86, name: 'Pekan' }, { id: 87, name: 'Rompin' },
+                { id: 88, name: 'Bera' }, { id: 89, name: 'Gambang' }, { id: 90, name: 'Karak' },
+                { id: 91, name: 'Triang' }, { id: 92, name: 'Chenor' }, { id: 93, name: 'Sungai Lembing' },
+                { id: 94, name: 'Jengka' }, { id: 95, name: 'Genting Highlands' }
+            ],
+            // Pulau Pinang
+            7: [
+                { id: 96, name: 'George Town' }, { id: 97, name: 'Bayan Lepas' }, { id: 98, name: 'Gelugor' },
+                { id: 99, name: 'Ayer Itam' }, { id: 100, name: 'Tanjung Tokong' }, { id: 101, name: 'Tanjung Bungah' },
+                { id: 102, name: 'Batu Ferringhi' }, { id: 103, name: 'Balik Pulau' }, { id: 104, name: 'Bukit Mertajam' },
+                { id: 105, name: 'Seberang Jaya' }, { id: 106, name: 'Butterworth' }, { id: 107, name: 'Nibong Tebal' },
+                { id: 108, name: 'Kepala Batas' }, { id: 109, name: 'Permatang Pauh' }, { id: 110, name: 'Simpang Ampat' },
+                { id: 111, name: 'Juru' }, { id: 112, name: 'Sungai Ara' }, { id: 113, name: 'Teluk Kumbar' },
+                { id: 114, name: 'Batu Maung' }, { id: 115, name: 'Penaga' }
+            ],
+            // Perak
+            8: [
+                { id: 116, name: 'Ipoh' }, { id: 117, name: 'Taiping' }, { id: 118, name: 'Batu Gajah' },
+                { id: 119, name: 'Teluk Intan' }, { id: 120, name: 'Kuala Kangsar' }, { id: 121, name: 'Seri Iskandar' },
+                { id: 122, name: 'Lumut' }, { id: 123, name: 'Sitiawan' }, { id: 124, name: 'Parit Buntar' },
+                { id: 125, name: 'Kampar' }, { id: 126, name: 'Tapah' }, { id: 127, name: 'Tanjung Malim' },
+                { id: 128, name: 'Manjung' }, { id: 129, name: 'Ayer Tawar' }, { id: 130, name: 'Pantai Remis' },
+                { id: 131, name: 'Simpang Pulai' }, { id: 132, name: 'Bagan Serai' }, { id: 133, name: 'Slim River' },
+                { id: 134, name: 'Tronoh' }
+            ],
+            // Perlis
+            9: [
+                { id: 135, name: 'Kangar' }, { id: 136, name: 'Arau' }, { id: 137, name: 'Kuala Perlis' }
+            ],
+            // Selangor
+            10: [
+                { id: 138, name: 'Shah Alam' }, { id: 139, name: 'Petaling Jaya' }, { id: 140, name: 'Subang Jaya' },
+                { id: 141, name: 'Selayang' }, { id: 142, name: 'Kajang' }, { id: 143, name: 'Sepang' },
+                { id: 144, name: 'Klang' }, { id: 145, name: 'Puchong' }, { id: 146, name: 'Ampang' },
+                { id: 147, name: 'Rawang' }, { id: 148, name: 'Batu Caves' }, { id: 149, name: 'Bandar Baru Bangi' },
+                { id: 150, name: 'Seri Kembangan' }, { id: 151, name: 'Hulu Langat' }, { id: 152, name: 'Bukit Beruntung' },
+                { id: 153, name: 'Sungai Buloh' }, { id: 154, name: 'Tanjung Karang' }, { id: 155, name: 'Meru' },
+                { id: 156, name: 'Kapar' }, { id: 157, name: 'Bestari Jaya' }
+            ],
+            // Terengganu
+            11: [
+                { id: 158, name: 'Kuala Terengganu' }, { id: 159, name: 'Dungun' }, { id: 160, name: 'Kemaman' },
+                { id: 161, name: 'Marang' }, { id: 162, name: 'Chukai' }, { id: 163, name: 'Kijal' },
+                { id: 164, name: 'Besut' }, { id: 165, name: 'Permaisuri' }, { id: 166, name: 'Setiu' },
+                { id: 167, name: 'Paka' }
+            ],
+            // Sabah
+            12: [
+                { id: 168, name: 'Kota Kinabalu' }, { id: 169, name: 'Sandakan' }, { id: 170, name: 'Tawau' },
+                { id: 171, name: 'Lahad Datu' }, { id: 172, name: 'Keningau' }, { id: 173, name: 'Semporna' },
+                { id: 174, name: 'Kudat' }, { id: 175, name: 'Beaufort' }, { id: 176, name: 'Papar' },
+                { id: 177, name: 'Tuaran' }, { id: 178, name: 'Kota Belud' }, { id: 179, name: 'Ranau' },
+                { id: 180, name: 'Sipitang' }, { id: 181, name: 'Tenom' }, { id: 182, name: 'Tambunan' },
+                { id: 183, name: 'Kunak' }, { id: 184, name: 'Pitas' }, { id: 185, name: 'Kota Marudu' },
+                { id: 186, name: 'Nabawan' }, { id: 187, name: 'Kuala Penyu' }
+            ],
+            // Sarawak
+            13: [
+                { id: 188, name: 'Kuching' }, { id: 189, name: 'Miri' }, { id: 190, name: 'Sibu' },
+                { id: 191, name: 'Bintulu' }, { id: 192, name: 'Samarahan' }, { id: 193, name: 'Serian' },
+                { id: 194, name: 'Mukah' }, { id: 195, name: 'Kapit' }, { id: 196, name: 'Limbang' },
+                { id: 197, name: 'Marudi' }, { id: 198, name: 'Belaga' }, { id: 199, name: 'Sri Aman' },
+                { id: 200, name: 'Asajaya' }, { id: 201, name: 'Batang Ai' }, { id: 202, name: 'Tebedu' },
+                { id: 203, name: 'Bekenu' }, { id: 204, name: 'Tatau' }, { id: 205, name: 'Lawas' },
+                { id: 206, name: 'Pusa' }, { id: 207, name: 'Julau' }
+            ],
+            // Wilayah Persekutuan Kuala Lumpur
+            14: [
+                { id: 208, name: 'Kuala Lumpur' }, { id: 209, name: 'Bukit Bintang' }, { id: 210, name: 'KLCC' },
+                { id: 211, name: 'Chinatown' }, { id: 212, name: 'Sri Hartamas' }, { id: 213, name: 'Taman Tun Dr. Ismail' },
+                { id: 214, name: 'Mont Kiara' }, { id: 215, name: 'Damansara' }
+            ],
+            // Wilayah Persekutuan Labuan
+            15: [
+                { id: 216, name: 'Labuan' }, { id: 217, name: 'Victoria' }, { id: 218, name: 'Rancha-Rancha' },
+                { id: 219, name: 'Kampung Sungai Pagar' }, { id: 220, name: 'Kampung Layang-Layang' }
+            ],
+            // Wilayah Persekutuan Putrajaya
+            16: [
+                { id: 221, name: 'Putrajaya' }, { id: 222, name: 'Presidential Palace' }, { id: 223, name: 'Putra Square' },
+                { id: 224, name: 'Putrajaya Lake' }
+            ]
+        };
+
+        // State names mapping
+        const stateNames = {
+            1: 'Johor', 2: 'Kedah', 3: 'Kelantan', 4: 'Melaka', 5: 'Negeri Sembilan',
+            6: 'Pahang', 7: 'Pulau Pinang', 8: 'Perak', 9: 'Perlis', 10: 'Selangor',
+            11: 'Terengganu', 12: 'Sabah', 13: 'Sarawak', 
+            14: 'Wilayah Persekutuan Kuala Lumpur', 15: 'Wilayah Persekutuan Labuan', 
+            16: 'Wilayah Persekutuan Putrajaya'
+        };
+
+        // Initialize everything when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing edit profile page...');
             
-            // Log all available options
-            let availableOptions = [];
-            for(let i = 0; i < select.options.length; i++) {
-                availableOptions.push({
-                    index: i,
-                    value: select.options[i].value,
-                    text: select.options[i].text
-                });
-            }
-            console.table(availableOptions);
+            // Load provider data
+            loadProviderData();
+            
+            // Initialize form sections
+            initializeServices();
+            initializeCoverageAreas();
+            updatePricingSection();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            console.log('Edit profile page initialized successfully');
         });
-        
-        // 2. Debug provider data
-        try {
-            const providerDataEl = document.getElementById('providerData');
-            if (providerDataEl) {
-                console.log("Provider data element found");
-                
-                try {
-                    const availabilityData = JSON.parse(decodeURIComponent(providerDataEl.dataset.availability || '[]'));
-                    console.log("Availability data from dataset:", availabilityData);
-                    
-                    // Check if data matches what we expect
-                    if (availabilityData && availabilityData.length > 0) {
-                        console.log("Sample day data:", availabilityData[0]);
-                        console.log("Start time type:", typeof availabilityData[0].start_time);
-                        console.log("Start time value:", availabilityData[0].start_time);
-                    }
-                } catch (e) {
-                    console.error("Error parsing availability data:", e);
-                }
-            } else {
-                console.error("Provider data element not found!");
-            }
-        } catch (e) {
-            console.error("Error accessing provider data:", e);
-        }
-        
-        // 3. Manual fix - directly set all time selects to the correct values from database
-        setTimeout(function() {
-            console.log("Applying manual time fix...");
-            
-            const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-            
-            daysOfWeek.forEach(day => {
-                const startSelect = document.querySelector(`select[name="startTime_${day}"]`);
-                const endSelect = document.querySelector(`select[name="endTime_${day}"]`);
-                
-                if (startSelect) {
-                    // Set to 09:00 AM (database value)
-                    console.log(`Setting ${day} start time to 09:00 AM`);
-                    setSelectValueByTime(startSelect, "09:00");
+
+        // Load provider data from hidden input
+        function loadProviderData() {
+            try {
+                const providerDataEl = document.getElementById('providerData');
+                if (!providerDataEl) {
+                    console.error('Provider data element not found');
+                    return;
                 }
                 
-                if (endSelect) {
-                    // Set to 17:00 (5:00 PM) (database value)
-                    console.log(`Setting ${day} end time to 17:00 (5:00 PM)`);
-                    setSelectValueByTime(endSelect, "17:00");
-                }
-            });
-        }, 500); // Short delay to ensure the page is fully loaded
-        
-        // Helper function to set select to a specific time
-        function setSelectValueByTime(selectElement, timeStr) {
-            // First try direct match
-            for (let i = 0; i < selectElement.options.length; i++) {
-                if (selectElement.options[i].value === timeStr) {
-                    selectElement.selectedIndex = i;
-                    console.log(`Direct match found for ${timeStr} at index ${i}`);
-                    return true;
-                }
-            }
-            
-            // Try matching the hour
-            const hourToMatch = parseInt(timeStr.split(':')[0], 10);
-            
-            for (let i = 0; i < selectElement.options.length; i++) {
-                const optionHour = parseInt(selectElement.options[i].value.split(':')[0], 10);
-                
-                if (optionHour === hourToMatch) {
-                    selectElement.selectedIndex = i;
-                    console.log(`Hour match found for ${hourToMatch} at index ${i}, value ${selectElement.options[i].value}`);
-                    return true;
-                }
-            }
-            
-            // Last resort - set direct value
-            selectElement.value = timeStr;
-            console.log(`Direct value set to ${timeStr}`);
-            
-            return false;
-        }
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get provider data from hidden input
-        const providerData = getProviderData();
-        console.log('Provider data loaded:', providerData);
-        
-        // Initialize form components with provider data
-        initializeBusinessProfile(providerData);
-        initializeCategories(providerData.categories);
-        initializeServices(providerData.services);
-        initializeAvailability(providerData.availability);
-        
-        // Initialize coverage areas from provider data - call our new function
-        loadCoverageAreasFromData();
-        
-        // Set up event listeners for form interactions
-        setupEventListeners();
-        
-        // Auto-dismiss alerts after 5 seconds
-        setupAlertDismissal();
-    });
-
-    // Function to retrieve provider data from hidden input
-    function getProviderData() {
-        try {
-            const providerDataEl = document.getElementById('providerData');
-            if (!providerDataEl) {
-                console.error('Provider data element not found');
-                return { categories: [], services: [], availability: [], coverageAreas: [] };
-            }
-            
-            // Get and parse all data attributes
-            const categories = JSON.parse(decodeURIComponent(providerDataEl.dataset.categories || '[]'));
-            const services = JSON.parse(decodeURIComponent(providerDataEl.dataset.services || '[]'));
-            const availability = JSON.parse(decodeURIComponent(providerDataEl.dataset.availability || '[]'));
-            const coverageAreas = JSON.parse(decodeURIComponent(providerDataEl.dataset.coverageAreas || '[]'));
-            
-            // Debug logging
-            console.log('Raw provider data:');
-            console.log('Categories:', categories);
-            console.log('Services:', services);
-            console.log('Availability:', availability);
-            console.log('Coverage Areas:', coverageAreas);
-            
-            return {
-                categories: categories,
-                services: services,
-                availability: availability,
-                coverageAreas: coverageAreas
-            };
-        } catch (error) {
-            console.error('Error parsing provider data:', error);
-            return { categories: [], services: [], availability: [], coverageAreas: [] };
-        }
-    }
-
-    // Initialize business profile section (name, phone, email)
-function initializeBusinessProfile(providerData) {
-    if (!providerData) return;
-    
-    // Set business name
-    const businessNameInput = document.getElementById('businessName');
-    if (businessNameInput && providerData.business_name) {
-        businessNameInput.value = providerData.business_name;
-        console.log('Set business name:', providerData.business_name);
-    }
-    
-    // Set phone number
-    const phoneInput = document.getElementById('phoneNumber');
-    if (phoneInput && providerData.phone_number) {
-        phoneInput.value = providerData.phone_number;
-        console.log('Set phone number:', providerData.phone_number);
-    }
-    
-    // Email is read-only, so we don't need to set it
-}
-
-// Initialize service categories
-function initializeCategories(categories) {
-    if (!categories || !Array.isArray(categories)) {
-        console.warn('No valid categories data provided');
-        return;
-    }
-    
-    console.log('Initializing', categories.length, 'categories');
-    
-    // Select all category checkboxes
-    const checkboxes = document.querySelectorAll('.category-checkbox');
-    if (!checkboxes.length) {
-        console.warn('No category checkboxes found in the form');
-        return;
-    }
-    
-    // Uncheck all checkboxes first
-    checkboxes.forEach(checkbox => checkbox.checked = false);
-    
-    // Check boxes that match provider's categories
-    checkboxes.forEach(checkbox => {
-        const categoryName = checkbox.value;
-        const matchingCategory = findMatchingCategory(categoryName, categories);
-        
-        if (matchingCategory) {
-            checkbox.checked = true;
-            console.log('Selected category:', categoryName);
-        }
-    });
-    
-    // Update pricing section based on selected categories - pass the full categories array
-    updatePricingSection(categories);
-}
-
-// Find a matching category by name with flexible matching
-function findMatchingCategory(name, categoryList) {
-    if (!categoryList || !Array.isArray(categoryList)) return null;
-    
-    const normalizedName = name.toLowerCase().trim();
-    
-    return categoryList.find(category => {
-        // Handle category as string or object
-        const categoryName = typeof category === 'string' 
-            ? category 
-            : (category.category_name || '');
-        
-        const normalizedCategoryName = categoryName.toLowerCase().trim();
-        
-        // Check for exact match or variations with spaces/underscores
-        return normalizedCategoryName === normalizedName
-            || normalizedCategoryName.replace(/_/g, ' ') === normalizedName
-            || normalizedName.replace(/ /g, '_') === normalizedCategoryName;
-    });
-}
-
-// Initialize services offered section
-function initializeServices(services) {
-    if (!services || !Array.isArray(services)) {
-        console.warn('No valid services data provided');
-        // Add an empty service field if none exists
-        addServiceField();
-        return;
-    }
-    
-    console.log('Initializing', services.length, 'services');
-    
-    // Get the services container
-    const container = document.getElementById('services-container');
-    if (!container) {
-        console.warn('Services container not found');
-        return;
-    }
-    
-    // Clear existing service fields
-    container.innerHTML = '';
-    
-    // Add each service
-    if (services.length > 0) {
-        services.forEach(service => {
-            // Extract service name from the object
-            const serviceName = typeof service === 'string' 
-                ? service 
-                : (service.service_name || '');
-                
-            if (serviceName) {
-                addServiceItem(serviceName);
-                console.log('Added service:', serviceName);
-            }
-        });
-    } else {
-        // Add an empty service field if no services
-        addServiceField();
-    }
-}
-
-// Add a service field with a value
-function addServiceItem(value) {
-    const container = document.getElementById('services-container');
-    if (!container) return;
-    
-    const newField = document.createElement('div');
-    newField.className = 'dynamic-field';
-    newField.innerHTML = `
-        <input type="text" class="form-control" name="services[]" value="${value || ''}" placeholder="Enter a service" required>
-        <button type="button" class="remove-field-btn" onclick="removeField(this)">
-            <i class="bi bi-x-circle"></i>
-        </button>
-    `;
-    container.appendChild(newField);
-}
-
-// Add an empty service field
-function addServiceField() {
-    addServiceItem('');
-}
-
-// Remove a service field
-function removeField(button) {
-    const field = button.parentNode;
-    const container = field.parentNode;
-    
-    if (!container) return;
-    
-    // Don't remove the last field
-    if (container.children.length > 1) {
-        container.removeChild(field);
-    } else {
-        // Clear the input value instead
-        const input = field.querySelector('input');
-        if (input) input.value = '';
-    }
-}
-
-// Initialize availability section
-function initializeAvailability(availability) {
-    if (!availability || !Array.isArray(availability)) {
-        console.warn('No valid availability data provided');
-        return;
-    }
-    
-    console.log('Initializing availability for', availability.length, 'days');
-    
-    // Get all days of week
-    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    
-    // Process each day
-    daysOfWeek.forEach(day => {
-        // Find data for this day
-        const dayData = availability.find(a => 
-            a.day_of_week === day || 
-            a.day_of_week.toLowerCase() === day.toLowerCase()
-        );
-        
-        if (dayData) {
-            console.log(`Setting availability for ${day}:`, dayData);
-            
-            // Set toggle status
-            const toggle = document.getElementById(`${day.toLowerCase()}Available`);
-            if (toggle) {
-                toggle.checked = dayData.is_available === true;
-                console.log(`${day} availability toggle:`, toggle.checked);
-            }
-            
-            // Set start time
-            if (dayData.start_time) {
-                const startSelect = document.querySelector(`select[name="startTime_${day}"]`);
-                if (startSelect) {
-                    console.log(`Setting start time for ${day} to ${dayData.start_time}`);
-                    selectTimeOption(startSelect, dayData.start_time);
-                }
-            }
-            
-            // Set end time
-            if (dayData.end_time) {
-                const endSelect = document.querySelector(`select[name="endTime_${day}"]`);
-                if (endSelect) {
-                    console.log(`Setting end time for ${day} to ${dayData.end_time}`);
-                    selectTimeOption(endSelect, dayData.end_time);
-                }
-            }
-            
-            // Update UI based on availability
-            updateDayAvailability(day.toLowerCase(), dayData.is_available === true);
-        } else {
-            console.warn(`No availability data found for ${day}`);
-        }
-    });
-    
-    // Set slot duration
-    if (availability.length > 0 && availability[0].slot_duration) {
-        const slotDuration = parseInt(availability[0].slot_duration);
-        const durationSelect = document.getElementById('slotDuration');
-        
-        if (durationSelect) {
-            for (let i = 0; i < durationSelect.options.length; i++) {
-                if (parseInt(durationSelect.options[i].value) === slotDuration) {
-                    durationSelect.selectedIndex = i;
-                    console.log('Set slot duration:', slotDuration);
-                    break;
-                }
-            }
-        }
-    }
-}
-
-// More reliable function to select time options
-function selectTimeOption(selectElement, timeStr) {
-    if (!selectElement || !timeStr) {
-        console.warn('Invalid inputs to selectTimeOption', { selectElement, timeStr });
-        return;
-    }
-    
-    // Normalize time format to ensure HH:MM format
-    let hours, minutes;
-    
-    // Handle various time formats
-    if (typeof timeStr === 'string') {
-        if (timeStr.includes(':')) {
-            // Format like "09:00" or "9:00"
-            [hours, minutes] = timeStr.split(':');
-        } else {
-            // Try to handle numeric format
-            hours = timeStr;
-            minutes = '00';
-        }
-    } else if (typeof timeStr === 'object' && timeStr.hours !== undefined) {
-        // Handle time object format
-        hours = timeStr.hours;
-        minutes = timeStr.minutes || '00';
-    } else {
-        console.warn('Unrecognized time format:', timeStr);
-        return;
-    }
-    
-    // Convert to integers
-    const hoursInt = parseInt(hours, 10);
-    const minutesInt = parseInt(minutes, 10);
-    
-    // Format as HH:MM
-    const formattedTime = `${hoursInt < 10 ? '0' + hoursInt : hoursInt}:${minutesInt < 10 ? '0' + minutesInt : minutesInt}`;
-    
-    console.log('Looking for time option:', formattedTime);
-    
-    // Try exact match first
-    for (let i = 0; i < selectElement.options.length; i++) {
-        if (selectElement.options[i].value === formattedTime) {
-            selectElement.selectedIndex = i;
-            console.log('Found exact match at index', i, ':', selectElement.options[i].value);
-            return;
-        }
-    }
-    
-    // If no exact match, try matching just the hour
-    for (let i = 0; i < selectElement.options.length; i++) {
-        const optionHour = parseInt(selectElement.options[i].value.split(':')[0], 10);
-        if (optionHour === hoursInt) {
-            selectElement.selectedIndex = i;
-            console.log('Found hour match at index', i, ':', selectElement.options[i].value);
-            return;
-        }
-    }
-    
-    // Log all options for debugging
-    console.log('Available options:');
-    for (let i = 0; i < selectElement.options.length; i++) {
-        console.log(`Option ${i}: ${selectElement.options[i].value}`);
-    }
-    
-    console.warn('No matching option found for time:', formattedTime);
-}
-
-// Update day availability UI
-function updateDayAvailability(day, isAvailable) {
-    const timeSlots = document.getElementById(`${day}TimeSlots`);
-    if (!timeSlots) {
-        console.warn('Time slots element not found for day:', day);
-        return;
-    }
-    
-    const inputs = timeSlots.querySelectorAll('select');
-    
-    if (isAvailable) {
-        timeSlots.style.opacity = '1';
-        inputs.forEach(input => input.disabled = false);
-    } else {
-        timeSlots.style.opacity = '0.5';
-        inputs.forEach(input => input.disabled = true);
-    }
-}
-
-// Update pricing section based on selected categories
-function updatePricingSection(providerCategories) {
-    const pricingContainer = document.getElementById('pricing-container');
-    if (!pricingContainer) {
-        console.warn('Pricing container not found');
-        return;
-    }
-    
-    const selectedCheckboxes = document.querySelectorAll('.category-checkbox:checked');
-    
-    if (selectedCheckboxes.length === 0) {
-        pricingContainer.innerHTML = `
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle"></i> 
-                Select service categories above to set their base fees.
-            </div>
-        `;
-        return;
-    }
-    
-    // Build pricing cards for selected categories
-    let pricingHTML = '';
-    selectedCheckboxes.forEach((checkbox, index) => {
-        const categoryName = checkbox.value;
-        
-        // Find existing data for this category
-        const categoryData = findMatchingCategory(categoryName, providerCategories);
-        
-        // Set default values or use existing data
-        const fee = categoryData && categoryData.base_fee !== undefined 
-            ? categoryData.base_fee 
-            : 0;
-            
-        const feeType = categoryData && categoryData.fee_type 
-            ? categoryData.fee_type 
-            : 'per visit';
-        
-        console.log(`Building pricing for ${categoryName}:`, { fee, feeType });
-        
-        pricingHTML += `
-            <div class="card mb-3">
-                <div class="card-body">
-                    <h5 class="card-title">${categoryName}</h5>
-                    
-                    <div class="row g-3 align-items-center mb-3">
-                        <div class="col-md-6">
-                            <label for="baseFee${index}" class="form-label">Base Fee (RM)</label>
-                            <div class="input-group">
-                                <span class="input-group-text">RM</span>
-                                <input 
-                                    type="number" 
-                                    class="form-control" 
-                                    id="baseFee${index}" 
-                                    name="baseFees[${categoryName}]" 
-                                    value="${fee}" 
-                                    min="0" 
-                                    step="0.01"
-                                    placeholder="0.00"
-                                >
-                            </div>
-                            <small class="text-muted">Enter the base fee for this service category</small>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label for="feeType${index}" class="form-label">Fee Type</label>
-                            <select class="form-select" id="feeType${index}" name="feeTypes[${categoryName}]">
-                                <option value="per visit" ${feeType === 'per visit' ? 'selected' : ''}>Per Visit</option>
-                                <option value="per hour" ${feeType === 'per hour' ? 'selected' : ''}>Per Hour</option>
-                                <option value="fixed" ${feeType === 'fixed' ? 'selected' : ''}>Fixed Price</option>
-                            </select>
-                            <small class="text-muted">Select how you'd like to charge for this service</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    });
-    
-    pricingContainer.innerHTML = pricingHTML;
-}
-
-    // Set up event listeners
-    function setupEventListeners() {
-        // Category checkbox change
-        const categoryCheckboxes = document.querySelectorAll('.category-checkbox');
-        categoryCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                // Get provider data
-                const providerData = getProviderData();
-                updatePricingSection(providerData.categories);
-            });
-        });
-        
-        // Availability toggle change
-        const availabilityToggles = document.querySelectorAll('.availability-toggle');
-        availabilityToggles.forEach(toggle => {
-            toggle.addEventListener('change', function() {
-                const day = this.value.toLowerCase();
-                updateDayAvailability(day, this.checked);
-            });
-        });
-        
-        // Initialize coverage areas UI
-        updateCoverageAreasList();
-    }
-
-    // Auto-dismiss alerts
-function setupAlertDismissal() {
-    setTimeout(function() {
-        const alerts = document.querySelectorAll('.alert');
-        alerts.forEach(function(alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        });
-    }, 5000);
-}
-
-// Debugging helper function - can be called from browser console to troubleshoot
-window.debugAvailability = function() {
-    try {
-        console.log("===== AVAILABILITY DEBUGGING =====");
-        const providerDataEl = document.getElementById('providerData');
-        const availability = JSON.parse(decodeURIComponent(providerDataEl.dataset.availability || '[]'));
-        console.log('Availability data from dataset:', availability);
-        
-        // Check time selectors
-        const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        
-        daysOfWeek.forEach(day => {
-            const startSelect = document.querySelector(`select[name="startTime_${day}"]`);
-            const endSelect = document.querySelector(`select[name="endTime_${day}"]`);
-            const toggle = document.getElementById(`${day.toLowerCase()}Available`);
-            
-            console.log(`${day}:`, {
-                'Start Value': startSelect ? startSelect.value : 'N/A',
-                'End Value': endSelect ? endSelect.value : 'N/A',
-                'Toggle Checked': toggle ? toggle.checked : 'N/A'
-            });
-        });
-        
-        console.log("=================================");
-    } catch (error) {
-        console.error('Error in debugAvailability:', error);
-    }
-};
-
-    // NEW FUNCTION: Load coverage areas from provider data
-    function loadCoverageAreasFromData() {
-        try {
-            console.log("Loading coverage areas from provider data...");
-            const providerDataEl = document.getElementById('providerData');
-            if (!providerDataEl) {
-                console.error('Provider data element not found');
-                return;
-            }
-            
-            // Get coverage areas data - ensure we use the correct attribute name
-            const coverageAreasStr = providerDataEl.dataset.coverageAreas;
-            if (!coverageAreasStr) {
-                console.error('Coverage areas data attribute not found in:', providerDataEl.dataset);
-                return;
-            }
-            
-            // Parse the coverage areas data
-            const coverageAreasData = JSON.parse(decodeURIComponent(coverageAreasStr));
-            console.log('Parsed coverage areas data:', coverageAreasData);
-            
-            // Reset selectedCoverageAreas array
-            selectedCoverageAreas = [];
-            
-            // Process each coverage area
-            if (Array.isArray(coverageAreasData) && coverageAreasData.length > 0) {
-                coverageAreasData.forEach(area => {
-                    // Extract data with fallbacks for different property names
-                    const stateId = parseInt(area.state_id || area.stateId || 0);
-                    const stateName = area.state_name || area.stateName || '';
-                    const cityId = parseInt(area.city_id || area.cityId || 0);
-                    const cityName = area.city_name || area.cityName || '';
-                    
-                    // Only add if we have valid data
-                    if (stateId && cityId && stateName && cityName) {
-                        selectedCoverageAreas.push({
-                            stateId: stateId,
-                            stateName: stateName,
-                            cityId: cityId,
-                            cityName: cityName
-                        });
-                        
-                        console.log(`Added coverage area: ${cityName}, ${stateName} (IDs: ${cityId}, ${stateId})`);
-                    }
-                });
-                
-                // Update the UI with the loaded coverage areas
-                updateCoverageAreasList();
-                
-                // Update the hidden input
-                const coverageAreasInput = document.getElementById('coverageAreasInput');
-                if (coverageAreasInput) {
-                    coverageAreasInput.value = JSON.stringify(selectedCoverageAreas);
-                }
-                
-                console.log('Loaded coverage areas:', selectedCoverageAreas);
-            } else {
-                console.log('No coverage areas found in data');
-                // Make sure the UI shows no coverage areas
-                updateCoverageAreasList();
-            }
-        } catch (error) {
-            console.error('Error loading coverage areas:', error);
-        }
-    }
-
-    // Malaysian cities data structure
-    const malaysianCities = {
-        // (Keep the existing cities data from the original script)
-    // Johor
-    1: [
-        { id: 1, name: 'Johor Bahru' },
-        { id: 2, name: 'Iskandar Puteri' },
-        { id: 3, name: 'Pasir Gudang' },
-        { id: 4, name: 'Batu Pahat' },
-        { id: 5, name: 'Kluang' },
-        { id: 6, name: 'Segamat' },
-        { id: 7, name: 'Muar' },
-        { id: 8, name: 'Kulai' },
-        { id: 9, name: 'Pontian' },
-        { id: 10, name: 'Kota Tinggi' },
-        { id: 11, name: 'Tangkak' },
-        { id: 12, name: 'Yong Peng' },
-        { id: 13, name: 'Simpang Renggam' },
-        { id: 14, name: 'Rengit' },
-        { id: 15, name: 'Pekan Nanas' },
-        { id: 16, name: 'Ulu Tiram' },
-        { id: 17, name: 'Skudai' },
-        { id: 18, name: 'Senai' },
-        { id: 19, name: 'Masai' },
-        { id: 20, name: 'Labis' },
-        { id: 21, name: 'Chaah' },
-        { id: 22, name: 'Bakri' },
-        { id: 23, name: 'Parit Raja' },
-        { id: 24, name: 'Benut' },
-        { id: 25, name: 'Ayer Hitam' },
-        { id: 26, name: 'Pagoh' },
-        { id: 27, name: 'Bukit Gambir' },
-        { id: 28, name: 'Sri Gading' },
-        { id: 29, name: 'Endau' },
-        { id: 30, name: 'Pengerang' },
-        { id: 31, name: 'Tenggaroh' },
-        { id: 32, name: 'Sungai Rengit' }
-    ],
-    
-    // Kedah
-    2: [
-        { id: 33, name: 'Alor Setar' },
-        { id: 34, name: 'Sungai Petani' },
-        { id: 35, name: 'Kulim' },
-        { id: 36, name: 'Langkawi' },
-        { id: 37, name: 'Jitra' }
-    ],
-    
-    // Kelantan
-    3: [
-        { id: 38, name: 'Kota Bharu' },
-        { id: 39, name: 'Pasir Mas' },
-        { id: 40, name: 'Tumpat' },
-        { id: 41, name: 'Tanah Merah' },
-        { id: 42, name: 'Machang' },
-        { id: 43, name: 'Kuala Krai' },
-        { id: 44, name: 'Gua Musang' },
-        { id: 45, name: 'Jeli' },
-        { id: 46, name: 'Bachok' },
-        { id: 47, name: 'Pasir Puteh' },
-        { id: 48, name: 'Rantau Panjang' },
-        { id: 49, name: 'Wakaf Bharu' },
-        { id: 50, name: 'Pengkalan Chepa' },
-        { id: 51, name: 'Ketereh' },
-        { id: 52, name: 'Dabong' }
-    ],
-    
-    // Melaka
-    4: [
-        { id: 53, name: 'Melaka City' },
-        { id: 54, name: 'Ayer Keroh' },
-        { id: 55, name: 'Batu Berendam' },
-        { id: 56, name: 'Alor Gajah' },
-        { id: 57, name: 'Jasin' },
-        { id: 58, name: 'Bukit Beruang' },
-        { id: 59, name: 'Masjid Tanah' },
-        { id: 60, name: 'Merlimau' },
-        { id: 61, name: 'Durian Tunggal' },
-        { id: 62, name: 'Tangga Batu' },
-        { id: 63, name: 'Tanjung Kling' }
-    ],
-    
-    // Negeri Sembilan
-    5: [
-        { id: 64, name: 'Seremban' },
-        { id: 65, name: 'Nilai' },
-        { id: 66, name: 'Port Dickson' },
-        { id: 67, name: 'Bahau' },
-        { id: 68, name: 'Kuala Pilah' },
-        { id: 69, name: 'Tampin' },
-        { id: 70, name: 'Rembau' },
-        { id: 71, name: 'Gemas' },
-        { id: 72, name: 'Lukut' },
-        { id: 73, name: 'Mantin' },
-        { id: 74, name: 'Senawang' },
-        { id: 75, name: 'Lenggeng' },
-        { id: 76, name: 'Juasseh' },
-        { id: 77, name: 'Batu Kikir' },
-        { id: 78, name: 'Pedas' }
-    ],
-    
-    // Pahang
-    6: [
-        { id: 79, name: 'Kuantan' },
-        { id: 80, name: 'Temerloh' },
-        { id: 81, name: 'Bentong' },
-        { id: 82, name: 'Raub' },
-        { id: 83, name: 'Jerantut' },
-        { id: 84, name: 'Kuala Lipis' },
-        { id: 85, name: 'Maran' },
-        { id: 86, name: 'Pekan' },
-        { id: 87, name: 'Rompin' },
-        { id: 88, name: 'Bera' },
-        { id: 89, name: 'Gambang' },
-        { id: 90, name: 'Karak' },
-        { id: 91, name: 'Triang' },
-        { id: 92, name: 'Chenor' },
-        { id: 93, name: 'Sungai Lembing' },
-        { id: 94, name: 'Jengka' },
-        { id: 95, name: 'Genting Highlands' }
-    ],
-    
-    // Pulau Pinang
-    7: [
-        { id: 96, name: 'George Town' },
-        { id: 97, name: 'Bayan Lepas' },
-        { id: 98, name: 'Gelugor' },
-        { id: 99, name: 'Ayer Itam' },
-        { id: 100, name: 'Tanjung Tokong' },
-        { id: 101, name: 'Tanjung Bungah' },
-        { id: 102, name: 'Batu Ferringhi' },
-        { id: 103, name: 'Balik Pulau' },
-        { id: 104, name: 'Bukit Mertajam' },
-        { id: 105, name: 'Seberang Jaya' },
-        { id: 106, name: 'Butterworth' },
-        { id: 107, name: 'Nibong Tebal' },
-        { id: 108, name: 'Kepala Batas' },
-        { id: 109, name: 'Permatang Pauh' },
-        { id: 110, name: 'Simpang Ampat' },
-        { id: 111, name: 'Juru' },
-        { id: 112, name: 'Sungai Ara' },
-        { id: 113, name: 'Teluk Kumbar' },
-        { id: 114, name: 'Batu Maung' },
-        { id: 115, name: 'Penaga' }
-    ],
-    
-    // Perak
-    8: [
-        { id: 116, name: 'Ipoh' },
-        { id: 117, name: 'Taiping' },
-        { id: 118, name: 'Batu Gajah' },
-        { id: 119, name: 'Teluk Intan' },
-        { id: 120, name: 'Kuala Kangsar' },
-        { id: 121, name: 'Seri Iskandar' },
-        { id: 122, name: 'Lumut' },
-        { id: 123, name: 'Sitiawan' },
-        { id: 124, name: 'Parit Buntar' },
-        { id: 125, name: 'Kampar' },
-        { id: 126, name: 'Tapah' },
-        { id: 127, name: 'Tanjung Malim' },
-        { id: 128, name: 'Manjung' },
-        { id: 129, name: 'Ayer Tawar' },
-        { id: 130, name: 'Pantai Remis' },
-        { id: 131, name: 'Simpang Pulai' },
-        { id: 132, name: 'Bagan Serai' },
-        { id: 133, name: 'Slim River' },
-        { id: 134, name: 'Tronoh' }
-    ],
-    
-    // Perlis
-    9: [
-        { id: 135, name: 'Kangar' },
-        { id: 136, name: 'Arau' },
-        { id: 137, name: 'Kuala Perlis' }
-    ],
-    
-    // Selangor
-    10: [
-        { id: 138, name: 'Shah Alam' },
-        { id: 139, name: 'Petaling Jaya' },
-        { id: 140, name: 'Subang Jaya' },
-        { id: 141, name: 'Selayang' },
-        { id: 142, name: 'Kajang' },
-        { id: 143, name: 'Sepang' },
-        { id: 144, name: 'Klang' },
-        { id: 145, name: 'Puchong' },
-        { id: 146, name: 'Ampang' },
-        { id: 147, name: 'Rawang' },
-        { id: 148, name: 'Batu Caves' },
-        { id: 149, name: 'Bandar Baru Bangi' },
-        { id: 150, name: 'Seri Kembangan' },
-        { id: 151, name: 'Hulu Langat' },
-        { id: 152, name: 'Bukit Beruntung' },
-        { id: 153, name: 'Sungai Buloh' },
-        { id: 154, name: 'Tanjung Karang' },
-        { id: 155, name: 'Meru' },
-        { id: 156, name: 'Kapar' },
-        { id: 157, name: 'Bestari Jaya' }
-    ],
-    
-    // Terengganu
-    11: [
-        { id: 158, name: 'Kuala Terengganu' },
-        { id: 159, name: 'Dungun' },
-        { id: 160, name: 'Kemaman' },
-        { id: 161, name: 'Marang' },
-        { id: 162, name: 'Chukai' },
-        { id: 163, name: 'Kijal' },
-        { id: 164, name: 'Besut' },
-        { id: 165, name: 'Permaisuri' },
-        { id: 166, name: 'Setiu' },
-        { id: 167, name: 'Paka' }
-    ],
-    
-    // Sabah
-    12: [
-        { id: 168, name: 'Kota Kinabalu' },
-        { id: 169, name: 'Sandakan' },
-        { id: 170, name: 'Tawau' },
-        { id: 171, name: 'Lahad Datu' },
-        { id: 172, name: 'Keningau' },
-        { id: 173, name: 'Semporna' },
-        { id: 174, name: 'Kudat' },
-        { id: 175, name: 'Beaufort' },
-        { id: 176, name: 'Papar' },
-        { id: 177, name: 'Tuaran' },
-        { id: 178, name: 'Kota Belud' },
-        { id: 179, name: 'Ranau' },
-        { id: 180, name: 'Sipitang' },
-        { id: 181, name: 'Tenom' },
-        { id: 182, name: 'Tambunan' },
-        { id: 183, name: 'Kunak' },
-        { id: 184, name: 'Pitas' },
-        { id: 185, name: 'Kota Marudu' },
-        { id: 186, name: 'Nabawan' },
-        { id: 187, name: 'Kuala Penyu' }
-    ],
-    
-    // Sarawak
-    13: [
-        { id: 188, name: 'Kuching' },
-        { id: 189, name: 'Miri' },
-        { id: 190, name: 'Sibu' },
-        { id: 191, name: 'Bintulu' },
-        { id: 192, name: 'Samarahan' },
-        { id: 193, name: 'Serian' },
-        { id: 194, name: 'Mukah' },
-        { id: 195, name: 'Kapit' },
-        { id: 196, name: 'Limbang' },
-        { id: 197, name: 'Marudi' },
-        { id: 198, name: 'Belaga' },
-        { id: 199, name: 'Sri Aman' },
-        { id: 200, name: 'Asajaya' },
-        { id: 201, name: 'Batang Ai' },
-        { id: 202, name: 'Tebedu' },
-        { id: 203, name: 'Bekenu' },
-        { id: 204, name: 'Tatau' },
-        { id: 205, name: 'Lawas' },
-        { id: 206, name: 'Pusa' },
-        { id: 207, name: 'Julau' }
-    ],
-    
-    // Wilayah Persekutuan Kuala Lumpur
-    14: [
-        { id: 208, name: 'Kuala Lumpur' },
-        { id: 209, name: 'Bukit Bintang' },
-        { id: 210, name: 'KLCC' },
-        { id: 211, name: 'Chinatown' },
-        { id: 212, name: 'Sri Hartamas' },
-        { id: 213, name: 'Taman Tun Dr. Ismail' },
-        { id: 214, name: 'Mont Kiara' },
-        { id: 215, name: 'Damansara' }
-    ],
-    
-    // Wilayah Persekutuan Labuan
-    15: [
-        { id: 216, name: 'Labuan' },
-        { id: 217, name: 'Victoria' },
-        { id: 218, name: 'Rancha-Rancha' },
-        { id: 219, name: 'Kampung Sungai Pagar' },
-        { id: 220, name: 'Kampung Layang-Layang' }
-    ],
-    
-    // Wilayah Persekutuan Putrajaya
-    16: [
-        { id: 221, name: 'Putrajaya' },
-        { id: 222, name: 'Presidential Palace' },
-        { id: 223, name: 'Putra Square' },
-        { id: 224, name: 'Putrajaya Lake' }
-    ]
-    };
-
-    // Map of state IDs to names
-    const stateNames = {
-        1: 'Johor',
-        2: 'Kedah',
-        3: 'Kelantan',
-        4: 'Melaka',
-        5: 'Negeri Sembilan',
-        6: 'Pahang',
-        7: 'Pulau Pinang',
-        8: 'Perak',
-        9: 'Perlis',
-        10: 'Selangor',
-        11: 'Terengganu',
-        12: 'Sabah',
-        13: 'Sarawak',
-        14: 'Wilayah Persekutuan Kuala Lumpur',
-        15: 'Wilayah Persekutuan Labuan',
-        16: 'Wilayah Persekutuan Putrajaya'
-    };
-
-    // Update coverage areas list function - ENSURE THIS IS WORKING CORRECTLY
-    function updateCoverageAreasList() {
-        console.log("Updating coverage areas list with:", selectedCoverageAreas);
-        const coverageList = document.getElementById('coverageAreasList');
-        const coverageAreasInput = document.getElementById('coverageAreasInput');
-        
-        if (!coverageList) {
-            console.error('Coverage areas list element not found');
-            return;
-        }
-        
-        // Clear existing list
-        coverageList.innerHTML = '';
-        
-        // If no coverage areas
-        if (!selectedCoverageAreas || selectedCoverageAreas.length === 0) {
-            const noRow = document.createElement('tr');
-            noRow.id = 'noCoverageRow';
-            noRow.innerHTML = '<td colspan="3" class="text-center text-muted py-4">No coverage areas selected yet</td>';
-            coverageList.appendChild(noRow);
-        } else {
-            // Add each coverage area
-            selectedCoverageAreas.forEach((area, index) => {
-                const row = document.createElement('tr');
-                
-                const stateCell = document.createElement('td');
-                stateCell.textContent = area.stateName || 'Unknown State';
-                
-                const cityCell = document.createElement('td');
-                cityCell.textContent = area.cityName || 'Unknown City';
-                
-                const actionCell = document.createElement('td');
-                actionCell.className = 'text-center';
-                
-                const removeButton = document.createElement('button');
-                removeButton.type = 'button';
-                removeButton.className = 'btn btn-sm btn-danger';
-                removeButton.innerHTML = '<i class="bi bi-trash"></i>';
-                removeButton.onclick = function() { 
-                    // Remove the area from the list
-                    selectedCoverageAreas.splice(index, 1);
-                    
-                    // Update the UI
-                    updateCoverageAreasList();
+                providerData = {
+                    categories: JSON.parse(decodeURIComponent(providerDataEl.dataset.categories || '[]')),
+                    services: JSON.parse(decodeURIComponent(providerDataEl.dataset.services || '[]')),
+                    availability: JSON.parse(decodeURIComponent(providerDataEl.dataset.availability || '[]')),
+                    coverageAreas: JSON.parse(decodeURIComponent(providerDataEl.dataset.coverageAreas || '[]'))
                 };
                 
-                actionCell.appendChild(removeButton);
-                
-                row.appendChild(stateCell);
-                row.appendChild(cityCell);
-                row.appendChild(actionCell);
-                
-                coverageList.appendChild(row);
-            });
-        }
-        
-        // Update the hidden input with current coverage areas
-        if (coverageAreasInput) {
-            coverageAreasInput.value = JSON.stringify(selectedCoverageAreas);
-        } else {
-            console.error('Coverage areas input element not found');
-        }
-    }
-
-    // Load cities based on selected state
-function loadCities() {
-    const stateSelect = document.getElementById('stateSelect');
-    const citySelect = document.getElementById('citySelect');
-    const stateId = stateSelect.value;
-    
-    // Clear city dropdown
-    citySelect.innerHTML = '';
-    
-    if (!stateId) {
-        citySelect.innerHTML = '<option value="">Select a state first</option>';
-        citySelect.disabled = true;
-        return;
-    }
-    
-    // Enable city dropdown
-    citySelect.disabled = false;
-    
-    // Add default option
-    citySelect.innerHTML = '<option value="">Select a city</option>';
-    
-    // Add cities for selected state
-    const cities = malaysianCities[stateId] || [];
-    cities.forEach(city => {
-        const option = document.createElement('option');
-        option.value = city.id;
-        option.textContent = city.name;
-        citySelect.appendChild(option);
-    });
-}
-
-// Add selected coverage area
-function addCoverageArea() {
-    const stateSelect = document.getElementById('stateSelect');
-    const citySelect = document.getElementById('citySelect');
-    
-    const stateId = parseInt(stateSelect.value);
-    const cityId = parseInt(citySelect.value);
-    
-    if (!stateId) {
-        alert('Please select a state');
-        return;
-    }
-    
-    if (!cityId) {
-        alert('Please select a city');
-        return;
-    }
-    
-    const stateName = stateNames[stateId];
-    
-    // Find city object
-    const cities = malaysianCities[stateId] || [];
-    const cityObj = cities.find(c => c.id === cityId);
-    
-    if (!cityObj) {
-        alert('Invalid city selected');
-        return;
-    }
-    
-    const cityName = cityObj.name;
-    
-    // Check if this area is already added
-    const isDuplicate = selectedCoverageAreas.some(area => 
-        area.stateId === stateId && area.cityId === cityId
-    );
-    
-    if (isDuplicate) {
-        alert(`${cityName}, ${stateName} is already in your coverage areas`);
-        return;
-    }
-    
-    // Add to selected areas
-    selectedCoverageAreas.push({
-        stateId,
-        stateName,
-        cityId,
-        cityName
-    });
-    
-    // Update the UI
-    updateCoverageAreasList();
-    
-    // Reset selects
-    citySelect.value = '';
-    citySelect.disabled = true;
-    stateSelect.value = '';
-}
-
-    // Attach event listeners
-    document.addEventListener('DOMContentLoaded', function() {
-        const stateSelect = document.getElementById('stateSelect');
-        const addCoverageBtn = document.querySelector('.add-field-btn');
-        
-        if (stateSelect) {
-            stateSelect.addEventListener('change', loadCities);
-        }
-        
-        if (addCoverageBtn) {
-            addCoverageBtn.addEventListener('click', addCoverageArea);
-        }
-        
-        // Auto-dismiss alerts
-        setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
-            });
-        }, 5000);
-    });
-
-    // Direct fix for coverage areas
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(function() {
-        console.log("Running emergency coverage areas fix...");
-        
-        // Get coverage areas from provider data
-        const providerDataEl = document.getElementById('providerData');
-        if (!providerDataEl) {
-            console.error("Provider data element not found!");
-            return;
-        }
-        
-        // Try to extract coverage areas data
-        try {
-            // Log all available data attributes for debugging
-            console.log("Provider data attributes:", providerDataEl.dataset);
-            
-            // Get coverage areas from data attribute
-            let coverageAreasStr = providerDataEl.dataset.coverageAreas;
-            if (!coverageAreasStr) {
-                console.warn("Coverage areas attribute not found, trying alternative format...");
-                // Try alternative attribute format
-                coverageAreasStr = providerDataEl.getAttribute('data-coverage-areas');
+                console.log('Loaded provider data:', providerData);
+            } catch (error) {
+                console.error('Error loading provider data:', error);
+                providerData = { categories: [], services: [], availability: [], coverageAreas: [] };
             }
+        }
+
+        // Initialize services section
+        function initializeServices() {
+            const container = document.getElementById('services-container');
+            if (!container) return;
             
-            if (!coverageAreasStr) {
-                console.error("No coverage areas data found in attributes!");
-                return;
-            }
+            container.innerHTML = '';
             
-            // Parse the coverage areas data
-            const coverageAreasData = JSON.parse(decodeURIComponent(coverageAreasStr));
-            console.log("Parsed coverage areas:", coverageAreasData);
-            
-            if (!Array.isArray(coverageAreasData) || coverageAreasData.length === 0) {
-                console.warn("Coverage areas is empty or not an array");
-                return;
-            }
-            
-            // Clear existing coverage areas
-            window.selectedCoverageAreas = [];
-            
-            // Add each coverage area to the array
-            coverageAreasData.forEach(area => {
-                window.selectedCoverageAreas.push({
-                    stateId: parseInt(area.state_id),
-                    stateName: area.state_name,
-                    cityId: parseInt(area.city_id),
-                    cityName: area.city_name
+            if (providerData.services && providerData.services.length > 0) {
+                providerData.services.forEach(service => {
+                    const serviceName = typeof service === 'string' ? service : service.service_name;
+                    if (serviceName) {
+                        addServiceField(serviceName);
+                    }
                 });
+            } else {
+                addServiceField('');
+            }
+            
+            console.log('Initialized services');
+        }
+
+        // Add service field
+        function addServiceField(value = '') {
+            const container = document.getElementById('services-container');
+            if (!container) return;
+            
+            const newField = document.createElement('div');
+            newField.className = 'dynamic-field';
+            newField.innerHTML = `
+                <input type="text" class="form-control" name="services[]" value="${value}" placeholder="Enter a service" required>
+                <button type="button" class="remove-field-btn" onclick="removeField(this)">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            `;
+            container.appendChild(newField);
+        }
+
+        // Remove service field
+        function removeField(button) {
+            const field = button.parentNode;
+            const container = field.parentNode;
+            
+            if (container.children.length > 1) {
+                container.removeChild(field);
+            } else {
+                const input = field.querySelector('input');
+                if (input) input.value = '';
+            }
+        }
+
+        // Initialize coverage areas
+        function initializeCoverageAreas() {
+            selectedCoverageAreas = [];
+            
+            if (providerData.coverageAreas && providerData.coverageAreas.length > 0) {
+                providerData.coverageAreas.forEach(area => {
+                    selectedCoverageAreas.push({
+                        stateId: parseInt(area.state_id || area.stateId),
+                        stateName: area.state_name || area.stateName,
+                        cityId: parseInt(area.city_id || area.cityId),
+                        cityName: area.city_name || area.cityName
+                    });
+                });
+            }
+            
+            updateCoverageAreasList();
+            console.log('Initialized coverage areas:', selectedCoverageAreas);
+        }
+
+        // Update pricing section based on selected categories
+        function updatePricingSection() {
+            const pricingContainer = document.getElementById('pricing-container');
+            if (!pricingContainer) return;
+            
+            const selectedCheckboxes = document.querySelectorAll('.category-checkbox:checked');
+            
+            if (selectedCheckboxes.length === 0) {
+                pricingContainer.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        Select service categories above to set their base fees.
+                    </div>
+                `;
+                return;
+            }
+            
+            let pricingHTML = '';
+            selectedCheckboxes.forEach((checkbox, index) => {
+                const categoryName = checkbox.value;
                 
-                console.log(`Added coverage area: ${area.city_name}, ${area.state_name}`);
+                // Find existing data for this category
+                const categoryData = findCategoryData(categoryName);
+                const fee = categoryData ? categoryData.base_fee : 0;
+                const feeType = categoryData ? categoryData.fee_type : 'per visit';
+                
+                pricingHTML += `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">${categoryName}</h5>
+                            
+                            <div class="row g-3 align-items-center mb-3">
+                                <div class="col-md-6">
+                                    <label for="baseFee${index}" class="form-label">Base Fee (RM)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">RM</span>
+                                        <input 
+                                            type="number" 
+                                            class="form-control" 
+                                            id="baseFee${index}" 
+                                            name="baseFees[${categoryName}]" 
+                                            value="${fee}" 
+                                            min="0" 
+                                            step="0.01"
+                                            placeholder="0.00"
+                                        >
+                                    </div>
+                                    <small class="text-muted">Enter the base fee for this service category</small>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label for="feeType${index}" class="form-label">Fee Type</label>
+                                    <select class="form-select" id="feeType${index}" name="feeTypes[${categoryName}]">
+                                        <option value="per visit" ${feeType === 'per visit' ? 'selected' : ''}>Per Visit</option>
+                                        <option value="per hour" ${feeType === 'per hour' ? 'selected' : ''}>Per Hour</option>
+                                        <option value="fixed" ${feeType === 'fixed' ? 'selected' : ''}>Fixed Price</option>
+                                    </select>
+                                    <small class="text-muted">Select how you'd like to charge for this service</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
             });
             
-            // Update the UI
+            pricingContainer.innerHTML = pricingHTML;
+        }
+
+        // Find category data by name
+        function findCategoryData(categoryName) {
+            if (!providerData.categories) return null;
+            
+            return providerData.categories.find(cat => {
+                const catName = cat.category_name || '';
+                const normalizedCatName = catName.toLowerCase().trim();
+                const normalizedSearchName = categoryName.toLowerCase().trim();
+                
+                return normalizedCatName === normalizedSearchName ||
+                       normalizedCatName.includes(normalizedSearchName) ||
+                       normalizedSearchName.includes(normalizedCatName);
+            });
+        }
+
+        // Load cities based on selected state
+        function loadCities() {
+            const stateSelect = document.getElementById('stateSelect');
+            const citySelect = document.getElementById('citySelect');
+            const stateId = parseInt(stateSelect.value);
+            
+            citySelect.innerHTML = '';
+            
+            if (!stateId) {
+                citySelect.innerHTML = '<option value="">Select a state first</option>';
+                citySelect.disabled = true;
+                return;
+            }
+            
+            citySelect.disabled = false;
+            citySelect.innerHTML = '<option value="">Select a city</option>';
+            
+            const cities = malaysianCities[stateId] || [];
+            cities.forEach(city => {
+                const option = document.createElement('option');
+                option.value = city.id;
+                option.textContent = city.name;
+                citySelect.appendChild(option);
+            });
+        }
+
+        // Add coverage area
+        function addCoverageArea() {
+            const stateSelect = document.getElementById('stateSelect');
+            const citySelect = document.getElementById('citySelect');
+            
+            const stateId = parseInt(stateSelect.value);
+            const cityId = parseInt(citySelect.value);
+            
+            if (!stateId) {
+                alert('Please select a state');
+                return;
+            }
+            
+            if (!cityId) {
+                alert('Please select a city');
+                return;
+            }
+            
+            const stateName = stateNames[stateId];
+            const cities = malaysianCities[stateId] || [];
+            const cityObj = cities.find(c => c.id === cityId);
+            
+            if (!cityObj) {
+                alert('Invalid city selected');
+                return;
+            }
+            
+            const cityName = cityObj.name;
+            
+            // Check for duplicates
+            const isDuplicate = selectedCoverageAreas.some(area => 
+                area.stateId === stateId && area.cityId === cityId
+            );
+            
+            if (isDuplicate) {
+                alert(`${cityName}, ${stateName} is already in your coverage areas`);
+                return;
+            }
+            
+            selectedCoverageAreas.push({
+                stateId, stateName, cityId, cityName
+            });
+            
+            updateCoverageAreasList();
+            
+            // Reset selects
+            citySelect.value = '';
+            citySelect.disabled = true;
+            stateSelect.value = '';
+        }
+
+        // Update coverage areas list
+        function updateCoverageAreasList() {
             const coverageList = document.getElementById('coverageAreasList');
             const coverageAreasInput = document.getElementById('coverageAreasInput');
             
-            if (!coverageList) {
-                console.error("Coverage areas list element not found!");
-                return;
-            }
+            if (!coverageList) return;
             
-            // Clear existing list
             coverageList.innerHTML = '';
             
-            // Add each coverage area to the list
-            window.selectedCoverageAreas.forEach((area, index) => {
-                const row = document.createElement('tr');
-                
-                const stateCell = document.createElement('td');
-                stateCell.textContent = area.stateName;
-                
-                const cityCell = document.createElement('td');
-                cityCell.textContent = area.cityName;
-                
-                const actionCell = document.createElement('td');
-                actionCell.className = 'text-center';
-                
-                const removeButton = document.createElement('button');
-                removeButton.type = 'button';
-                removeButton.className = 'btn btn-sm btn-danger';
-                removeButton.innerHTML = '<i class="bi bi-trash"></i>';
-                removeButton.onclick = function() { 
-                    // Remove the area from the list
-                    window.selectedCoverageAreas.splice(index, 1);
+            if (selectedCoverageAreas.length === 0) {
+                const noRow = document.createElement('tr');
+                noRow.id = 'noCoverageRow';
+                noRow.innerHTML = '<td colspan="3" class="text-center text-muted py-4">No coverage areas selected yet</td>';
+                coverageList.appendChild(noRow);
+            } else {
+                selectedCoverageAreas.forEach((area, index) => {
+                    const row = document.createElement('tr');
                     
-                    // Update the UI by calling this function again
-                    setTimeout(function() {
-                        document.dispatchEvent(new Event('DOMContentLoaded'));
-                    }, 10);
-                };
-                
-                actionCell.appendChild(removeButton);
-                
-                row.appendChild(stateCell);
-                row.appendChild(cityCell);
-                row.appendChild(actionCell);
-                
-                coverageList.appendChild(row);
-            });
-            
-            // Update the hidden input with current coverage areas
-            if (coverageAreasInput) {
-                coverageAreasInput.value = JSON.stringify(window.selectedCoverageAreas);
+                    const stateCell = document.createElement('td');
+                    stateCell.textContent = area.stateName;
+                    
+                    const cityCell = document.createElement('td');
+                    cityCell.textContent = area.cityName;
+                    
+                    const actionCell = document.createElement('td');
+                    actionCell.className = 'text-center';
+                    
+                    const removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.className = 'btn btn-sm btn-danger';
+                    removeButton.innerHTML = '<i class="bi bi-trash"></i>';
+                    removeButton.onclick = function() { 
+                        selectedCoverageAreas.splice(index, 1);
+                        updateCoverageAreasList();
+                    };
+                    
+                    actionCell.appendChild(removeButton);
+                    row.appendChild(stateCell);
+                    row.appendChild(cityCell);
+                    row.appendChild(actionCell);
+                    coverageList.appendChild(row);
+                });
             }
             
-            console.log("Coverage areas successfully updated!");
-            
-        } catch (error) {
-            console.error("Error updating coverage areas:", error);
+            if (coverageAreasInput) {
+                coverageAreasInput.value = JSON.stringify(selectedCoverageAreas);
+            }
         }
-    }, 1000); // Delay execution to ensure DOM is fully loaded
-});
 
-window.onerror = function(message, source, lineno, colno, error) {
-    console.error("JavaScript error:", message);
-    console.error("Source:", source);
-    console.error("Line:", lineno);
-    console.error("Column:", colno);
-    console.error("Error object:", error);
-    return false;
-};
+        // Update day availability
+        function updateDayAvailability(day, isAvailable) {
+            const timeSlots = document.getElementById(`${day}TimeSlots`);
+            if (!timeSlots) return;
+            
+            const inputs = timeSlots.querySelectorAll('select');
+            
+            if (isAvailable) {
+                timeSlots.style.opacity = '1';
+                inputs.forEach(input => input.disabled = false);
+            } else {
+                timeSlots.style.opacity = '0.5';
+                inputs.forEach(input => input.disabled = true);
+            }
+        }
 
-console.log("coverageAreasList element:", document.getElementById('coverageAreasList'));
-console.log("coverageAreasInput element:", document.getElementById('coverageAreasInput'));
-
-// Check visibility
-setTimeout(function() {
-    const coverageList = document.getElementById('coverageAreasList');
-    if (coverageList) {
-        const style = window.getComputedStyle(coverageList);
-        console.log("Coverage list visibility:", style.display, style.visibility, style.opacity);
-        console.log("Coverage list dimensions:", style.width, style.height);
-        console.log("Coverage list position:", coverageList.getBoundingClientRect());
-    }
-}, 2000);
-
-
-</script>
+        // Setup event listeners
+        function setupEventListeners() {
+            // Auto-dismiss alerts
+            setTimeout(function() {
+                const alerts = document.querySelectorAll('.alert');
+                alerts.forEach(function(alert) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                });
+            }, 5000);
+        }
+    </script>
 </body>
 </html>
