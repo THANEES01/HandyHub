@@ -334,115 +334,277 @@ router.get('/api/messages/:conversationId', isProvider, async (req, res) => {
 });
 
 // API endpoint to send a text message
-router.post('/api/send-message', isProvider, async (req, res) => {
-    try {
-        const providerId = req.session.user.providerId;
-        const { conversationId, message } = req.body;
+// router.post('/api/send-message', isProvider, async (req, res) => {
+//     try {
+//         const providerId = req.session.user.providerId;
+//         const { conversationId, message } = req.body;
         
-        if (!message || !conversationId) {
-            return res.json({
-                success: false,
-                error: 'Message and conversation ID are required'
-            });
-        }
+//         if (!message || !conversationId) {
+//             return res.json({
+//                 success: false,
+//                 error: 'Message and conversation ID are required'
+//             });
+//         }
         
-        // Verify the conversation belongs to this provider
-        const verifyQuery = `
-            SELECT cc.id, cc.customer_id, cc.provider_id FROM chat_conversations cc
-            WHERE cc.id = $1 AND cc.provider_id = $2
-        `;
+//         // Verify the conversation belongs to this provider
+//         const verifyQuery = `
+//             SELECT cc.id, cc.customer_id, cc.provider_id FROM chat_conversations cc
+//             WHERE cc.id = $1 AND cc.provider_id = $2
+//         `;
         
-        const verifyResult = await pool.query(verifyQuery, [conversationId, providerId]);
+//         const verifyResult = await pool.query(verifyQuery, [conversationId, providerId]);
         
-        if (verifyResult.rows.length === 0) {
-            return res.json({
-                success: false,
-                error: 'Conversation not found or not authorized'
-            });
-        }
+//         if (verifyResult.rows.length === 0) {
+//             return res.json({
+//                 success: false,
+//                 error: 'Conversation not found or not authorized'
+//             });
+//         }
 
-        const conversation = verifyResult.rows[0];
-        const messageText = message || '';
+//         const conversation = verifyResult.rows[0];
+//         const messageText = message || '';
         
-        // Insert the message
-        const insertQuery = `
-            INSERT INTO chat_messages 
-            (conversation_id, sender_id, sender_type, message_text, has_attachment, 
-             attachment_url, attachment_type, attachment_name, created_at, is_read)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9)
-            RETURNING id, created_at, is_read
-        `;
+//         // Insert the message
+//         const insertQuery = `
+//             INSERT INTO chat_messages 
+//             (conversation_id, sender_id, sender_type, message_text, has_attachment, 
+//              attachment_url, attachment_type, attachment_name, created_at, is_read)
+//             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9)
+//             RETURNING id, created_at, is_read
+//         `;
         
-        const queryParams = [
-            conversationId,
-            req.session.user.id,
-            'provider',
-            messageText,
-            false, // has_attachment
-            null, // attachment_url
-            null, // attachment_type
-            null, // attachment_name
-            false // is_read
-        ];
+//         const queryParams = [
+//             conversationId,
+//             req.session.user.id,
+//             'provider',
+//             messageText,
+//             false, // has_attachment
+//             null, // attachment_url
+//             null, // attachment_type
+//             null, // attachment_name
+//             false // is_read
+//         ];
         
-        const insertResult = await pool.query(insertQuery, queryParams);
-        const newMessage = {
-            id: insertResult.rows[0].id,
-            sender_id: req.session.user.id,
-            sender_type: 'provider',
-            message_text: messageText,
-            created_at: insertResult.rows[0].created_at,
-            is_read: insertResult.rows[0].is_read || false,
-            has_attachment: false,
-            attachment_url: null,
-            attachment_type: null,
-            attachment_name: null
-        };
+//         const insertResult = await pool.query(insertQuery, queryParams);
+//         const newMessage = {
+//             id: insertResult.rows[0].id,
+//             sender_id: req.session.user.id,
+//             sender_type: 'provider',
+//             message_text: messageText,
+//             created_at: insertResult.rows[0].created_at,
+//             is_read: insertResult.rows[0].is_read || false,
+//             has_attachment: false,
+//             attachment_url: null,
+//             attachment_type: null,
+//             attachment_name: null
+//         };
         
-        // Update conversation timestamp
-        await pool.query(`
-            UPDATE chat_conversations
-            SET last_message_at = NOW()
-            WHERE id = $1
-        `, [conversationId]);
+//         // Update conversation timestamp
+//         await pool.query(`
+//             UPDATE chat_conversations
+//             SET last_message_at = NOW()
+//             WHERE id = $1
+//         `, [conversationId]);
 
-        // **PUSHER: Trigger real-time event**
-        try {
-            // Send to conversation channel
-            await triggerPusherEvent(`conversation-${conversationId}`, 'new-message', newMessage);
+//         // **PUSHER: Trigger real-time event**
+//         try {
+//             // Send to conversation channel
+//             await triggerPusherEvent(`conversation-${conversationId}`, 'new-message', newMessage);
             
-            // Send notification to customer
-            await triggerPusherEvent(`user-customer-${conversation.customer_id}`, 'message-notification', {
-                conversationId: conversationId,
-                from_user_type: 'provider',
-                has_attachment: false,
-                messagePreview: messageText.substring(0, 50)
-            });
+//             // Send notification to customer
+//             await triggerPusherEvent(`user-customer-${conversation.customer_id}`, 'message-notification', {
+//                 conversationId: conversationId,
+//                 from_user_type: 'provider',
+//                 has_attachment: false,
+//                 messagePreview: messageText.substring(0, 50)
+//             });
             
-            console.log('Pusher events triggered successfully');
-        } catch (pusherError) {
-            console.error('Error triggering Pusher events:', pusherError);
-        }
+//             console.log('Pusher events triggered successfully');
+//         } catch (pusherError) {
+//             console.error('Error triggering Pusher events:', pusherError);
+//         }
         
-        res.json({
-            success: true,
-            message: newMessage
-        });
+//         res.json({
+//             success: true,
+//             message: newMessage
+//         });
         
-    } catch (error) {
-        console.error('Error sending message:', error);
-        res.json({
-            success: false,
-            error: 'Failed to send message: ' + error.message
-        });
-    }
-});
+//     } catch (error) {
+//         console.error('Error sending message:', error);
+//         res.json({
+//             success: false,
+//             error: 'Failed to send message: ' + error.message
+//         });
+//     }
+// });
 
 // API endpoint to send a message with file attachment
-router.post('/api/send-message-with-attachment', isProvider, upload.single('attachment'), handleMulterErrors, logUploadDetails, async (req, res) => {
+// router.post('/api/send-message-with-attachment', isProvider, upload.single('attachment'), handleMulterErrors, logUploadDetails, async (req, res) => {
+//     try {
+//         const providerId = req.session.user.providerId;
+//         const { conversationId, message } = req.body;
+        
+//         if (!conversationId) {
+//             return res.json({
+//                 success: false,
+//                 error: 'Conversation ID is required'
+//             });
+//         }
+        
+//         if (!req.file && (!message || message.trim() === '')) {
+//             return res.json({
+//                 success: false,
+//                 error: 'Message or attachment is required'
+//             });
+//         }
+        
+//         // Verify the conversation belongs to this provider
+//         const verifyQuery = `
+//             SELECT cc.id, cc.customer_id, cc.provider_id FROM chat_conversations cc
+//             WHERE cc.id = $1 AND cc.provider_id = $2
+//         `;
+        
+//         const verifyResult = await pool.query(verifyQuery, [conversationId, providerId]);
+        
+//         if (verifyResult.rows.length === 0) {
+//             return res.json({
+//                 success: false,
+//                 error: 'Conversation not found or not authorized'
+//             });
+//         }
+
+//         const conversation = verifyResult.rows[0];
+        
+//         // Process file attachment
+//         let hasAttachment = false;
+//         let attachmentUrl = null;
+//         let attachmentType = null;
+//         let attachmentName = null;
+//         let messageText = message || '';
+        
+//         if (req.file) {
+//             hasAttachment = true;
+//             attachmentUrl = req.file.path;
+//             attachmentType = req.file.mimetype;
+//             attachmentName = req.file.originalname;
+            
+//             if (!messageText || messageText.trim() === '') {
+//                 if (attachmentType.startsWith('image/')) {
+//                     messageText = "📷 Image";
+//                 } else if (attachmentType.includes('pdf')) {
+//                     messageText = "📄 PDF Document";
+//                 } else if (attachmentType.includes('word') || attachmentType.includes('doc')) {
+//                     messageText = "📝 Document";
+//                 } else if (attachmentType.includes('excel') || attachmentType.includes('sheet')) {
+//                     messageText = "📊 Spreadsheet";
+//                 } else {
+//                     messageText = "📎 File attachment";
+//                 }
+//             }
+            
+//             console.log('Cloudinary attachment processed:', {
+//                 url: attachmentUrl,
+//                 type: attachmentType,
+//                 name: attachmentName,
+//                 messageText: messageText
+//             });
+//         }
+        
+//         // Insert the message with attachment information
+//         const insertQuery = `
+//             INSERT INTO chat_messages 
+//             (conversation_id, sender_id, sender_type, message_text, has_attachment, 
+//              attachment_url, attachment_type, attachment_name, created_at, is_read)
+//             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9)
+//             RETURNING id, created_at, is_read
+//         `;
+        
+//         const queryParams = [
+//             conversationId,
+//             req.session.user.id,
+//             'provider',
+//             messageText,
+//             hasAttachment,
+//             attachmentUrl,
+//             attachmentType,
+//             attachmentName,
+//             false // is_read
+//         ];
+        
+//         const insertResult = await pool.query(insertQuery, queryParams);
+        
+//         // Prepare response message data
+//         const newMessage = {
+//             id: insertResult.rows[0].id,
+//             sender_id: req.session.user.id,
+//             sender_type: 'provider',
+//             message_text: messageText,
+//             created_at: insertResult.rows[0].created_at,
+//             is_read: insertResult.rows[0].is_read || false,
+//             has_attachment: hasAttachment,
+//             attachment_url: attachmentUrl,
+//             attachment_type: attachmentType,
+//             attachment_name: attachmentName
+//         };
+        
+//         // Update conversation timestamp
+//         await pool.query(`
+//             UPDATE chat_conversations
+//             SET last_message_at = NOW()
+//             WHERE id = $1
+//         `, [conversationId]);
+
+//         // **PUSHER: Trigger real-time event**
+//         try {
+//             // Send to conversation channel
+//             await triggerPusherEvent(`conversation-${conversationId}`, 'new-message', newMessage);
+            
+//             // Send notification to customer
+//             await triggerPusherEvent(`user-customer-${conversation.customer_id}`, 'message-notification', {
+//                 conversationId: conversationId,
+//                 from_user_type: 'provider',
+//                 has_attachment: hasAttachment,
+//                 messagePreview: messageText.substring(0, 50)
+//             });
+            
+//             console.log('Pusher events triggered successfully');
+//         } catch (pusherError) {
+//             console.error('Error triggering Pusher events:', pusherError);
+//         }
+        
+//         res.json({
+//             success: true,
+//             message: newMessage
+//         });
+        
+//     } catch (error) {
+//         console.error('Error sending message with attachment:', error);
+        
+//         // If there was an error, try to delete the uploaded file from Cloudinary if it exists
+//         if (req.file && req.file.path) {
+//             try {
+//                 const publicId = req.file.filename;
+//                 await cloudinary.uploader.destroy(publicId);
+//                 console.log(`Deleted file ${publicId} from Cloudinary due to error`);
+//             } catch (deleteError) {
+//                 console.error('Error deleting file from Cloudinary:', deleteError);
+//             }
+//         }
+        
+//         res.json({
+//             success: false,
+//             error: 'Failed to send message: ' + error.message
+//         });
+//     }
+// });
+
+// Replace the existing /api/send-message endpoint with this unified one
+router.post('/api/send-message', isProvider, upload.single('attachment'), handleMulterErrors, logUploadDetails, async (req, res) => {
     try {
         const providerId = req.session.user.providerId;
         const { conversationId, message } = req.body;
+        
+        console.log('Provider unified send-message called:', { conversationId, message, hasFile: !!req.file });
         
         if (!conversationId) {
             return res.json({
@@ -475,7 +637,7 @@ router.post('/api/send-message-with-attachment', isProvider, upload.single('atta
 
         const conversation = verifyResult.rows[0];
         
-        // Process file attachment
+        // Process file attachment if present
         let hasAttachment = false;
         let attachmentUrl = null;
         let attachmentType = null;
@@ -510,7 +672,7 @@ router.post('/api/send-message-with-attachment', isProvider, upload.single('atta
             });
         }
         
-        // Insert the message with attachment information
+        // Insert the message with or without attachment
         const insertQuery = `
             INSERT INTO chat_messages 
             (conversation_id, sender_id, sender_type, message_text, has_attachment, 
@@ -578,7 +740,7 @@ router.post('/api/send-message-with-attachment', isProvider, upload.single('atta
         });
         
     } catch (error) {
-        console.error('Error sending message with attachment:', error);
+        console.error('Error sending message:', error);
         
         // If there was an error, try to delete the uploaded file from Cloudinary if it exists
         if (req.file && req.file.path) {

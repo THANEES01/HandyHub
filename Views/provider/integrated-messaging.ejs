@@ -314,10 +314,11 @@
             width: 100%;
         }
         
-        .chat-input form {
+        .chat-input .input-group {
             display: flex;
             width: 100%;
             gap: 10px;
+            align-items: center;
         }
         
         .chat-input input {
@@ -365,6 +366,8 @@
             align-items: center;
             justify-content: center;
             transition: all 0.2s ease;
+            border: none;
+            color: white;
         }
 
         .chat-input .attachment-btn:hover {
@@ -433,7 +436,6 @@
             border-radius: 12px;
             padding: 10px;
             margin-top: 10px;
-            display: none;
             max-width: 220px;
         }
 
@@ -444,7 +446,7 @@
         }
 
         .document-icon {
-            width: 64px !important;
+             width: 64px !important;
             height: 64px !important;
             object-fit: contain;
             background-color: white;
@@ -474,9 +476,17 @@
         }
         
         @keyframes cloudinary-loading {
-            to {
+             to {
                 transform: translate(-50%, -50%) rotate(360deg);
             }
+        }
+
+        .image-uploading {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
         
         @keyframes typing {
@@ -752,22 +762,29 @@
                     </div>
                     
                    <div class="chat-input">
-                        <form id="message-form">
-                            <input type="file" id="file-upload" style="display: none;" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx">
+                        <form id="message-form" data-conversation-id="<%= activeConversation.id %>">
+                            <!-- Hidden file input -->
+                            <input type="file" id="image-upload" name="attachment" style="display: none;" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx">
                             
-                            <div class="d-flex gap-2 w-100">
-                                <button type="button" class="btn attachment-btn" id="attachment-button">
+                            <div class="input-group w-100"> 
+                                <!-- Paperclip attachment button -->
+                                <button type="button" class="btn attachment-btn" id="attachment-button" title="Attach file">
                                     <i class="bi bi-paperclip"></i>
                                 </button>
-                                <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" class="flex-grow-1">
-                                <button type="submit">
+                                
+                                <!-- Message input -->
+                                <input type="text" id="message-input" class="form-control flex-grow-1" placeholder="Type your message..." autocomplete="off">
+                                
+                                <!-- Send button -->
+                                <button type="submit" class="btn btn-primary">
                                     <i class="bi bi-send"></i> Send
                                 </button>
                             </div>
-                                
-                            <div id="image-preview-container">
+                            
+                            <!-- Image preview container -->
+                            <div id="image-preview-container" class="d-none mt-2">
                                 <div class="position-relative d-inline-block">
-                                    <img id="image-preview" src="" alt="Preview">
+                                    <img id="image-preview" class="rounded border" style="max-height: 100px; max-width: 200px; object-fit: contain;">
                                     <button type="button" id="remove-image" class="btn btn-sm btn-danger position-absolute" style="top: -10px; right: -10px; border-radius: 50%; width: 24px; height: 24px; padding: 0;">
                                         <i class="bi bi-x"></i>
                                     </button>
@@ -794,7 +811,7 @@
                 let lastMessageId = '<%= messages && messages.length > 0 ? messages[messages.length - 1].id : 0 %>';
                 let typingTimeout;
                 
-                const fileInput = document.getElementById('file-upload');
+                const fileInput = document.getElementById('image-upload');
                 const attachmentButton = document.getElementById('attachment-button');
                 const imagePreviewContainer = document.getElementById('image-preview-container');
                 const imagePreview = document.getElementById('image-preview');
@@ -928,7 +945,7 @@
                                 imagePreview.style.width = 'auto';
                                 imagePreview.style.maxHeight = '100px';
                                 imagePreview.style.maxWidth = '200px';
-                                imagePreviewContainer.style.display = 'block';
+                                imagePreviewContainer.classList.remove('d-none');
                             };
                             reader.readAsDataURL(file);
                         } else {
@@ -946,7 +963,7 @@
                                 imagePreview.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2YzczNzYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQuNSAySDZWMjJIMThWNS41TDE0LjUgMloiLz48cGF0aCBkPSJNMTQgMlY2SDE4Ii8+PC9zdmc+';
                             }
                             
-                            imagePreviewContainer.style.display = 'block';
+                            imagePreviewContainer.classList.remove('d-none');
                         }
                     });
                 }
@@ -955,24 +972,27 @@
                 if (removeImageButton) {
                     removeImageButton.addEventListener('click', function() {
                         fileInput.value = '';
-                        imagePreviewContainer.style.display = 'none';
+                        imagePreviewContainer.classList.add('d-none');
                     });
                 }
                 
-                // Submit message form
+                // Submit message form - UNIFIED HANDLING (same as customer)
                 messageForm.addEventListener('submit', function(e) {
                     e.preventDefault();
                     
                     const message = messageInput.value.trim();
                     const file = fileInput.files[0];
+                    
                     if (file) {
+                        // Handle file upload with message
                         uploadFileWithMessage(file, message);
                         return;
                     }
                     
                     if (!message) return;
                     
-                    console.log('Sending message:', message, 'to conversation:', conversationId);
+                    // Handle text-only message
+                    console.log('Sending text message:', message, 'to conversation:', conversationId);
                     
                     fetch('/api/send-message', {
                         method: 'POST',
@@ -1005,6 +1025,19 @@
                 function uploadFileWithMessage(file, messageText) {
                     if (!file) return;
                     
+                    // Validate file size
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('File size must be less than 5MB.');
+                        return;
+                    }
+                    
+                    // Create FormData
+                    const formData = new FormData();
+                    formData.append('conversationId', conversationId);
+                    formData.append('message', messageText || '');
+                    formData.append('attachment', file);
+                    
+                    // Create temporary message with loading indicator
                     const tempMsg = document.createElement('div');
                     tempMsg.classList.add('message', 'message-outgoing', 'temp-message');
                     
@@ -1042,12 +1075,8 @@
                     messagesContainer.appendChild(tempMsg);
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                     
-                    const formData = new FormData();
-                    formData.append('conversationId', conversationId);
-                    formData.append('message', messageText || '');
-                    formData.append('attachment', file);
-                    
-                    fetch('/api/send-message-with-attachment', {
+                    // Send the request using the unified endpoint
+                    fetch('/api/send-message', {
                         method: 'POST',
                         body: formData
                     })
@@ -1066,7 +1095,7 @@
                             
                             messageInput.value = '';
                             fileInput.value = '';
-                            imagePreviewContainer.style.display = 'none';
+                            imagePreviewContainer.classList.add('d-none');
                         } else {
                             console.error('Error uploading file:', data.error);
                             alert('Failed to upload file: ' + (data.error || 'Unknown error'));
