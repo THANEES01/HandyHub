@@ -198,6 +198,57 @@
             padding-bottom: 10px;
             border-bottom: 1px solid #eee;
         }
+
+               /* Page header styling */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            color: var(--dark-blue);
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        /* Breadcrumb styling */
+        .breadcrumb {
+            background: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .breadcrumb-item {
+            color: #6c757d;
+        }
+
+        .breadcrumb-item.active {
+            color: var(--primary-blue);
+            font-weight: 600;
+        }
+
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: "›";
+            color: #6c757d;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .btn-back {
+                font-size: 0.9rem;
+                padding: 6px 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -224,6 +275,30 @@
             </a>
         </nav>
     </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Back Button and Page Header -->
+        <div class="page-header">
+            <div>
+                <div class="back-button-container">
+                    <a href="/provider/dashboard" class="btn-back">
+                        <i class="bi bi-arrow-left"></i>
+                        Back to Dashboard
+                    </a>
+                </div>
+                
+                <!-- Breadcrumb Navigation -->
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="/provider/dashboard" style="color: #6c757d; text-decoration: none;">Dashboard</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">Edit Profile</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
 
     <!-- Main Content -->
     <div class="main-content">
