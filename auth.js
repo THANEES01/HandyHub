@@ -469,14 +469,29 @@ const providerRegister = async (req, res) => {
             email,
             phoneNumber,
             password,
-            services,
-            coverageAreas
+            services, // This will be a JSON string from the hidden input
+            coverageAreas, // This will be a JSON string
+            serviceCategories, // Array of selected categories
+            categoryFees, // Object with category fees
+            feeTypes, // Object with fee types
+            slotDuration, // Appointment duration
+            availableDays // Array of available days
         } = req.body;
 
-        // Get the serviceCategories from the request body
-        const serviceCategories = req.body.serviceCategories;
-
-        if (isLocalDevelopment) console.log('Provider registration attempt for:', email);
+        if (isLocalDevelopment) {
+            console.log('Provider registration data:', {
+                businessName,
+                email,
+                phoneNumber,
+                serviceCategories,
+                categoryFees,
+                feeTypes,
+                services,
+                coverageAreas,
+                slotDuration,
+                availableDays
+            });
+        }
 
         await client.query('BEGIN');
 
@@ -511,31 +526,72 @@ const providerRegister = async (req, res) => {
 
         const providerId = newProvider.rows[0].id;
 
-        // Insert service categories if provided
+        // 1. INSERT SERVICE CATEGORIES WITH FEES
         if (serviceCategories && Array.isArray(serviceCategories)) {
             for (const category of serviceCategories) {
                 if (category.trim()) {
+                    const baseFee = categoryFees && categoryFees[category] ? parseFloat(categoryFees[category]) : 0;
+                    const feeType = feeTypes && feeTypes[category] ? feeTypes[category] : 'per visit';
+                    
                     await client.query(
                         'INSERT INTO service_categories (provider_id, category_name, base_fee, fee_type) VALUES ($1, $2, $3, $4)',
-                        [providerId, category.trim(), 0, 'per visit']
+                        [providerId, category.trim(), baseFee, feeType]
                     );
+                    
+                    if (isLocalDevelopment) {
+                        console.log(`Inserted category: ${category}, fee: ${baseFee}, type: ${feeType}`);
+                    }
                 }
             }
         }
 
-        // Insert services if provided
-        if (services && Array.isArray(services)) {
-            for (const service of services) {
-                if (service.trim()) {
+        // 2. INSERT SERVICES OFFERED
+        if (services) {
+            try {
+                // Parse the JSON string from the hidden input
+                const servicesArray = JSON.parse(services);
+                if (Array.isArray(servicesArray)) {
+                    for (const service of servicesArray) {
+                        if (service && service.trim()) {
+                            await client.query(
+                                'INSERT INTO services_offered (provider_id, service_name) VALUES ($1, $2)',
+                                [providerId, service.trim()]
+                            );
+                            
+                            if (isLocalDevelopment) {
+                                console.log(`Inserted service: ${service}`);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error parsing services:', e);
+                console.log('Services data received:', services);
+            }
+        }
+
+        // 3. INSERT PROVIDER AVAILABILITY
+        if (availableDays && Array.isArray(availableDays)) {
+            for (const day of availableDays) {
+                const startTimeKey = `startTime_${day}`;
+                const endTimeKey = `endTime_${day}`;
+                const startTime = req.body[startTimeKey];
+                const endTime = req.body[endTimeKey];
+                
+                if (startTime && endTime) {
                     await client.query(
-                        'INSERT INTO services_offered (provider_id, service_name) VALUES ($1, $2)',
-                        [providerId, service.trim()]
+                        'INSERT INTO provider_availability (provider_id, day_of_week, start_time, end_time, slot_duration) VALUES ($1, $2, $3, $4, $5)',
+                        [providerId, day, startTime, endTime, parseInt(slotDuration) || 60]
                     );
+                    
+                    if (isLocalDevelopment) {
+                        console.log(`Inserted availability: ${day} ${startTime}-${endTime}`);
+                    }
                 }
             }
         }
 
-        // Insert coverage areas if provided
+        // 4. INSERT COVERAGE AREAS
         if (coverageAreas) {
             try {
                 const coverageAreasArray = JSON.parse(coverageAreas);
@@ -546,6 +602,10 @@ const providerRegister = async (req, res) => {
                                 'INSERT INTO provider_coverage (provider_id, city_id) VALUES ($1, $2)',
                                 [providerId, area.cityId]
                             );
+                            
+                            if (isLocalDevelopment) {
+                                console.log(`Inserted coverage: ${area.cityName}, ${area.stateName}`);
+                            }
                         }
                     }
                 }

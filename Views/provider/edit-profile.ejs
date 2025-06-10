@@ -59,7 +59,7 @@
         /* Main Content Styling */
         .main-content {
             margin-left: var(--sidebar-width);
-            padding: 30px;
+            padding: 20px 30px;
         }
 
         .edit-profile-section {
@@ -199,12 +199,12 @@
             border-bottom: 1px solid #eee;
         }
 
-               /* Page header styling */
+        /* FIXED: Page header styling with reduced spacing */
         .page-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 30px;
+            margin-bottom: 15px; /* Reduced from 30px */
         }
 
         .page-title {
@@ -214,12 +214,40 @@
             margin: 0;
         }
 
-        /* Breadcrumb styling */
+        /* FIXED: Back button styling */
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background-color: var(--light-blue);
+            color: var(--dark-blue);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 119, 190, 0.2);
+            margin-bottom: 8px; /* Small margin below button */
+        }
+
+        .btn-back:hover {
+            background-color: var(--primary-blue);
+            color: white;
+            text-decoration: none;
+            transform: translateY(-1px);
+        }
+
+        .btn-back i {
+            font-size: 0.9rem;
+        }
+
+        /* FIXED: Breadcrumb styling with reduced spacing */
         .breadcrumb {
             background: none;
             padding: 0;
             margin: 0;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
 
         .breadcrumb-item {
@@ -236,16 +264,26 @@
             color: #6c757d;
         }
 
+        /* FIXED: Navigation container with minimal spacing */
+        .navigation-container {
+            margin-bottom: 20px; /* Reduced from multiple margins */
+        }
+
         /* Responsive design */
         @media (max-width: 768px) {
+            .main-content {
+                padding: 15px 20px;
+            }
+            
             .page-header {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 15px;
+                gap: 10px;
+                margin-bottom: 15px;
             }
 
             .btn-back {
-                font-size: 0.9rem;
+                font-size: 0.8rem;
                 padding: 6px 12px;
             }
         }
@@ -278,30 +316,24 @@
 
     <!-- Main Content -->
     <div class="main-content">
-        <!-- Back Button and Page Header -->
-        <div class="page-header">
-            <div>
-                <div class="back-button-container">
-                    <a href="/provider/dashboard" class="btn-back">
-                        <i class="bi bi-arrow-left"></i>
-                        Back to Dashboard
-                    </a>
-                </div>
-                
-                <!-- Breadcrumb Navigation -->
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item">
-                            <a href="/provider/dashboard" style="color: #6c757d; text-decoration: none;">Dashboard</a>
-                        </li>
-                        <li class="breadcrumb-item active" aria-current="page">Edit Profile</li>
-                    </ol>
-                </nav>
-            </div>
+        <!-- FIXED: Compact Navigation Section -->
+        <div class="navigation-container">
+            <a href="/provider/dashboard" class="btn-back">
+                <i class="bi bi-arrow-left"></i>
+                Back to Dashboard
+            </a>
+            
+            <!-- Breadcrumb Navigation -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="/provider/dashboard" style="color: #6c757d; text-decoration: none;">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">Edit Profile</li>
+                </ol>
+            </nav>
         </div>
 
-    <!-- Main Content -->
-    <div class="main-content">
         <!-- Messages Section -->
         <% if (locals.success) { %>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -583,8 +615,17 @@
                                                         // Generate options
                                                         for(let hour = 6; hour <= 20; hour++) { 
                                                             const hourStr = hour < 10 ? '0' + hour : '' + hour;
-                                                            const displayHour = hour > 12 ? hour - 12 : hour;
-                                                            const ampm = hour >= 12 ? 'PM' : 'AM';
+                                                            let displayHour = hour;
+                                                            let ampm = 'AM';
+                                                            
+                                                            if (hour === 12) {
+                                                                displayHour = 12;
+                                                                ampm = 'PM';
+                                                            } else if (hour > 12) {
+                                                                displayHour = hour - 12;
+                                                                ampm = 'PM';
+                                                            }
+                                                            
                                                             const isSelected = hour === startHour;
                                                         %>
                                                             <option value="<%= hourStr %>:00" <%= isSelected ? 'selected' : '' %>>
@@ -604,8 +645,17 @@
                                                         // Generate options
                                                         for(let hour = 6; hour <= 21; hour++) { 
                                                             const hourStr = hour < 10 ? '0' + hour : '' + hour;
-                                                            const displayHour = hour > 12 ? hour - 12 : hour;
-                                                            const ampm = hour >= 12 ? 'PM' : 'AM';
+                                                            let displayHour = hour;
+                                                            let ampm = 'AM';
+                                                            
+                                                            if (hour === 12) {
+                                                                displayHour = 12;
+                                                                ampm = 'PM';
+                                                            } else if (hour > 12) {
+                                                                displayHour = hour - 12;
+                                                                ampm = 'PM';
+                                                            }
+                                                            
                                                             const isSelected = hour === endHour;
                                                         %>
                                                             <option value="<%= hourStr %>:00" <%= isSelected ? 'selected' : '' %>>
@@ -655,6 +705,7 @@
     </div>
 
      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
 
 <script>
         // Global variables

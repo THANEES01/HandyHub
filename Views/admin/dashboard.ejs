@@ -985,52 +985,99 @@
     }
 
     function deleteProvider(id, businessName) {
-        // Set the provider ID and name for deletion
-        currentProviderId = id;
-        document.getElementById('providerNameToDelete').textContent = businessName;
+         console.log(`Attempting to delete provider ID: ${id}, Name: ${businessName}`);
+    
+    // Set the provider ID and name for deletion
+    currentProviderId = id;
+    document.getElementById('providerNameToDelete').textContent = businessName;
+    
+    // Show the confirmation modal
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    deleteModal.show();
+    
+    // Set up the confirm button
+    document.getElementById('confirmDeleteBtn').onclick = function() {
+        console.log('Delete confirmed, sending request...');
         
-        // Show the confirmation modal
-        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
-        deleteModal.show();
+        // Show loading state
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        const originalText = confirmBtn.textContent;
+        confirmBtn.textContent = 'Deleting...';
+        confirmBtn.disabled = true;
         
-        // Set up the confirm button
-        document.getElementById('confirmDeleteBtn').onclick = function() {
-            // Send delete request to the server
-            fetch(`/admin/provider/${id}/delete`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(result => {
-                if (result.success) {
-                    // Remove the row from the table
-                    const providerRow = document.querySelector(`tr[data-provider-id="${id}"]`);
-                    if (providerRow) {
-                        providerRow.remove();
-                    }
-                    
-                    // Hide the modal
-                    deleteModal.hide();
-                    
-                    // Show success message
-                    alert('Service provider deleted successfully');
+        // Send delete request to the server
+        fetch(`/admin/provider/${id}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            
+            // Check if response is ok
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Response is not JSON');
+            }
+            
+            return response.json();
+        })
+        .then(result => {
+            console.log('Delete result:', result);
+            
+            if (result.success) {
+                // Remove the row from the table
+                const providerRow = document.querySelector(`tr[data-provider-id="${id}"]`);
+                if (providerRow) {
+                    providerRow.remove();
+                    console.log('Provider row removed from table');
                 } else {
-                    throw new Error(result.error || 'Failed to delete service provider');
+                    console.warn('Provider row not found in table');
                 }
-            })
-            .catch(error => {
-                console.error('Error deleting provider:', error);
-                alert(`Error: ${error.message}`);
-            });
-        };
-    }
+                
+                // Hide the modal
+                deleteModal.hide();
+                
+                // Show success message
+                alert(result.message || 'Service provider deleted successfully');
+                
+                // Optionally refresh the page to update counts
+                // window.location.reload();
+                
+            } else {
+                throw new Error(result.error || 'Delete operation failed');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting provider:', error);
+            
+            // Show detailed error message
+            let errorMessage = 'Error deleting service provider';
+            if (error.message.includes('HTTP error')) {
+                errorMessage += ': Server error occurred';
+            } else if (error.message.includes('not JSON')) {
+                errorMessage += ': Invalid server response';
+            } else {
+                errorMessage += `: ${error.message}`;
+            }
+            
+            alert(errorMessage);
+        })
+        .finally(() => {
+            // Reset button state
+            confirmBtn.textContent = originalText;
+            confirmBtn.disabled = false;
+        });
+    };
+}
 
     function updateVerificationStatus(status) {
             if (!currentProviderId) return;

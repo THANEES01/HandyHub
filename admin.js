@@ -226,68 +226,113 @@ const getProviderDetails = async (req, res) => {
 
 // Delete a service provider
 router.delete('/provider/:id/delete', isAdmin, async (req, res) => {
-    const providerId = req.params.id;
+   const providerId = req.params.id;
     const client = await pool.connect();
     
     try {
+        console.log(`Starting deletion process for provider ID: ${providerId}`);
+        
         await client.query('BEGIN');
         
         // Get the user_id associated with this provider
         const providerResult = await client.query(
-            'SELECT user_id FROM service_providers WHERE id = $1',
+            'SELECT user_id, business_name FROM service_providers WHERE id = $1',
             [providerId]
         );
         
         if (providerResult.rows.length === 0) {
-            throw new Error('Service provider not found');
+            await client.query('ROLLBACK');
+            console.log(`Provider with ID ${providerId} not found`);
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Service provider not found' 
+            });
         }
         
         const userId = providerResult.rows[0].user_id;
+        const businessName = providerResult.rows[0].business_name;
         
-        // Delete related records in order to maintain referential integrity
+        console.log(`Found provider: ${businessName}, User ID: ${userId}`);
         
-        // 1. Delete service categories
+        // Delete related records in proper order to maintain referential integrity
+        
+        // 1. Delete provider availability
+        console.log('Deleting provider availability...');
+        await client.query('DELETE FROM provider_availability WHERE provider_id = $1', [providerId]);
+        
+        // 2. Delete provider coverage
+        console.log('Deleting provider coverage...');
+        await client.query('DELETE FROM provider_coverage WHERE provider_id = $1', [providerId]);
+        
+        // 3. Delete service categories
+        console.log('Deleting service categories...');
         await client.query('DELETE FROM service_categories WHERE provider_id = $1', [providerId]);
         
-        // 2. Delete services offered
+        // 4. Delete services offered
+        console.log('Deleting services offered...');
         await client.query('DELETE FROM services_offered WHERE provider_id = $1', [providerId]);
         
-        // 3. Delete bookings (if any)
-        // First get booking IDs to delete related booking_services
-        // const bookingResults = await client.query(
-        //     'SELECT id FROM bookings WHERE provider_id = $1',
-        //     [providerId]
-        // );
+        // 5. Handle bookings and related data
+        console.log('Getting bookings for provider...');
+        const bookingResults = await client.query(
+            'SELECT id FROM service_bookings WHERE provider_id = $1',
+            [providerId]
+        );
         
-        // const bookingIds = bookingResults.rows.map(row => row.id);
+        const bookingIds = bookingResults.rows.map(row => row.id);
+        console.log(`Found ${bookingIds.length} bookings to handle`);
         
-        // if (bookingIds.length > 0) {
-        //     // 3a. Delete booking_services
-        //     await client.query('DELETE FROM booking_services WHERE booking_id = ANY($1::int[])', [bookingIds]);
+        if (bookingIds.length > 0) {
+            // 5a. Delete reviews related to these bookings
+            console.log('Deleting reviews...');
+            await client.query('DELETE FROM reviews WHERE booking_id = ANY($1::int[])', [bookingIds]);
             
-        //     // 3b. Delete reviews related to these bookings
-        //     await client.query('DELETE FROM reviews WHERE booking_id = ANY($1::int[])', [bookingIds]);
+            // 5b. Delete payment records related to these bookings
+            console.log('Deleting payment records...');
+            await client.query('DELETE FROM payments WHERE booking_id = ANY($1::int[])', [bookingIds]);
             
-        //     // 3c. Delete payment records related to these bookings
-        //     await client.query('DELETE FROM payments WHERE booking_id = ANY($1::int[])', [bookingIds]);
+            // 5c. Delete booking services if the table exists
+            try {
+                console.log('Attempting to delete booking services...');
+                await client.query('DELETE FROM booking_services WHERE booking_id = ANY($1::int[])', [bookingIds]);
+            } catch (bookingServicesError) {
+                // If booking_services table doesn't exist, just log and continue
+                console.log('booking_services table may not exist, continuing...');
+            }
             
-        //     // 3d. Finally delete the bookings
-        //     await client.query('DELETE FROM bookings WHERE id = ANY($1::int[])', [bookingIds]);
-        // }
+            // 5d. Finally delete the bookings
+            console.log('Deleting bookings...');
+            await client.query('DELETE FROM service_bookings WHERE id = ANY($1::int[])', [bookingIds]);
+        }
         
-        // 4. Delete provider record
+        // 6. Delete provider record
+        console.log('Deleting provider record...');
         await client.query('DELETE FROM service_providers WHERE id = $1', [providerId]);
         
-        // 5. Delete user account
+        // 7. Delete user account
+        console.log('Deleting user account...');
         await client.query('DELETE FROM users WHERE id = $1', [userId]);
         
         await client.query('COMMIT');
         
-        res.json({ success: true, message: 'Service provider deleted successfully' });
+        console.log(`Successfully deleted provider: ${businessName}`);
+        
+        res.json({ 
+            success: true, 
+            message: `Service provider "${businessName}" deleted successfully` 
+        });
+        
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error deleting service provider:', error);
-        res.status(500).json({ success: false, error: error.message });
+        console.error('Error stack:', error.stack);
+        
+        // Return a more detailed error response
+        res.status(500).json({ 
+            success: false, 
+            error: `Failed to delete service provider: ${error.message}`,
+            details: error.stack
+        });
     } finally {
         client.release();
     }
