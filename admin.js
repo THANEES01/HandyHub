@@ -251,11 +251,14 @@ const getProviderDetails = async (req, res) => {
 
 // Delete a service provider
 router.delete('/provider/:id/delete', isAdmin, async (req, res) => {
-   const providerId = req.params.id;
+  const providerId = req.params.id;
     const client = await pool.connect();
     
     try {
         console.log(`Starting deletion process for provider ID: ${providerId}`);
+        
+        // Set proper headers for JSON response
+        res.setHeader('Content-Type', 'application/json');
         
         await client.query('BEGIN');
         
@@ -342,7 +345,8 @@ router.delete('/provider/:id/delete', isAdmin, async (req, res) => {
         
         console.log(`Successfully deleted provider: ${businessName}`);
         
-        res.json({ 
+        // ENSURE JSON RESPONSE
+        return res.json({ 
             success: true, 
             message: `Service provider "${businessName}" deleted successfully` 
         });
@@ -352,11 +356,10 @@ router.delete('/provider/:id/delete', isAdmin, async (req, res) => {
         console.error('Error deleting service provider:', error);
         console.error('Error stack:', error.stack);
         
-        // Return a more detailed error response
-        res.status(500).json({ 
+        // ENSURE JSON ERROR RESPONSE
+        return res.status(500).json({ 
             success: false, 
-            error: `Failed to delete service provider: ${error.message}`,
-            details: error.stack
+            error: `Failed to delete service provider: ${error.message}`
         });
     } finally {
         client.release();

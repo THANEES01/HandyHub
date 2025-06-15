@@ -24,27 +24,59 @@ const isAuthenticated = (req, res, next) => {
 
 // Category normalization function
 const normalizeCategories = (categories) => {
-    // Map of similar category names to be consolidated
+    // Comprehensive mapping for all possible category variations
     const categoryMapping = {
+        // Home Cleaning variations
         'cleaning': 'home_cleaning',
         'home cleaning': 'home_cleaning',
         'homecleaning': 'home_cleaning',
         'house cleaning': 'home_cleaning',
+        'home_cleaning': 'home_cleaning',
         
+        // Plumbing variations
         'plumbing': 'plumbing',
         'plumber': 'plumbing',
         
+        // Appliance Service variations
         'appliance service': 'appliance_service',
         'appliance repair': 'appliance_service',
         'appliance': 'appliance_service',
+        'appliance_service': 'appliance_service',
         
+        // Pest Control variations
         'pest control': 'pest_control',
-        'pest management': 'pest_control'
+        'pest management': 'pest_control',
+        'pest_control': 'pest_control',
         
-        // Add more mappings as needed
+        // Electrical variations
+        'electrical': 'electrical',
+        'electrical repairs': 'electrical',
+        'electrical repair': 'electrical',
+        
+        // AC Service variations
+        'ac service': 'ac_service',
+        'ac': 'ac_service',
+        'ac_service': 'ac_service',
+        'air conditioning': 'ac_service',
+        
+        // Carpentry variations
+        'carpentry': 'carpentry',
+        'carpentry services': 'carpentry',
+        'carpentry service': 'carpentry',
+        
+        // Landscaping variations
+        'landscaping': 'landscaping',
+        'landscape': 'landscaping',
+        'garden': 'landscaping',
+        
+        // Roofing variations
+        'roofing': 'roofing',
+        'roof repairs': 'roofing',
+        'roof repair': 'roofing',
+        'roof_repairs': 'roofing'
     };
     
-    // Map of standardized category names to display names
+    // Standardized display names
     const displayNames = {
         'home_cleaning': 'Home Cleaning',
         'plumbing': 'Plumbing',
@@ -52,40 +84,50 @@ const normalizeCategories = (categories) => {
         'pest_control': 'Pest Control',
         'landscaping': 'Landscaping',
         'electrical': 'Electrical Repairs',
-        'ac_service': 'AC Services',
-        'carpentry': 'Carpentry Services',
+        'ac_service': 'AC Service',
+        'carpentry': 'Carpentry',
         'roofing': 'Roof Repairs'
-        // Add more display names as needed
     };
     
-    // Create a new array for normalized categories
-    const normalizedCategories = [];
-    const processedCategories = new Set();
+    // Process categories and remove duplicates
+    const processedCategories = new Map(); // Use Map to ensure uniqueness
     
     categories.forEach(category => {
+        if (!category || !category.category_name) {
+            console.warn('Invalid category found:', category);
+            return;
+        }
+        
         // Get the category name and convert to lowercase for comparison
-        const categoryName = category.category_name.toLowerCase();
+        const categoryName = category.category_name.toLowerCase().trim();
         
         // Find the normalized key for this category
         let normalizedKey = categoryMapping[categoryName] || categoryName;
         
-        // Skip if we've already processed this normalized category
-        if (processedCategories.has(normalizedKey)) {
-            return;
+        // Clean up any remaining underscores for keys not in our mapping
+        if (!categoryMapping[categoryName]) {
+            normalizedKey = categoryName.replace(/[^a-z0-9]/g, '_');
         }
         
-        // Mark this category as processed
-        processedCategories.add(normalizedKey);
-        
-        // Create a new normalized category object
-        normalizedCategories.push({
-            category_name: normalizedKey,
-            display_name: displayNames[normalizedKey] || 
-                          (categoryName.charAt(0).toUpperCase() + categoryName.slice(1))
-        });
+        // Only add if we haven't seen this normalized category before
+        if (!processedCategories.has(normalizedKey)) {
+            processedCategories.set(normalizedKey, {
+                category_name: normalizedKey,
+                display_name: displayNames[normalizedKey] || 
+                             (categoryName.charAt(0).toUpperCase() + categoryName.slice(1).replace(/_/g, ' '))
+            });
+        }
     });
     
-    return normalizedCategories;
+    // Convert Map back to array and log for debugging
+    const result = Array.from(processedCategories.values());
+    
+    console.log('=== NORMALIZATION DEBUG ===');
+    console.log('Input categories:', categories.map(c => c.category_name));
+    console.log('Processed categories:', result.map(c => c.category_name));
+    console.log('=== END DEBUG ===');
+    
+    return result;
 };
 
 // Add more routes as needed
@@ -99,33 +141,51 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
         
         // Get booking statistics
         const statsResult = await pool.query(`
-        SELECT 
-            COUNT(*) as total_bookings,
-            COUNT(CASE WHEN status = 'Confirmed' OR status = 'In Progress' THEN 1 END) as active_services,
-            COUNT(CASE WHEN status = 'Completed' THEN 1 END) as completed_bookings,
-            COALESCE(SUM(CASE WHEN payment_status = 'Paid' THEN 
-                CASE 
-                    WHEN total_amount IS NOT NULL THEN total_amount 
-                    WHEN service_charge IS NOT NULL THEN base_fee + service_charge
-                    ELSE base_fee 
-                END
-            ELSE 0 END), 0) as total_spent
-        FROM service_bookings
-        WHERE customer_id = $1
-    `, [customerId]);
+            SELECT 
+                COUNT(*) as total_bookings,
+                COUNT(CASE WHEN status = 'Confirmed' OR status = 'In Progress' THEN 1 END) as active_services,
+                COUNT(CASE WHEN status = 'Completed' THEN 1 END) as completed_bookings,
+                COALESCE(SUM(CASE WHEN payment_status = 'Paid' THEN 
+                    CASE 
+                        WHEN total_amount IS NOT NULL THEN total_amount 
+                        WHEN service_charge IS NOT NULL THEN base_fee + service_charge
+                        ELSE base_fee 
+                    END
+                ELSE 0 END), 0) as total_spent
+            FROM service_bookings
+            WHERE customer_id = $1
+        `, [customerId]);
         
-        // Get all service categories
+        // FIXED: Get all service categories from VERIFIED providers only
         const categoriesResult = await pool.query(`
-            SELECT DISTINCT category_name 
-            FROM service_categories 
-            ORDER BY category_name
+            SELECT DISTINCT sc.category_name 
+            FROM service_categories sc
+            JOIN service_providers sp ON sc.provider_id = sp.id
+            WHERE sp.is_verified = true
+            ORDER BY sc.category_name
         `);
+        
+        console.log('=== DASHBOARD DEBUG ===');
+        console.log('Customer ID:', customerId);
+        console.log('Raw categories from database:', categoriesResult.rows);
+        console.log('Number of categories found:', categoriesResult.rows.length);
         
         // Normalize categories to prevent duplicates
         const normalizedCategories = normalizeCategories(categoriesResult.rows);
         
-        console.log('Original categories:', categoriesResult.rows);
         console.log('Normalized categories:', normalizedCategories);
+        console.log('Number of normalized categories:', normalizedCategories.length);
+        
+        // Create a better mapping for category names to ensure consistency
+        const finalCategories = normalizedCategories.map(category => {
+            // Ensure we have both category_name and display_name
+            return {
+                category_name: category.category_name,
+                display_name: category.display_name || category.category_name
+            };
+        });
+        
+        console.log('Final categories being sent to template:', finalCategories);
         
         // Render dashboard with statistics and normalized categories
         res.render('customer/customer-dashboard', {
@@ -135,7 +195,7 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
             activeServices: statsResult.rows[0].active_services || 0,
             completedBookings: statsResult.rows[0].completed_bookings || 0,
             totalSpent: statsResult.rows[0].total_spent || 0,
-            categories: normalizedCategories
+            categories: finalCategories // Use the processed categories
         });
     } catch (error) {
         console.error('Error loading dashboard:', error);
