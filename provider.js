@@ -29,7 +29,6 @@ const debugSession = (req, res, next) => {
 
 // Controllers
 const getDashboard = async (req, res) => {
-
     try {
         // Get provider data including email
         const providerResult = await pool.query(`
@@ -118,7 +117,7 @@ const getDashboard = async (req, res) => {
             success: req.session.success
         });
 
-        // Clear session messages
+        // Clear session messages after rendering
         delete req.session.error;
         delete req.session.success;
 
@@ -284,9 +283,9 @@ const updateProfile = async (req, res) => {
     }
 };
 
-// Function to handle booking acceptance
+// FIXED: Function to handle booking acceptance
 const acceptBooking = async (req, res) => {
-     try {
+    try {
         const { bookingId } = req.params;
         const providerId = req.session.user.providerId;
         
@@ -498,7 +497,7 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
             success: req.session.success
         });
         
-        // Clear session messages
+        // Clear session messages after rendering
         delete req.session.error;
         delete req.session.success;
         
@@ -508,7 +507,6 @@ router.get('/edit-profile', isAuthenticated, debugSession, async (req, res) => {
         res.redirect('/provider/dashboard');
     }
 });
-
 
 // Route to get all bookings for the provider
 router.get('/bookings', isProvider, async (req, res) => {
@@ -566,7 +564,7 @@ router.get('/bookings', isProvider, async (req, res) => {
             success: req.session.success
         });
         
-        // Clear session messages
+        // Clear session messages after rendering
         delete req.session.error;
         delete req.session.success;
         
@@ -577,13 +575,13 @@ router.get('/bookings', isProvider, async (req, res) => {
     }
 });
 
-// Route for viewing booking details - Add this BEFORE other routes
+// FIXED: Route for viewing booking details
 router.get('/booking/:bookingId', isProvider, async (req, res) => {
     try {
         const { bookingId } = req.params;
         const providerId = req.session.user.providerId;
         
-        // Get only booking details without status history
+        // Get booking details with customer information
         const bookingResult = await pool.query(`
             SELECT 
                 sb.*,
@@ -595,20 +593,49 @@ router.get('/booking/:bookingId', isProvider, async (req, res) => {
         
         if (bookingResult.rows.length === 0) {
             console.log('No booking found for ID:', bookingId);
-            req.session.error = 'Booking not found or not authorized';
+            req.session.error = 'Booking not found or you are not authorized to view this booking';
             return res.redirect('/provider/bookings');
         }
 
         console.log('Found booking:', bookingResult.rows[0]);
         
+        // Format booking data
+        let booking = bookingResult.rows[0];
+        
+        // Convert 'Confirmed' status to 'New' for display purposes
+        if (booking.status === 'Confirmed') {
+            booking.status = 'New';
+        }
+        
+        // Handle images if they exist
+        if (booking.images) {
+            try {
+                if (typeof booking.images === 'string' && booking.images.startsWith('[')) {
+                    booking.images = JSON.parse(booking.images);
+                } else {
+                    booking.images = booking.images
+                        .split(',')
+                        .map(img => img.trim())
+                        .filter(img => img);
+                }
+            } catch(err) {
+                console.error('Error parsing images JSON:', err);
+                booking.images = [];
+            }
+        }
+        
         res.render('provider/booking-detail', {
             title: `Booking #${bookingId}`,
-            booking: bookingResult.rows[0],
+            booking: booking,
             statusHistory: [], // Empty array since we're not fetching history
             currentPage: 'bookings',
             error: req.session.error,
             success: req.session.success
         });
+
+        // Clear session messages after rendering
+        delete req.session.error;
+        delete req.session.success;
 
     } catch (error) {
         console.error('Error fetching booking details:', error);
@@ -631,113 +658,7 @@ router.get('/test-session', (req, res) => {
     });
 });
 
-// Function to get booking details
-const getBookingDetails = async (req, res) => {
-    const client = await pool.connect();
-
-    try {
-        const { bookingId } = req.params;
-        const providerId = req.session.user.providerId;
-        
-        await client.query('BEGIN');
-
-        // Get booking details with customer information
-        const bookingResult = await client.query(`
-            SELECT 
-                sb.*,
-                c.first_name || ' ' || c.last_name AS customer_name,
-                c.email AS customer_email,
-                c.phone_number AS customer_phone
-            FROM service_bookings sb
-            JOIN customers c ON sb.customer_id = c.user_id
-            WHERE sb.id = $1 AND sb.provider_id = $2
-        `, [bookingId, providerId]);
-        
-        if (bookingResult.rows.length === 0) {
-            req.session.error = 'Booking not found or you are not authorized to view this booking';
-            return res.redirect('/provider/bookings');
-        }
-
-        // Get booking status history
-        const historyResult = await client.query(`
-            SELECT 
-                bsh.*,
-                COALESCE(u.name, sp.business_name, c.first_name || ' ' || c.last_name) AS created_by_name
-            FROM booking_status_history bsh
-            LEFT JOIN users u ON bsh.created_by = u.id
-            LEFT JOIN service_providers sp ON u.id = sp.user_id
-            LEFT JOIN customers c ON u.id = c.user_id
-            WHERE bsh.booking_id = $1
-            ORDER BY bsh.created_at DESC
-        `, [bookingId]);
-        
-        // Get payment information
-        const paymentResult = await client.query(`
-            SELECT 
-                payment_status,
-                payment_method,
-                payment_reference,
-                base_fee,
-                fee_type
-            FROM service_bookings
-            WHERE id = $1
-        `, [bookingId]);
-
-        await client.query('COMMIT');
-
-        console.log('Booking details loaded successfully');
-
-        // Format image paths if they exist
-        let booking = bookingResult.rows[0];
-        
-        // Convert 'Confirmed' status to 'New' for display purposes
-        if (booking.status === 'Confirmed') {
-            booking.status = 'New';
-        }
-        
-        if (booking.images) {
-            try {
-                if (typeof booking.images === 'string' && booking.images.startsWith('[')) {
-                    booking.images = JSON.parse(booking.images);
-                } else {
-                    booking.images = booking.images
-                        .split(',')
-                        .map(img => img.trim())
-                        .filter(img => img);
-                }
-            } catch(err) {
-                console.error('Error parsing images JSON:', err);
-                booking.images = [];
-            }
-        }
-
-        res.render('provider/booking-detail', {
-            title: `Booking #${bookingId}`,
-            booking: {
-                ...booking,
-                payment: paymentResult.rows[0]
-            },
-            statusHistory: historyResult.rows,
-            currentPage: 'bookings',
-            error: req.session.error,
-            success: req.session.success
-        });
-        
-        // Clear session messages after rendering
-        delete req.session.error;
-        delete req.session.success;
-        
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('Error fetching booking details:', error);
-        req.session.error = 'Failed to load booking details. Please try again.';
-        res.redirect('/provider/bookings');
-    } finally {
-        client.release();
-    }
-};
-
-// Function to handle booking status updates (start service)
+// FIXED: Function to handle booking status updates (start service)
 const startBooking = async (req, res) => {
     try {
         const { bookingId } = req.params;
@@ -753,11 +674,17 @@ const startBooking = async (req, res) => {
         
         if (checkResult.rows.length === 0) {
             console.log(`Booking not found or not authorized: ${bookingId}`);
-            // Removed error message
+            req.session.error = 'Booking not found or you are not authorized to start this booking';
             return res.redirect('/provider/booking/' + bookingId);
         }
         
         console.log(`Found booking with status: ${checkResult.rows[0].status}`);
+        
+        // Check if booking can be started
+        if (!['Accepted'].includes(checkResult.rows[0].status)) {
+            req.session.error = 'This booking cannot be started at this time';
+            return res.redirect('/provider/booking/' + bookingId);
+        }
         
         // Update booking status
         await pool.query(
@@ -777,14 +704,14 @@ const startBooking = async (req, res) => {
         
     } catch (error) {
         console.error('Error starting service:', error);
-        // Removed error message
+        req.session.error = 'Failed to start service. Please try again.';
         res.redirect('/provider/booking/' + bookingId);
     }
 };
 
-// Function to handle booking completion
+// FIXED: Function to handle booking completion
 const completeBooking = async (req, res) => {
-     try {
+    try {
         const { bookingId } = req.params;
         const providerId = req.session.user.providerId;
         
@@ -958,7 +885,7 @@ router.get('/earnings', isProvider, async (req, res) => {
             success: req.session.success
         });
         
-        // Clear session messages
+        // Clear session messages after rendering
         delete req.session.error;
         delete req.session.success;
         
@@ -969,60 +896,7 @@ router.get('/earnings', isProvider, async (req, res) => {
     }
 });
 
-const cancelBooking = async (req, res) => {
-     try {
-        const { bookingId } = req.params;
-        const providerId = req.session.user.providerId;
-        const { cancellationReason } = req.body;
-        
-        console.log(`Processing cancellation for booking ${bookingId} by provider ${providerId}`);
-        console.log(`Cancellation reason: ${cancellationReason}`);
-        
-        // Verify booking belongs to this provider and can be cancelled
-        const checkResult = await pool.query(
-            'SELECT id, status FROM service_bookings WHERE id = $1 AND provider_id = $2',
-            [bookingId, providerId]
-        );
-        
-        if (checkResult.rows.length === 0) {
-            console.log(`Booking not found or not authorized: ${bookingId}`);
-            req.session.error = 'Booking not found or you are not authorized to cancel this booking';
-            return res.redirect('/provider/bookings');
-        }
-        
-        const currentStatus = checkResult.rows[0].status;
-        console.log(`Current booking status: ${currentStatus}`);
-        
-        // Check if booking can be cancelled
-        if (!['New', 'Confirmed', 'Pending', 'Accepted'].includes(currentStatus)) {
-            req.session.error = 'This booking cannot be cancelled anymore';
-            return res.redirect('/provider/booking/' + bookingId);
-        }
-        
-        // Update booking status to Cancelled
-        await pool.query(
-            'UPDATE service_bookings SET status = $1, updated_at = NOW(), cancellation_reason = $2, cancelled_at = NOW(), cancelled_by = $3 WHERE id = $4',
-            ['Cancelled', cancellationReason || 'Cancelled by service provider', 'provider', bookingId]
-        );
-        
-        // Add status history record
-        await pool.query(
-            'INSERT INTO booking_status_history (booking_id, status, notes, created_by) VALUES ($1, $2, $3, $4)',
-            [bookingId, 'Cancelled', `Booking cancelled by provider. Reason: ${cancellationReason || 'Not specified'}`, req.session.user.id]
-        );
-        
-        console.log(`Successfully cancelled booking ${bookingId}`);
-        req.session.success = 'Booking has been cancelled successfully';
-        res.redirect('/provider/bookings');
-        
-    } catch (error) {
-        console.error('Error cancelling booking:', error);
-        req.session.error = 'Failed to cancel booking. Please try again.';
-        res.redirect('/provider/booking/' + req.params.bookingId);
-    }
-};
-
-// Route for cancelling a booking (confirmation page)
+// FIXED: Route for cancelling a booking (confirmation page)
 router.get('/booking/:bookingId/cancel', isProvider, async (req, res) => {
     try {
         const { bookingId } = req.params;
@@ -1056,7 +930,7 @@ router.get('/booking/:bookingId/cancel', isProvider, async (req, res) => {
             success: req.session.success
         });
         
-        // Clear session messages
+        // Clear session messages after rendering
         delete req.session.error;
         delete req.session.success;
         
@@ -1067,7 +941,7 @@ router.get('/booking/:bookingId/cancel', isProvider, async (req, res) => {
     }
 });
 
-// Route for processing the actual cancellation (POST)
+// FIXED: Route for processing the actual cancellation (POST)
 router.post('/booking/:bookingId/cancel', isProvider, async (req, res) => {
     try {
         const { bookingId } = req.params;
@@ -1085,7 +959,7 @@ router.post('/booking/:bookingId/cancel', isProvider, async (req, res) => {
         
         if (checkResult.rows.length === 0) {
             console.log(`Booking not found or not authorized: ${bookingId}`);
-            req.session.error = 'Booking not found or not authorized';
+            req.session.error = 'Booking not found or you are not authorized to cancel this booking';
             return res.redirect('/provider/bookings');
         }
         
@@ -1314,7 +1188,7 @@ router.get('/reviews', isProvider, async (req, res) => {
             success: req.session.success
         });
         
-        // Clear session messages
+        // Clear session messages after rendering
         delete req.session.error;
         delete req.session.success;
         
@@ -1325,24 +1199,14 @@ router.get('/reviews', isProvider, async (req, res) => {
     }
 });
 
-// Route for viewing booking details
-router.get('/booking/:bookingId', isProvider, getBookingDetails);
-
-// Route for booking acceptance
-router.post('/booking/:bookingId/accept', isProvider, acceptBooking);
-
-// Route for starting service
-router.post('/booking/:bookingId/start', isProvider, startBooking);
-
-// Route for completing service
-router.post('/booking/:bookingId/complete', isProvider, completeBooking);
-
-// Route for cancelling service
-router.post('/booking/:bookingId/cancel', isProvider, cancelBooking);
-
-// Routes
+// ROUTE DEFINITIONS - All the main routes
 router.get('/', isProvider, (req, res) => res.redirect('/provider/dashboard'));
 router.get('/dashboard', isProvider, getDashboard);
 router.post('/profile/update', isProvider, updateProfile);
+
+// Booking related routes
+router.post('/booking/:bookingId/accept', isProvider, acceptBooking);
+router.post('/booking/:bookingId/start', isProvider, startBooking);
+router.post('/booking/:bookingId/complete', isProvider, completeBooking);
 
 export default router;

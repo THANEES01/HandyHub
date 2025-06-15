@@ -185,6 +185,37 @@
             gap: 15px;
             margin-top: 30px;
         }
+
+            .form-control:focus {
+            border-color: #0077be !important;
+            box-shadow: 0 0 0 0.2rem rgba(0, 119, 190, 0.25) !important;
+        }
+        
+        .btn:disabled {
+            cursor: not-allowed !important;
+            opacity: 0.6 !important;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.3);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .loading-spinner {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -310,5 +341,146 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+
+        // Enhanced form validation and submission handling
+        const cancelForm = document.querySelector('form[action*="/cancel"]');
+        const reasonTextarea = document.getElementById('cancellationReason');
+        const submitBtn = cancelForm.querySelector('button[type="submit"]');
+        const originalSubmitText = submitBtn.innerHTML;
+
+        // Real-time character count (optional enhancement)
+        if (reasonTextarea) {
+            const charCountDiv = document.createElement('div');
+            charCountDiv.className = 'form-text text-end';
+            charCountDiv.style.fontSize = '0.8rem';
+            reasonTextarea.parentNode.insertBefore(charCountDiv, reasonTextarea.nextSibling);
+
+            function updateCharCount() {
+                const length = reasonTextarea.value.length;
+                charCountDiv.textContent = `${length} characters`;
+                if (length < 10) {
+                    charCountDiv.style.color = '#dc3545';
+                } else if (length < 50) {
+                    charCountDiv.style.color = '#ffc107';
+                } else {
+                    charCountDiv.style.color = '#28a745';
+                }
+            }
+
+            reasonTextarea.addEventListener('input', updateCharCount);
+            updateCharCount(); // Initial count
+        }
+
+        // Enhanced form submission with better validation
+        cancelForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // Always prevent default first
+
+            const reason = reasonTextarea.value.trim();
+            
+            // Enhanced validation
+            if (!reason) {
+                alert('Please provide a reason for cancellation.');
+                reasonTextarea.focus();
+                return false;
+            }
+
+            if (reason.length < 10) {
+                alert('Please provide a more detailed reason (at least 10 characters).');
+                reasonTextarea.focus();
+                return false;
+            }
+
+            // Double confirmation
+            const confirmed = confirm(
+                'Are you absolutely sure you want to cancel this booking?\n\n' +
+                'This action cannot be undone and the customer will be notified immediately.\n\n' +
+                'Click OK to proceed with cancellation.'
+            );
+            
+            if (!confirmed) {
+                return false;
+            }
+
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Cancelling...';
+            
+            // Disable the back button to prevent navigation during submission
+            const backBtn = document.querySelector('.btn-back');
+            if (backBtn) {
+                backBtn.style.pointerEvents = 'none';
+                backBtn.style.opacity = '0.6';
+            }
+
+            // Submit the form after a brief delay to show the loading state
+            setTimeout(() => {
+                cancelForm.submit();
+            }, 500);
+        });
+
+        // Handle browser back button and form reset on page visibility
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                // Reset form state if user navigated back
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalSubmitText;
+                
+                const backBtn = document.querySelector('.btn-back');
+                if (backBtn) {
+                    backBtn.style.pointerEvents = '';
+                    backBtn.style.opacity = '';
+                }
+            }
+        });
+
+        // Add enhanced styling for better UX
+        reasonTextarea.addEventListener('focus', function() {
+            this.style.borderColor = '#0077be';
+            this.style.boxShadow = '0 0 0 0.2rem rgba(0, 119, 190, 0.25)';
+        });
+
+        reasonTextarea.addEventListener('blur', function() {
+            this.style.borderColor = '';
+            this.style.boxShadow = '';
+        });
+
+        // Prevent accidental form submission on Enter key
+        reasonTextarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                // Allow Ctrl+Enter to submit
+                cancelForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // Add warning if user tries to leave with unsaved changes
+        let hasUnsavedChanges = false;
+        reasonTextarea.addEventListener('input', function() {
+            hasUnsavedChanges = this.value.trim().length > 0;
+        });
+
+        window.addEventListener('beforeunload', function(e) {
+            if (hasUnsavedChanges && !submitBtn.disabled) {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        });
+
+        // Clear the unsaved changes flag when form is submitted
+        cancelForm.addEventListener('submit', function() {
+            hasUnsavedChanges = false;
+        });
+    });
+</script>
 </body>
 </html>
