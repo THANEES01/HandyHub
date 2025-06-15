@@ -379,15 +379,22 @@
                         'landscaping': 'bi-tree',
                         'home_cleaning': 'bi-house-heart',
                         'appliance_service': 'bi-gear',
-                        // Default icon for other categories
                         'default': 'bi-check-circle'
                     };
-                    
-                    // Function to get the appropriate icon
-                    const getIcon = (category) => {
-                        return categoryIcons[category] || categoryIcons.default;
+
+                    // Standardized category display names
+                    const categoryDisplayNames = {
+                        'plumbing': 'Plumbing',
+                        'electrical': 'Electrical Repairs',
+                        'roofing': 'Roof Repairs',
+                        'pest_control': 'Pest Control',
+                        'carpentry': 'Carpentry',
+                        'ac_service': 'AC Service',
+                        'landscaping': 'Landscaping',
+                        'home_cleaning': 'Home Cleaning',
+                        'appliance_service': 'Appliance Service'
                     };
-        
+                      
                     // Map of standardized category descriptions
                     const categoryDescriptions = {
                         'plumbing': 'Expert plumbing solutions for leaks, repairs, and installations with 24/7 emergency service.',
@@ -401,20 +408,31 @@
                         'appliance_service': 'Expert repair and maintenance for all home appliances.',
                         'default': 'Professional services provided by verified experts.'
                     };
-                    
+
+                    // Helper functions
+                    const getIcon = (categoryName) => {
+                        return categoryIcons[categoryName] || categoryIcons.default;
+                    };
+
                     // Function to get the description for a category
                     const getDescription = (category) => {
                         return categoryDescriptions[category] || categoryDescriptions.default;
                     };
-                    %>
                     
-                    <% categories.forEach(function(category) { %>
+                    const getDisplayName = (categoryName) => {
+                        return categoryDisplayNames[categoryName] || 
+                            (categoryName.charAt(0).toUpperCase() + categoryName.slice(1).replace(/_/g, ' '));
+                    };
+
+                    %>     
+                    
+                     <% categories.forEach(function(category) { %>
                         <div class="col-lg-4 col-md-6 mb-4">
                             <div class="service-card">
                                 <div class="service-icon">
                                     <i class="bi <%= getIcon(category.category_name) %>"></i>
                                 </div>
-                                <h4><%= category.display_name || category.category_name.charAt(0).toUpperCase() + category.category_name.slice(1) %></h4>
+                                <h4><%= getDisplayName(category.category_name) %></h4>
                                 <p><%= getDescription(category.category_name) %></p>
                                 <a href="/customer/category/<%= category.category_name %>" class="btn btn-explore">Explore Providers</a>
                             </div>

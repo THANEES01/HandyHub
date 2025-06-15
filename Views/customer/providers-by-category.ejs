@@ -506,52 +506,39 @@
         
         <!-- Updated Filter Section -->
         <div class="filter-row mb-4">
-            <div class="row g-3 align-items-center">
-                <div class="col-lg-5 col-md-6">
-                    <div class="search-container">
-                        <i class="bi bi-search search-icon"></i>
-                        <input type="text" id="searchProviders" class="form-control search-input" placeholder="Search providers...">
-                    </div>
-                </div>
-                <div class="col-lg-7 col-md-6">
-                    <form id="filterForm" action="/customer/category/<%= category %>" method="GET">
-                        <div class="filter-pills">
-                            <div class="dropdown location-dropdown me-2">
-                                <select id="state" name="state" class="form-select filter-select">
-                                    <option value="">All States</option>
-                                    <% if (states && states.length > 0) { %>
-                                        <% states.forEach(state => { %>
-                                            <option value="<%= state.id %>" <%= (selectedState == state.id) ? 'selected' : '' %>>
-                                                <%= state.state_name %>
-                                            </option>
-                                        <% }); %>
-                                    <% } %>
-                                </select>
-                            </div>
-                            
-                            <div class="dropdown location-dropdown me-2">
-                                <select id="city" name="city" class="form-select filter-select" <%= !cities || cities.length === 0 ? 'disabled' : '' %>>
-                                    <option value="">All Cities</option>
-                                    <% if (cities && cities.length > 0) { %>
-                                        <% cities.forEach(city => { %>
-                                            <option value="<%= city.id %>" <%= (selectedCity == city.id) ? 'selected' : '' %>>
-                                                <%= city.city_name %>
-                                            </option>
-                                        <% }); %>
-                                    <% } %>
-                                </select>
-                            </div>
-                            
-                            <% if (locationFilterActive) { %>
-                                <button type="button" id="clearButton" class="btn filter-button">Clear</button>
-                            <% } else { %>
-                                <button type="submit" class="btn filter-button">Filter</button>
-                            <% } %>
-                        </div>
-                    </form>
-                </div>
+    <div class="row g-3 align-items-center">
+        <div class="col-lg-6 col-md-7">
+            <div class="search-container">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" id="searchProviders" class="form-control search-input" placeholder="Search providers...">
             </div>
         </div>
+        <div class="col-lg-6 col-md-5">
+            <form id="filterForm" action="/customer/category/<%= category %>" method="GET">
+                <div class="filter-pills">
+                    <div class="dropdown location-dropdown me-2">
+                        <select id="state" name="state" class="form-select filter-select">
+                            <option value="">All States</option>
+                            <% if (states && states.length > 0) { %>
+                                <% states.forEach(state => { %>
+                                    <option value="<%= state.id %>" <%= (selectedState == state.id) ? 'selected' : '' %>>
+                                        <%= state.state_name %>
+                                    </option>
+                                <% }); %>
+                            <% } %>
+                        </select>
+                    </div>
+                    
+                    <% if (locationFilterActive) { %>
+                        <button type="button" id="clearButton" class="btn filter-button">Clear</button>
+                    <% } else { %>
+                        <button type="submit" class="btn filter-button">Filter</button>
+                    <% } %>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
         
         <div class="row provider-row g-4">
             <% if (providers.length === 0) { %>

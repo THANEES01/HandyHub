@@ -462,21 +462,48 @@ const showProviderRegister = (req, res) => {
 
 // Provider Registration
 const providerRegister = async (req, res) => {
-    const client = await pool.connect();
+     const client = await pool.connect();
     try {
         const {
             businessName,
             email,
             phoneNumber,
             password,
-            services, // This will be a JSON string from the hidden input
-            coverageAreas, // This will be a JSON string
-            serviceCategories, // Array of selected categories
-            categoryFees, // Object with category fees
-            feeTypes, // Object with fee types
-            slotDuration, // Appointment duration
-            availableDays // Array of available days
+            services,
+            coverageAreas,
+            serviceCategories,
+            categoryFees,
+            feeTypes,
+            slotDuration,
+            availableDays
         } = req.body;
+
+        // Define standardized category mapping
+        const categoryMapping = {
+            'plumbing': 'plumbing',
+            'electrical': 'electrical',
+            'roofing': 'roofing',
+            'pest_control': 'pest_control',
+            'carpentry': 'carpentry',
+            'ac_service': 'ac_service',
+            'landscaping': 'landscaping',
+            'home_cleaning': 'home_cleaning',
+            'appliance_service': 'appliance_service',
+            // Handle legacy names
+            'Plumbing': 'plumbing',
+            'Electrical': 'electrical',
+            'Electrical Repairs': 'electrical',
+            'Roof Repairs': 'roofing',
+            'Pest Control': 'pest_control',
+            'Carpentry': 'carpentry',
+            'Carpentry Services': 'carpentry',
+            'AC': 'ac_service',
+            'AC Service': 'ac_service',
+            'Landscaping': 'landscaping',
+            'Home Cleaning': 'home_cleaning',
+            'Appliance': 'appliance_service',
+            'Appliance Service': 'appliance_service'
+        };
 
         if (isLocalDevelopment) {
             console.log('Provider registration data:', {
@@ -526,29 +553,56 @@ const providerRegister = async (req, res) => {
 
         const providerId = newProvider.rows[0].id;
 
-        // 1. INSERT SERVICE CATEGORIES WITH FEES
+        // 1. INSERT SERVICE CATEGORIES WITH STANDARDIZED NAMES
         if (serviceCategories && Array.isArray(serviceCategories)) {
+            // Use Set to prevent duplicates during processing
+            const processedCategories = new Set();
+            
             for (const category of serviceCategories) {
-                if (category.trim()) {
+                if (category && category.trim()) {
+                    // Normalize the category name
+                    const normalizedCategory = categoryMapping[category.trim()] || category.trim().toLowerCase();
+                    
+                    // Skip if we've already processed this normalized category
+                    if (processedCategories.has(normalizedCategory)) {
+                        if (isLocalDevelopment) {
+                            console.log(`Skipping duplicate category: ${category} (normalized: ${normalizedCategory})`);
+                        }
+                        continue;
+                    }
+                    
+                    processedCategories.add(normalizedCategory);
+                    
                     const baseFee = categoryFees && categoryFees[category] ? parseFloat(categoryFees[category]) : 0;
                     const feeType = feeTypes && feeTypes[category] ? feeTypes[category] : 'per visit';
                     
-                    await client.query(
-                        'INSERT INTO service_categories (provider_id, category_name, base_fee, fee_type) VALUES ($1, $2, $3, $4)',
-                        [providerId, category.trim(), baseFee, feeType]
+                    // Check if this provider already has this category (additional safety check)
+                    const existingCategory = await client.query(
+                        'SELECT id FROM service_categories WHERE provider_id = $1 AND category_name = $2',
+                        [providerId, normalizedCategory]
                     );
                     
-                    if (isLocalDevelopment) {
-                        console.log(`Inserted category: ${category}, fee: ${baseFee}, type: ${feeType}`);
+                    if (existingCategory.rows.length === 0) {
+                        await client.query(
+                            'INSERT INTO service_categories (provider_id, category_name, base_fee, fee_type) VALUES ($1, $2, $3, $4)',
+                            [providerId, normalizedCategory, baseFee, feeType]
+                        );
+                        
+                        if (isLocalDevelopment) {
+                            console.log(`Inserted category: ${normalizedCategory}, fee: ${baseFee}, type: ${feeType}`);
+                        }
+                    } else {
+                        if (isLocalDevelopment) {
+                            console.log(`Category ${normalizedCategory} already exists for provider, skipping`);
+                        }
                     }
                 }
             }
         }
 
-        // 2. INSERT SERVICES OFFERED
+        // 2. INSERT SERVICES OFFERED (unchanged)
         if (services) {
             try {
-                // Parse the JSON string from the hidden input
                 const servicesArray = JSON.parse(services);
                 if (Array.isArray(servicesArray)) {
                     for (const service of servicesArray) {
@@ -570,7 +624,7 @@ const providerRegister = async (req, res) => {
             }
         }
 
-        // 3. INSERT PROVIDER AVAILABILITY
+        // 3. INSERT PROVIDER AVAILABILITY (unchanged)
         if (availableDays && Array.isArray(availableDays)) {
             for (const day of availableDays) {
                 const startTimeKey = `startTime_${day}`;
@@ -591,7 +645,7 @@ const providerRegister = async (req, res) => {
             }
         }
 
-        // 4. INSERT COVERAGE AREAS
+        // 4. INSERT COVERAGE AREAS (unchanged)
         if (coverageAreas) {
             try {
                 const coverageAreasArray = JSON.parse(coverageAreas);

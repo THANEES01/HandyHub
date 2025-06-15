@@ -107,14 +107,15 @@ const getDashboard = async (req, res) => {
 };
 
 const getProviderDetails = async (req, res) => {
-     try {
-        // Updated query to include pricing, availability, and coverage information with correct GROUP BY handling
+         try {
+        // Enhanced query to explicitly include verification status and related fields
         const query = `
             SELECT 
                 sp.id,
                 sp.business_name,
                 sp.phone_number,
                 sp.is_verified,
+                sp.verification_status,  -- Added this field
                 sp.certification_url,
                 u.email,
                 COALESCE(
@@ -184,6 +185,7 @@ const getProviderDetails = async (req, res) => {
                 sp.business_name, 
                 sp.phone_number, 
                 sp.is_verified, 
+                sp.verification_status,
                 sp.certification_url, 
                 u.email
         `;
@@ -196,9 +198,13 @@ const getProviderDetails = async (req, res) => {
 
         const providerData = provider.rows[0];
         
-        // Add extensive logging to debug data
+        // Enhanced logging to debug verification status
         console.log('Provider ID:', providerData.id);
-        console.log('Coverage locations data:', JSON.stringify(providerData.coverage_locations, null, 2));
+        console.log('Provider verification status:', {
+            is_verified: providerData.is_verified,
+            verification_status: providerData.verification_status,
+            type_of_is_verified: typeof providerData.is_verified
+        });
         
         // Handle Cloudinary URLs - no need to modify path as Cloudinary returns full URLs
         if (providerData.certification_url) {
@@ -213,6 +219,24 @@ const getProviderDetails = async (req, res) => {
             }
         }
 
+        // Ensure verification status is properly formatted
+        // Convert verification status to a consistent format
+        if (providerData.is_verified === true) {
+            providerData.verification_status_display = 'approved';
+        } else if (providerData.is_verified === false && providerData.verification_status === 'rejected') {
+            providerData.verification_status_display = 'rejected';
+        } else {
+            providerData.verification_status_display = 'pending';
+        }
+
+        console.log('Final provider data being sent:', {
+            id: providerData.id,
+            business_name: providerData.business_name,
+            is_verified: providerData.is_verified,
+            verification_status: providerData.verification_status,
+            verification_status_display: providerData.verification_status_display
+        });
+
         // Send the response
         res.json(providerData);
     } catch (err) {
@@ -223,6 +247,7 @@ const getProviderDetails = async (req, res) => {
         });
     }
 };
+
 
 // Delete a service provider
 router.delete('/provider/:id/delete', isAdmin, async (req, res) => {
@@ -469,17 +494,38 @@ const updateVerificationStatus = async (req, res) => {
             });
         }
 
-        // Update provider's verification status
+        // Set verification values based on status
+        let isVerified, verificationStatus;
+        
+        if (status === 'approve') {
+            isVerified = true;
+            verificationStatus = 'approved';
+        } else if (status === 'reject') {
+            isVerified = false;  // Changed from null to false for rejected providers
+            verificationStatus = 'rejected';
+        } else {
+            return res.status(400).json({ 
+                error: 'Invalid status', 
+                details: 'Status must be either "approve" or "reject"' 
+            });
+        }
+
+        console.log('Setting verification values:', { isVerified, verificationStatus });
+
+        // Update provider's verification status with proper values
         const result = await client.query(
             'UPDATE service_providers SET is_verified = $1, verification_status = $2 WHERE id = $3 RETURNING *',
-            [
-                status === 'approve', 
-                status === 'approve' ? 'approved' : 'rejected', 
-                req.params.id
-            ]
+            [isVerified, verificationStatus, req.params.id]
         );
 
-        // Fetch provider's complete details
+        if (result.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Provider not found' });
+        }
+
+        console.log('Updated provider verification:', result.rows[0]);
+
+        // Fetch provider's complete details for email
         const providerQuery = await client.query(`
             SELECT 
                 sp.id, 
@@ -496,19 +542,20 @@ const updateVerificationStatus = async (req, res) => {
 
         const provider = providerQuery.rows[0];
 
-        // If approving, send verification email
+        // Send appropriate email
         if (status === 'approve') {
             try {
                 await sendVerificationEmail(provider);
+                console.log('Verification email sent successfully');
             } catch (emailError) {
                 console.error('Approval email sending failed:', emailError);
                 // Continue with the process even if email fails
             }
         } 
-        // If rejecting, send rejection email
         else if (status === 'reject' && rejectionReason) {
             try {
                 await sendRejectionEmail(provider, rejectionReason);
+                console.log('Rejection email sent successfully');
             } catch (emailError) {
                 console.error('Rejection email sending failed:', emailError);
                 // Continue with the process even if email fails
@@ -520,7 +567,11 @@ const updateVerificationStatus = async (req, res) => {
             success: true, 
             message: status === 'approve' 
                 ? 'Provider approved and verification email sent' 
-                : 'Provider rejected and notification email sent' 
+                : 'Provider rejected and notification email sent',
+            updatedStatus: {
+                is_verified: isVerified,
+                verification_status: verificationStatus
+            }
         });
 
     } catch (err) {

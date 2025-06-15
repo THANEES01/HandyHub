@@ -60,48 +60,13 @@
             padding: 12px;
             border-radius: 8px;
             border: 1px solid #ddd;
-            margin-bottom: 5px;
+            margin-bottom: 15px;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         .form-control:focus, .form-select:focus {
             border-color: var(--primary-blue);
             box-shadow: 0 0 0 0.2rem rgba(0,119,190,0.25);
-        }
-
-        /* Enhanced validation styles */
-        .form-control.is-valid {
-            border-color: #28a745;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='m2.3 6.73.8-.77L4.8 7.7 6.72 5.84l.8.76-2.72 2.68z'/%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right calc(0.375em + 0.1875rem) center;
-            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
-            padding-right: calc(1.5em + 0.75rem);
-        }
-
-        .form-control.is-invalid {
-            border-color: #dc3545;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 4.6 2.4 2.4M8.2 4.6l-2.4 2.4'/%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right calc(0.375em + 0.1875rem) center;
-            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
-            padding-right: calc(1.5em + 0.75rem);
-        }
-
-        .valid-feedback {
-            color: #28a745;
-            font-size: 0.875rem;
-            margin-top: 0.25rem;
-            margin-bottom: 15px;
-            display: block;
-        }
-
-        .invalid-feedback {
-            color: #dc3545;
-            font-size: 0.875rem;
-            margin-top: 0.25rem;
-            margin-bottom: 15px;
-            display: block;
         }
 
         .services-section {
@@ -127,10 +92,6 @@
             padding: 8px 12px;
             border: 1px solid #ddd;
             border-radius: 6px;
-        }
-
-        .service-input-group input.is-invalid {
-            border-color: #dc3545;
         }
 
         .service-input-group button {
@@ -220,12 +181,6 @@
             transform: translateY(-2px);
         }
 
-        .btn-register:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-            transform: none;
-        }
-
         .alert {
             border-radius: 8px;
             margin-bottom: 20px;
@@ -245,7 +200,6 @@
             text-decoration: underline;
         }
 
-        /* Base fee card styles */
         .pricing-section {
             margin-top: 30px;
             display: none;
@@ -281,7 +235,6 @@
             font-style: italic;
         }
 
-        /* Additional styles for the coverage area section */
         #coverageList .btn-sm {
             padding: 0.25rem 0.5rem;
             font-size: 0.75rem;
@@ -302,7 +255,6 @@
             margin-bottom: 0;
         }
 
-        /* Availability section styles */
         .availability-container {
             background: var(--light-blue);
             padding: 20px;
@@ -357,7 +309,6 @@
             box-shadow: 0 0 0 0.2rem rgba(0,119,190,0.25);
         }
 
-        /* Ensure dropdown options are properly sized */
         .time-input-group select option {
             padding: 5px 10px;
             font-size: 0.875rem;
@@ -374,80 +325,10 @@
             padding-bottom: 10px;
         }
 
-        /* Password strength indicator */
-        .password-strength {
-            height: 4px;
-            background-color: #e9ecef;
-            border-radius: 2px;
-            margin-top: 5px;
-            margin-bottom: 10px;
-            overflow: hidden;
-        }
-
-        .password-strength-bar {
-            height: 100%;
-            width: 0%;
-            transition: width 0.3s ease, background-color 0.3s ease;
-        }
-
-        .strength-weak { background-color: #dc3545; }
-        .strength-fair { background-color: #ffc107; }
-        .strength-good { background-color: #fd7e14; }
-        .strength-strong { background-color: #28a745; }
-
-        /* File upload validation */
-        .file-upload-container {
-            position: relative;
-        }
-
         .file-size-limit {
             font-size: 0.75rem;
             color: #6c757d;
             margin-top: 5px;
-        }
-
-        /* Real-time validation indicators */
-        .field-container {
-            position: relative;
-            margin-bottom: 20px;
-        }
-
-        .validation-icon {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 1rem;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .validation-icon.show {
-            opacity: 1;
-        }
-
-        .validation-icon.valid {
-            color: #28a745;
-        }
-
-        .validation-icon.invalid {
-            color: #dc3545;
-        }
-
-        /* Progress indicator */
-        .form-progress {
-            background-color: #e9ecef;
-            height: 4px;
-            border-radius: 2px;
-            margin-bottom: 30px;
-            overflow: hidden;
-        }
-
-        .form-progress-bar {
-            height: 100%;
-            background-color: var(--primary-blue);
-            width: 0%;
-            transition: width 0.3s ease;
         }
     </style>
 </head>
@@ -457,16 +338,10 @@
 
     <div class="register-container">
         <div class="register-card">
-            <!-- FOR PROVIDER-REGISTER.EJS -->
             <div class="logo-section">
                 <i class="bi bi-tools"></i>
                 <h4>Service Provider Registration</h4>
                 <p class="text-muted mt-2">Join our network of trusted service providers</p>
-            </div>
-
-            <!-- Form Progress Indicator -->
-            <div class="form-progress">
-                <div class="form-progress-bar" id="formProgressBar"></div>
             </div>
 
             <!-- IMPROVED MESSAGE DISPLAY -->
@@ -482,48 +357,34 @@
                 </div>
             <% } %>
 
-            <form id="providerRegistrationForm" action="/auth/provider-register" method="POST" enctype="multipart/form-data" novalidate>
+            <form id="providerRegistrationForm" action="/auth/provider-register" method="POST" enctype="multipart/form-data">
                 <!-- Business Information -->
-                <div class="field-container">
+                <div class="mb-3">
                     <label class="form-label">Name/Business Name <span class="text-danger">*</span></label>
                     <input type="text" 
                            class="form-control" 
                            name="businessName" 
                            id="businessName"
-                           required 
-                           minlength="2" 
-                           maxlength="100"
-                           pattern="^[a-zA-Z0-9\s&'.-]+$"
-                           data-validation-message="Business name must be 2-100 characters and contain only letters, numbers, spaces, and basic punctuation">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback">Great business name!</div>
+                           required>
                 </div>
 
-                <div class="field-container">
+                <div class="mb-3">
                     <label class="form-label">Email Address <span class="text-danger">*</span></label>
                     <input type="email" 
                            class="form-control" 
                            name="email" 
                            id="email"
-                           required
-                           pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
-                           data-validation-message="Please enter a valid email address">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback">Valid email address!</div>
+                           required>
                 </div>
 
-                <div class="field-container">
+                <div class="mb-3">
                     <label class="form-label">Contact Number <span class="text-danger">*</span></label>
                     <input type="tel" 
                            class="form-control" 
                            name="phoneNumber" 
                            id="phoneNumber"
                            required 
-                           pattern="^(\+?6?01)[0-46-9]-*[0-9]{7,8}$"
-                           placeholder="e.g., 012-3456789 or +6012-3456789"
-                           data-validation-message="Please enter a valid Malaysian phone number">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback">Valid phone number!</div>
+                           placeholder="e.g., 012-3456789 or +6012-3456789">
                     <small class="text-muted">Malaysian phone numbers only (e.g., 012-3456789)</small>
                 </div>
 
@@ -533,30 +394,29 @@
                     <p class="text-muted small mb-3">Select one or more categories that best describe your services</p>
                     <div class="category-checks" id="categoryChecks">
                         <% const categories = [
-                            { id: 'Plumbing', label: 'Plumbing', feeType: 'per visit' },
-                            { id: 'Electrical', label: 'Electrical Repairs', feeType: 'per visit' },
-                            { id: 'Roof Repairs', label: 'Roof Repairs', feeType: 'per visit' },
-                            { id: 'Pest Control', label: 'Pest Control', feeType: 'per visit' },
-                            { id: 'Carpentry', label: 'Carpentry', feeType: 'per visit' },
-                            { id: 'AC', label: 'AC', feeType: 'per visit' },
-                            { id: 'Landscaping', label: 'Landscaping', feeType: 'per visit' },
-                            { id: 'Home Cleaning', label: 'Home Cleaning', feeType: 'per hour' },
-                            { id: 'Appliance', label: 'Appliance', feeType: 'per visit' }
+                             { id: 'plumbing', label: 'Plumbing', feeType: 'per visit' },
+                                { id: 'electrical', label: 'Electrical Repairs', feeType: 'per visit' },
+                                { id: 'roofing', label: 'Roof Repairs', feeType: 'per visit' },
+                                { id: 'pest_control', label: 'Pest Control', feeType: 'per visit' },
+                                { id: 'carpentry', label: 'Carpentry', feeType: 'per visit' },
+                                { id: 'ac_service', label: 'AC Service', feeType: 'per visit' },
+                                { id: 'landscaping', label: 'Landscaping', feeType: 'per visit' },
+                                { id: 'home_cleaning', label: 'Home Cleaning', feeType: 'per hour' },
+                                { id: 'appliance_service', label: 'Appliance Service', feeType: 'per visit' }
                         ] %>
                         
                         <% categories.forEach(category => { %>
                             <div class="category-check">
                                 <input type="checkbox" 
-                                       name="serviceCategories[]" 
-                                       value="<%= category.id %>" 
-                                       id="<%= category.id %>"
-                                       data-fee-type="<%= category.feeType %>"
-                                       onchange="togglePricingCard(this); validateForm();">
+                                    name="serviceCategories[]" 
+                                    value="<%= category.id %>" 
+                                    id="<%= category.id %>"
+                                    data-fee-type="<%= category.feeType %>"
+                                    onchange="togglePricingCard(this);">
                                 <label for="<%= category.id %>"><%= category.label %></label>
                             </div>
                         <% }) %>
                     </div>
-                    <div class="invalid-feedback" id="categoryError" style="display: none;">Please select at least one service category</div>
                 </div>
 
                 <!-- Base Fee Section -->
@@ -587,7 +447,7 @@
                                                 name="availableDays" 
                                                 value="<%= day %>" 
                                                 checked
-                                                onchange="toggleDayAvailability('<%= day %>'); validateForm();">
+                                                onchange="toggleDayAvailability('<%= day %>');">
                                             <label class="form-check-label" for="<%= day.toLowerCase() %>Available">
                                                 <%= day %>
                                             </label>
@@ -596,7 +456,7 @@
                                     <div class="col-md-9 time-slots" id="timeSlots<%= day %>">
                                         <div class="time-input-group">
                                             <label>Start Time</label>
-                                            <select class="form-select" name="startTime_<%= day %>" onchange="validateTimeSlots('<%= day %>'); validateForm();">
+                                            <select class="form-select" name="startTime_<%= day %>">
                                                 <% for(let hour = 6; hour <= 20; hour++) { %>
                                                     <% 
                                                     let displayHour = hour;
@@ -621,7 +481,7 @@
                                         </div>
                                         <div class="time-input-group">
                                             <label>End Time</label>
-                                            <select class="form-select" name="endTime_<%= day %>" onchange="validateTimeSlots('<%= day %>'); validateForm();">
+                                            <select class="form-select" name="endTime_<%= day %>">
                                                 <% for(let hour = 6; hour <= 20; hour++) { %>
                                                     <% 
                                                     let displayHour = hour;
@@ -646,7 +506,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="invalid-feedback" id="<%= day.toLowerCase() %>TimeError" style="display: none;">End time must be after start time</div>
                             </div>
                         <% }); %>
                         
@@ -659,7 +518,6 @@
                                 <option value="180">3 hours</option>
                             </select>
                         </div>
-                        <div class="invalid-feedback" id="availabilityError" style="display: none;">Please select at least one available day</div>
                     </div>
                 </div>
 
@@ -674,7 +532,6 @@
                         </button>
                     </div>
                     <input type="hidden" name="services" id="servicesInput">
-                    <div class="invalid-feedback" id="servicesError" style="display: none;">Please add at least one service</div>
                 </div>
 
                 <!-- Service Coverage Area Section -->
@@ -742,22 +599,18 @@
                             </div>
                             <input type="hidden" name="coverageAreas" id="coverageAreasInput" value="[]">
                         </div>
-                        <div class="invalid-feedback" id="coverageError" style="display: none;">Please select at least one coverage area</div>
                     </div>
                 </div>
 
                 <!-- Certification Upload -->
-                <div class="field-container file-upload-container">
+                <div class="mb-3">
                     <label class="form-label">Business/Skill Certification <span class="text-danger">*</span></label>
                     <input type="file" 
                         class="form-control" 
                         name="certification" 
                         id="certification"
                         accept=".pdf,.jpg,.jpeg,.png" 
-                        required
-                        onchange="validateFile(this)">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback">File uploaded successfully!</div>
+                        required>
                     <div class="file-size-limit">
                         <i class="bi bi-info-circle"></i> 
                         Upload proof of business registration or skill certification (PDF, JPG, PNG) - Max size: 1MB
@@ -765,39 +618,26 @@
                 </div>
 
                 <!-- Password Fields -->
-                <div class="field-container">
+                <div class="mb-3">
                     <label class="form-label">Password <span class="text-danger">*</span></label>
                     <input type="password" 
                            class="form-control" 
                            name="password" 
                            id="password"
-                           required 
-                           minlength="8"
-                           pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
-                           oninput="validatePassword(this); validateForm();"
-                           data-validation-message="Password must be at least 8 characters with uppercase, lowercase, number, and special character">
-                    <div class="password-strength">
-                        <div class="password-strength-bar" id="passwordStrengthBar"></div>
-                    </div>
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback">Strong password!</div>
+                           required>
                     <small class="text-muted">Minimum 8 characters with uppercase, lowercase, number, and special character</small>
                 </div>
 
-                <div class="field-container">
+                <div class="mb-3">
                     <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
                     <input type="password" 
                            class="form-control" 
                            name="confirmPassword" 
                            id="confirmPassword"
-                           required
-                           oninput="validatePasswordMatch(this); validateForm();"
-                           data-validation-message="Passwords must match">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback">Passwords match!</div>
+                           required>
                 </div>
 
-                <button type="submit" class="btn-register" id="submitBtn" disabled>
+                <button type="submit" class="btn-register" id="submitBtn">
                     <i class="bi bi-person-plus-fill me-2"></i>Register as Service Provider
                 </button>
             </form>
@@ -817,442 +657,9 @@
         const selectedCategories = new Set();
         const baseFees = {};
         const selectedCoverageAreas = [];
-        let validationState = {
-            businessName: false,
-            email: false,
-            phoneNumber: false,
-            categories: false,
-            fees: false,
-            availability: false,
-            services: false,
-            coverage: false,
-            certification: false,
-            password: false,
-            confirmPassword: false
-        };
-
-        // Track which fields have been touched
-        let touchedFields = new Set();
-
-        // Helper function to create a debug log
-        function debugLog(message, data) {
-            console.log(`[PROVIDER FORM] ${message}`, data || '');
-        }
-
-        // Enhanced validation functions - FIXED VERSION
-        function validateField(field, showValidation = false) {
-            const value = field.value.trim();
-            const fieldName = field.name || field.id;
-            let isValid = true;
-            let message = '';
-
-            // Check if field has been touched
-            const hasBeenTouched = touchedFields.has(fieldName);
-
-            // Only proceed with visual validation if explicitly requested AND field has been touched
-            if (!showValidation && !hasBeenTouched) {
-                // Still update validation state for form progress, but don't show visual feedback
-                if (field.hasAttribute('required') && !value) {
-                    validationState[fieldName] = false;
-                } else if (value) {
-                    // Perform silent validation for state tracking
-                    switch (fieldName) {
-                        case 'businessName':
-                            isValid = value.length >= 2 && value.length <= 100 && /^[a-zA-Z0-9\s&'.-]+$/.test(value);
-                            break;
-                        case 'email':
-                            isValid = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(value);
-                            break;
-                        case 'phoneNumber':
-                            isValid = /^(\+?6?01)[0-46-9]-*[0-9]{7,8}$/.test(value.replace(/\s/g, ''));
-                            break;
-                        default:
-                            isValid = true;
-                    }
-                    validationState[fieldName] = isValid;
-                } else {
-                    validationState[fieldName] = false;
-                }
-                return validationState[fieldName];
-            }
-
-            // Reset classes only if field has been touched or validation is explicitly requested
-            field.classList.remove('is-valid', 'is-invalid');
-
-            if (field.hasAttribute('required') && !value) {
-                isValid = false;
-                message = 'This field is required';
-            } else if (value) {
-                // Field-specific validation
-                switch (fieldName) {
-                    case 'businessName':
-                        if (value.length < 2 || value.length > 100) {
-                            isValid = false;
-                            message = 'Business name must be 2-100 characters';
-                        } else if (!/^[a-zA-Z0-9\s&'.-]+$/.test(value)) {
-                            isValid = false;
-                            message = 'Business name contains invalid characters';
-                        }
-                        break;
-                    
-                    case 'email':
-                        const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
-                        if (!emailRegex.test(value)) {
-                            isValid = false;
-                            message = 'Please enter a valid email address';
-                        }
-                        break;
-                    
-                    case 'phoneNumber':
-                        const phoneRegex = /^(\+?6?01)[0-46-9]-*[0-9]{7,8}$/;
-                        if (!phoneRegex.test(value.replace(/\s/g, ''))) {
-                            isValid = false;
-                            message = 'Please enter a valid Malaysian phone number';
-                        }
-                        break;
-                }
-            }
-
-            // Apply visual feedback only if field has been touched or validation is explicitly requested
-            if (value && isValid) {
-                field.classList.add('is-valid');
-                showFieldMessage(field, '', 'valid');
-            } else if (!isValid) {
-                field.classList.add('is-invalid');
-                showFieldMessage(field, message || field.dataset.validationMessage || 'Invalid input', 'invalid');
-            }
-
-            // Update validation state
-            validationState[fieldName] = isValid && value !== '';
-            return isValid;
-        }
-
-        function showFieldMessage(field, message, type) {
-            const container = field.closest('.field-container');
-            if (!container) return;
-
-            const feedbackEl = container.querySelector(`.${type}-feedback`);
-            if (feedbackEl) {
-                feedbackEl.textContent = message;
-                feedbackEl.style.display = message ? 'block' : 'none';
-            }
-        }
-
-        function validatePassword(field, showValidation = false) {
-            const password = field.value;
-            const fieldName = field.name || field.id;
-            const hasBeenTouched = touchedFields.has(fieldName);
-            const strengthBar = document.getElementById('passwordStrengthBar');
-            
-            let strength = 0;
-            let isValid = false;
-
-            // Always update strength bar if there's content, but only if field has been touched
-            if (password && hasBeenTouched) {
-                // Check password criteria
-                const criteria = {
-                    length: password.length >= 8,
-                    lowercase: /[a-z]/.test(password),
-                    uppercase: /[A-Z]/.test(password),
-                    number: /\d/.test(password),
-                    special: /[@$!%*?&]/.test(password)
-                };
-
-                // Calculate strength
-                strength = Object.values(criteria).filter(Boolean).length;
-
-                // Set strength bar
-                const strengthPercentage = (strength / 5) * 100;
-                strengthBar.style.width = strengthPercentage + '%';
-
-                // Set strength class
-                let strengthClass = '';
-                if (strength <= 2) {
-                    strengthClass = 'strength-weak';
-                } else if (strength === 3) {
-                    strengthClass = 'strength-fair';
-                } else if (strength === 4) {
-                    strengthClass = 'strength-good';
-                } else {
-                    strengthClass = 'strength-strong';
-                }
-
-                strengthBar.className = `password-strength-bar ${strengthClass}`;
-                isValid = Object.values(criteria).every(Boolean);
-            } else if (!password) {
-                // Reset strength bar if no password
-                strengthBar.style.width = '0%';
-                strengthBar.className = 'password-strength-bar';
-                isValid = false;
-            } else {
-                // Password exists but field not touched - just validate silently
-                const criteria = {
-                    length: password.length >= 8,
-                    lowercase: /[a-z]/.test(password),
-                    uppercase: /[A-Z]/.test(password),
-                    number: /\d/.test(password),
-                    special: /[@$!%*?&]/.test(password)
-                };
-                isValid = Object.values(criteria).every(Boolean);
-            }
-
-            // Only show validation feedback if field has been touched or explicitly requested
-            if ((hasBeenTouched || showValidation) && password) {
-                field.classList.remove('is-valid', 'is-invalid');
-                if (isValid) {
-                    field.classList.add('is-valid');
-                    showFieldMessage(field, 'Strong password!', 'valid');
-                } else {
-                    field.classList.add('is-invalid');
-                    showFieldMessage(field, 'Password must meet all requirements', 'invalid');
-                }
-            } else if ((hasBeenTouched || showValidation) && !password) {
-                field.classList.remove('is-valid', 'is-invalid');
-                field.classList.add('is-invalid');
-                showFieldMessage(field, 'Password is required', 'invalid');
-            }
-
-            validationState.password = isValid;
-            return isValid;
-        }
-
-        function validatePasswordMatch(field, showValidation = false) {
-            const password = document.getElementById('password').value;
-            const confirmPassword = field.value;
-            const fieldName = field.name || field.id;
-            const hasBeenTouched = touchedFields.has(fieldName);
-            const isValid = password === confirmPassword && confirmPassword !== '';
-
-            // Only show validation if field has been touched or explicitly requested
-            if ((hasBeenTouched || showValidation) && confirmPassword) {
-                field.classList.remove('is-valid', 'is-invalid');
-                if (isValid) {
-                    field.classList.add('is-valid');
-                    showFieldMessage(field, 'Passwords match!', 'valid');
-                } else {
-                    field.classList.add('is-invalid');
-                    showFieldMessage(field, 'Passwords do not match', 'invalid');
-                }
-            } else if ((hasBeenTouched || showValidation) && !confirmPassword) {
-                field.classList.remove('is-valid', 'is-invalid');
-                field.classList.add('is-invalid');
-                showFieldMessage(field, 'Please confirm your password', 'invalid');
-            }
-
-            validationState.confirmPassword = isValid;
-            return isValid;
-        }
-
-        function validateFile(fileInput, showValidation = false) {
-            const file = fileInput.files[0];
-            const fieldName = fileInput.name || fileInput.id;
-            const hasBeenTouched = touchedFields.has(fieldName);
-            let isValid = false;
-            let message = '';
-
-            // Determine if file is valid
-            if (file) {
-                isValid = true;
-                // Check file size (1MB = 1024 * 1024 bytes)
-                const maxSize = 1024 * 1024;
-                if (file.size > maxSize) {
-                    isValid = false;
-                    message = 'File size must be less than 1MB';
-                }
-
-                // Check file type
-                const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-                if (isValid && !allowedTypes.includes(file.type)) {
-                    isValid = false;
-                    message = 'Only PDF, JPG, and PNG files are allowed';
-                }
-            } else {
-                isValid = false;
-                message = 'Please select a file';
-            }
-
-            // Only show visual feedback if field has been touched or file is selected or validation is explicitly requested
-            if ((hasBeenTouched || showValidation || file)) {
-                fileInput.classList.remove('is-valid', 'is-invalid');
-
-                if (isValid && file) {
-                    fileInput.classList.add('is-valid');
-                    showFieldMessage(fileInput, 'File uploaded successfully!', 'valid');
-                } else {
-                    fileInput.classList.add('is-invalid');
-                    showFieldMessage(fileInput, message, 'invalid');
-                }
-            }
-
-            validationState.certification = isValid;
-            return isValid;
-        }
-
-        function markFieldAsTouched(fieldName) {
-            touchedFields.add(fieldName);
-        }
-
-        function validateServiceInput(input) {
-            const value = input.value.trim();
-            
-            // Only validate if there's content
-            if (value.length > 0) {
-                input.classList.remove('is-valid', 'is-invalid');
-                
-                if (value.length >= 2 && value.length <= 100) {
-                    input.classList.add('is-valid');
-                } else {
-                    input.classList.add('is-invalid');
-                }
-            } else {
-                input.classList.remove('is-valid', 'is-invalid');
-            }
-        }
-
-        function validateFeeInput(input) {
-            const value = parseFloat(input.value);
-            
-            // Only validate if there's content
-            if (input.value) {
-                input.classList.remove('is-valid', 'is-invalid');
-                
-                if (value >= 1 && value <= 10000) {
-                    input.classList.add('is-valid');
-                } else {
-                    input.classList.add('is-invalid');
-                }
-            } else {
-                input.classList.remove('is-valid', 'is-invalid');
-            }
-        }
-
-        function validateTimeSlots(day) {
-            const startSelect = document.querySelector(`select[name="startTime_${day}"]`);
-            const endSelect = document.querySelector(`select[name="endTime_${day}"]`);
-            const errorEl = document.getElementById(`${day.toLowerCase()}TimeError`);
-            
-            if (!startSelect || !endSelect) return true;
-
-            const startTime = parseInt(startSelect.value.split(':')[0]);
-            const endTime = parseInt(endSelect.value.split(':')[0]);
-            const isValid = endTime > startTime;
-
-            if (errorEl) {
-                errorEl.style.display = isValid ? 'none' : 'block';
-            }
-
-            return isValid;
-        }
-
-        function validateCategories() {
-            const selectedCheckboxes = document.querySelectorAll('input[name="serviceCategories[]"]:checked');
-            const isValid = selectedCheckboxes.length > 0;
-            const errorEl = document.getElementById('categoryError');
-            
-            if (errorEl) {
-                errorEl.style.display = isValid ? 'none' : 'block';
-            }
-
-            validationState.categories = isValid;
-            return isValid;
-        }
-
-        function validateServices() {
-            const servicesArray = Array.from(services).filter(Boolean);
-            const isValid = servicesArray.length > 0;
-            const errorEl = document.getElementById('servicesError');
-            
-            if (errorEl) {
-                errorEl.style.display = isValid ? 'none' : 'block';
-            }
-
-            validationState.services = isValid;
-            return isValid;
-        }
-
-        function validateCoverage() {
-            const isValid = selectedCoverageAreas.length > 0;
-            const errorEl = document.getElementById('coverageError');
-            
-            if (errorEl) {
-                errorEl.style.display = isValid ? 'none' : 'block';
-            }
-
-            validationState.coverage = isValid;
-            return isValid;
-        }
-
-        function validateAvailability() {
-            const availableDays = document.querySelectorAll('input[name="availableDays"]:checked');
-            const isValid = availableDays.length > 0;
-            const errorEl = document.getElementById('availabilityError');
-            
-            if (errorEl) {
-                errorEl.style.display = isValid ? 'none' : 'block';
-            }
-
-            validationState.availability = isValid;
-            return isValid;
-        }
-
-        function validateFees() {
-            const selectedCheckboxes = document.querySelectorAll('input[name="serviceCategories[]"]:checked');
-            let isValid = true;
-
-            for (const checkbox of selectedCheckboxes) {
-                const categoryId = checkbox.id;
-                const feeInput = document.getElementById(`fee-${categoryId}`);
-                
-                if (!feeInput || !feeInput.value || parseFloat(feeInput.value) <= 0) {
-                    isValid = false;
-                    if (feeInput && feeInput.value) {
-                        feeInput.classList.add('is-invalid');
-                    }
-                } else {
-                    if (feeInput) {
-                        feeInput.classList.remove('is-invalid');
-                        feeInput.classList.add('is-valid');
-                    }
-                }
-            }
-
-            validationState.fees = isValid;
-            return isValid;
-        }
-
-        function validateForm() {
-            // Validate all sections silently
-            validateCategories();
-            validateServices();
-            validateCoverage();
-            validateAvailability();
-            validateFees();
-
-            // Calculate overall progress
-            const totalFields = Object.keys(validationState).length;
-            const validFields = Object.values(validationState).filter(Boolean).length;
-            const progress = (validFields / totalFields) * 100;
-
-            // Update progress bar
-            const progressBar = document.getElementById('formProgressBar');
-            if (progressBar) {
-                progressBar.style.width = progress + '%';
-            }
-
-            // Enable/disable submit button
-            const submitBtn = document.getElementById('submitBtn');
-            const allValid = Object.values(validationState).every(Boolean);
-            
-            if (submitBtn) {
-                submitBtn.disabled = !allValid;
-            }
-
-            return allValid;
-        }
 
         // Service management functions
         function addService() {
-            debugLog('Adding new service input field');
             const serviceInput = document.createElement('div');
             serviceInput.className = 'service-input-group';
             const inputId = `service-${Date.now()}`;
@@ -1262,11 +669,8 @@
                     placeholder="Enter service name" 
                     class="form-control"
                     required
-                    minlength="2"
-                    maxlength="100"
-                    onchange="updateServices(this); validateServices(); validateForm();"
-                    onkeyup="updateServices(this); validateServices(); validateForm();"
-                    oninput="validateServiceInput(this)">
+                    onchange="updateServices(this);"
+                    onkeyup="updateServices(this);">
                 <button type="button" onclick="removeService(this, '${inputId}')">
                     <i class="bi bi-trash"></i>
                 </button>
@@ -1277,19 +681,15 @@
         function removeService(button, inputId) {
             const input = document.getElementById(inputId);
             if (input && input.value) {
-                debugLog(`Removing service: ${input.value.trim()}`);
                 services.delete(input.value.trim());
                 updateServicesInput();
             }
             button.parentElement.remove();
-            validateServices();
-            validateForm();
         }
 
         function updateServices(input) {
             const value = input.value.trim();
             if (value) {
-                debugLog(`Adding/Updating service: ${value}`);
                 services.add(value);
             } else {
                 services.delete(value);
@@ -1300,7 +700,6 @@
         function updateServicesInput() {
             const servicesArray = Array.from(services).filter(Boolean);
             document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
-            debugLog('Updated services array:', servicesArray);
         }
 
         // Pricing management functions
@@ -1310,11 +709,9 @@
             const feeType = checkbox.dataset.feeType;
             
             if (checkbox.checked) {
-                debugLog(`Category selected: ${categoryId} (${categoryLabel})`);
                 selectedCategories.add(categoryId);
                 addPricingCard(categoryId, categoryLabel, feeType);
             } else {
-                debugLog(`Category deselected: ${categoryId}`);
                 selectedCategories.delete(categoryId);
                 removePricingCard(categoryId);
             }
@@ -1327,7 +724,6 @@
         function updateFee(categoryId, value) {
             const numValue = parseFloat(value) || 0;
             baseFees[categoryId] = numValue;
-            debugLog(`Updated fee for ${categoryId} to ${numValue}`);
             
             // Make sure the fee input has the correct value
             const feeInput = document.getElementById(`fee-${categoryId}`);
@@ -1363,16 +759,9 @@
                                 id="fee-${categoryId}" 
                                 name="categoryFees[${categoryId}]" 
                                 placeholder="Enter amount" 
-                                onchange="updateFee('${categoryId}', this.value); validateFees(); validateForm();" 
-                                onblur="updateFee('${categoryId}', this.value); validateFees(); validateForm();"
-                                oninput="validateFeeInput(this)"
+                                onchange="updateFee('${categoryId}', this.value);" 
+                                onblur="updateFee('${categoryId}', this.value);"
                                 required>
-                            <div class="invalid-feedback">
-                                Please enter an amount between RM1 and RM10,000
-                            </div>
-                            <div class="valid-feedback">
-                                Valid fee amount
-                            </div>
                         </div>
                         <input type="hidden" name="feeTypes[${categoryId}]" value="${feeType}">
                         <p class="pricing-info">${feeTip}</p>
@@ -1380,7 +769,6 @@
                 `;
                 
                 container.appendChild(card);
-                debugLog(`Added pricing card for ${categoryId} with proper form names`);
                 
                 // Initialize the fee value if we already have one
                 if (baseFees[categoryId]) {
@@ -1397,7 +785,6 @@
             if (card) {
                 card.remove();
                 delete baseFees[categoryId];
-                debugLog(`Removed pricing card for ${categoryId}`);
             }
         }
 
@@ -1417,8 +804,6 @@
                     select.disabled = true;
                 });
             }
-            
-            debugLog(`Day ${day} availability toggled:`, checkbox.checked);
         }
 
         // Malaysian cities data structure
@@ -1624,8 +1009,6 @@
                 option.textContent = city.name;
                 citySelect.appendChild(option);
             });
-            
-            debugLog(`Loaded ${cities.length} cities for ${stateNames[stateId]}`);
         }
 
         function addCoverage() {
@@ -1691,20 +1074,11 @@
             citySelect.value = '';
             citySelect.disabled = true;
             stateSelect.value = '';
-            
-            // Validate coverage after adding
-            validateCoverage();
-            validateForm();
-            
-            debugLog(`Added coverage area: ${cityName}, ${stateName}`);
         }
 
         function removeCoverage(index) {
             selectedCoverageAreas.splice(index, 1);
             updateCoverageList();
-            validateCoverage();
-            validateForm();
-            debugLog('Removed coverage area');
         }
 
         function updateCoverageList() {
@@ -1752,71 +1126,8 @@
             coverageAreasInput.value = JSON.stringify(selectedCoverageAreas);
         }
 
-        // Updated form initialization
+        // Form initialization
         document.addEventListener('DOMContentLoaded', function() {
-            debugLog('Form initialized');
-            
-            // Add event listeners for real-time validation
-            const formFields = [
-                { id: 'businessName', name: 'businessName' },
-                { id: 'email', name: 'email' },
-                { id: 'phoneNumber', name: 'phoneNumber' },
-                { id: 'password', name: 'password' },
-                { id: 'confirmPassword', name: 'confirmPassword' },
-                { id: 'certification', name: 'certification' }
-            ];
-            
-            formFields.forEach(field => {
-                const element = document.getElementById(field.id);
-                if (element) {
-                    // Mark field as touched on first user interaction
-                    element.addEventListener('focus', () => {
-                        markFieldAsTouched(field.name);
-                    });
-
-                    element.addEventListener('input', () => {
-                        markFieldAsTouched(field.name);
-                        
-                        // Validate with visual feedback since user is interacting
-                        if (field.name === 'password') {
-                            validatePassword(element, true);
-                        } else if (field.name === 'confirmPassword') {
-                            validatePasswordMatch(element, true);
-                        } else if (field.name === 'certification') {
-                            validateFile(element, true);
-                        } else {
-                            validateField(element, true);
-                        }
-                        validateForm();
-                    });
-
-                    // Also validate on blur
-                    element.addEventListener('blur', () => {
-                        if (touchedFields.has(field.name)) {
-                            if (field.name === 'password') {
-                                validatePassword(element, true);
-                            } else if (field.name === 'confirmPassword') {
-                                validatePasswordMatch(element, true);
-                            } else if (field.name === 'certification') {
-                                validateFile(element, true);
-                            } else {
-                                validateField(element, true);
-                            }
-                            validateForm();
-                        }
-                    });
-
-                    // For file input, also listen to change event
-                    if (field.name === 'certification') {
-                        element.addEventListener('change', () => {
-                            markFieldAsTouched(field.name);
-                            validateFile(element, true);
-                            validateForm();
-                        });
-                    }
-                }
-            });
-
             // Add initial service field
             addService();
 
@@ -1826,157 +1137,13 @@
                 toggleDayAvailability(day);
             });
 
-            // Form validation and submission
+            // Basic form submission handling
             const form = document.getElementById('providerRegistrationForm');
-            debugLog('Form element found:', form !== null);
-            
             if (form) {
                 form.addEventListener('submit', function(e) {
-                    debugLog('Form submission started');
-                    const password = document.querySelector('input[name="password"]').value;
-                    const confirmPassword = document.querySelector('input[name="confirmPassword"]').value;
-                    const categories = document.querySelectorAll('input[name="serviceCategories[]"]:checked');
+                    // Update the hidden services input before submission
                     const servicesArray = Array.from(services).filter(Boolean);
-                    
-                    let isValid = true;
-                    let errorMessage = '';
-                    
-                    // Update the hidden services input one last time before submission
                     document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
-                    
-                    // Force validation of all fields before submission
-                    formFields.forEach(field => {
-                        const element = document.getElementById(field.id);
-                        if (element) {
-                            markFieldAsTouched(field.name);
-                            if (field.name === 'password') {
-                                validatePassword(element, true);
-                            } else if (field.name === 'confirmPassword') {
-                                validatePasswordMatch(element, true);
-                            } else if (field.name === 'certification') {
-                                validateFile(element, true);
-                            } else {
-                                validateField(element, true);
-                            }
-                        }
-                    });
-                    
-                    // VALIDATION CHECKS
-                    
-                    // 1. Validate categories
-                    if (categories.length === 0) {
-                        isValid = false;
-                        errorMessage = 'Please select at least one service category';
-                        debugLog('Validation failed: No categories selected');
-                    }
-
-                    // 2. Validate services
-                    if (servicesArray.length === 0) {
-                        isValid = false;
-                        errorMessage = errorMessage || 'Please add at least one service';
-                        debugLog('Validation failed: No services added');
-                    }
-                    
-                    // 3. Validate base fees are set
-                    if (!validateFees()) {
-                        isValid = false;
-                        errorMessage = errorMessage || 'Please set a base fee for all selected categories';
-                    }
-
-                    // 4. Validate passwords
-                    if (password !== confirmPassword) {
-                        isValid = false;
-                        errorMessage = errorMessage || 'Passwords do not match';
-                        debugLog('Validation failed: Passwords do not match');
-                    }
-
-                    if (password.length < 8) {
-                        isValid = false;
-                        errorMessage = errorMessage || 'Password must be at least 8 characters long';
-                        debugLog('Validation failed: Password too short');
-                    }
-                    
-                    // 5. Validate file upload
-                    const certificationFile = document.querySelector('input[name="certification"]');
-                    if (certificationFile && certificationFile.files.length === 0) {
-                        isValid = false;
-                        errorMessage = errorMessage || 'Please upload your certification file';
-                        debugLog('Validation failed: No certification file selected');
-                    } else if (certificationFile && certificationFile.files[0]) {
-                        const file = certificationFile.files[0];
-                        const maxSize = 1024 * 1024; // 1MB
-                        if (file.size > maxSize) {
-                            isValid = false;
-                            errorMessage = errorMessage || 'File size must be less than 1MB';
-                            debugLog('Validation failed: File too large');
-                        }
-                    }
-
-                    // 6. Validate coverage areas
-                    if (selectedCoverageAreas.length === 0) {
-                        isValid = false;
-                        errorMessage = errorMessage || 'Please select at least one coverage area';
-                        debugLog('Validation failed: No coverage areas selected');
-                    }
-
-                    // 7. Validate availability - ensure at least one day is selected
-                    const availableDaysChecked = document.querySelectorAll('input[name="availableDays"]:checked');
-                    if (availableDaysChecked.length === 0) {
-                        isValid = false;
-                        errorMessage = errorMessage || 'Please select at least one available day';
-                        debugLog('Validation failed: No available days selected');
-                    }
-
-                    // 8. Validate all required fields
-                    const allValidationsPassed = Object.values(validationState).every(Boolean);
-                    if (!allValidationsPassed) {
-                        isValid = false;
-                        errorMessage = errorMessage || 'Please complete all required fields correctly';
-                        debugLog('Validation failed: Not all fields valid', validationState);
-                    }
-
-                    if (!isValid) {
-                        e.preventDefault();
-                        alert(errorMessage);
-                        debugLog('Form submission prevented due to validation errors');
-                        
-                        // Scroll to first error
-                        const firstInvalidField = document.querySelector('.is-invalid');
-                        if (firstInvalidField) {
-                            firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            firstInvalidField.focus();
-                        }
-                        
-                        return false;
-                    }
-
-                    // FORM IS VALID - PREPARE DATA FOR SUBMISSION
-                    debugLog('Form validation passed, preparing data...');
-                    
-                    // Update all hidden inputs with final data
-                    document.getElementById('servicesInput').value = JSON.stringify(servicesArray);
-                    document.getElementById('coverageAreasInput').value = JSON.stringify(selectedCoverageAreas);
-                    
-                    // Ensure pricing data has proper form field names
-                    categories.forEach(checkbox => {
-                        const categoryId = checkbox.id;
-                        const feeInput = document.getElementById(`fee-${categoryId}`);
-                        
-                        if (feeInput && feeInput.value) {
-                            // Ensure the fee input has the correct name for backend processing
-                            if (!feeInput.name) {
-                                feeInput.name = `categoryFees[${categoryId}]`;
-                            }
-                            debugLog(`Fee for ${categoryId}: ${feeInput.value}`);
-                        }
-                    });
-                    
-                    debugLog('Form data prepared for submission:', {
-                        services: document.getElementById('servicesInput').value,
-                        coverageAreas: document.getElementById('coverageAreasInput').value,
-                        categoriesSelected: categories.length,
-                        availableDays: availableDaysChecked.length
-                    });
                     
                     // Show loading state
                     const submitBtn = document.getElementById('submitBtn');
@@ -1984,16 +1151,56 @@
                     submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Registering...';
                     submitBtn.disabled = true;
                     
-                    // Form will now submit with all the data
+                    // Basic validation checks
+                    const password = document.querySelector('input[name="password"]').value;
+                    const confirmPassword = document.querySelector('input[name="confirmPassword"]').value;
+                    const categories = document.querySelectorAll('input[name="serviceCategories[]"]:checked');
+                    const servicesArrayCheck = Array.from(services).filter(Boolean);
+                    
+                    if (categories.length === 0) {
+                        e.preventDefault();
+                        alert('Please select at least one service category');
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return false;
+                    }
+
+                    if (servicesArrayCheck.length === 0) {
+                        e.preventDefault();
+                        alert('Please add at least one service');
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return false;
+                    }
+
+                    if (password !== confirmPassword) {
+                        e.preventDefault();
+                        alert('Passwords do not match');
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return false;
+                    }
+
+                    if (selectedCoverageAreas.length === 0) {
+                        e.preventDefault();
+                        alert('Please select at least one coverage area');
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return false;
+                    }
+
+                    const availableDaysChecked = document.querySelectorAll('input[name="availableDays"]:checked');
+                    if (availableDaysChecked.length === 0) {
+                        e.preventDefault();
+                        alert('Please select at least one available day');
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return false;
+                    }
+
                     return true;
                 });
             }
-
-            // Initialize form validation (silent - for progress tracking only)
-            validateForm();
-
-            // Don't validate fields initially - let them be clean
-            debugLog('Form initialized without showing validation errors');
         });
     </script>
 
