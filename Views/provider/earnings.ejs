@@ -342,20 +342,6 @@
             <span class="text-muted">View your earnings from completed services</span>
         </div>
 
-        <!-- Messages Section -->
-        <% if (locals.success) { %>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="bi bi-check-circle-fill me-2"></i> <%= success %>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <% } %>
-
-        <% if (locals.error) { %>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i> <%= error %>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <% } %>
 
         <!-- Summary Section -->
         <div class="summary-cards">

@@ -586,19 +586,6 @@
 
     <!-- Main Content -->
     <div class="main-content">
-        <% if (locals.success) { %>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <%= success %>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <% } %>
-
-        <% if (locals.error) { %>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <%= error %>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <% } %>
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="mb-0">Messages</h1>

@@ -371,22 +371,7 @@
             <h1 class="h3 mb-0 text-gray-800">Manage Bookings</h1>
             <span class="text-muted">Manage all your service bookings in one place</span>
         </div>
-
-        <!-- Messages Section -->
-        <% if (locals.success) { %>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="bi bi-check-circle-fill me-2"></i> <%= success %>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <% } %>
-
-        <% if (locals.error) { %>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i> <%= error %>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <% } %>
-
+        
         <!-- Bookings Section -->
         <div class="data-section">
             <!-- Stats Cards -->

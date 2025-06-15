@@ -289,20 +289,6 @@
 </head> <body> <!-- Sidebar --> <div class="sidebar"> <a href="/provider/dashboard" class="sidebar-brand"> <i class="bi bi-tools"></i> HandyHub Provider </a> <nav class="nav flex-column"> <a class="nav-link <%= currentPage === 'dashboard' ? 'active' : '' %>" href="/provider/dashboard"> <i class="bi bi-person"></i> Profile </a> <a class="nav-link <%= currentPage === 'bookings' ? 'active' : '' %>" href="/provider/bookings"> <i class="bi bi-calendar-check"></i> Bookings </a> <a class="nav-link <%= currentPage === 'reviews' ? 'active' : '' %>" href="/provider/reviews"> <i class="bi bi-star"></i> Reviews & Ratings </a> <a class="nav-link <%= currentPage === 'earnings' ? 'active' : '' %>" href="/provider/earnings"> <i class="bi bi-wallet2"></i> Earnings </a> <a class="nav-link text-danger" href="/auth/logout"> <i class="bi bi-box-arrow-right"></i> Logout </a> </nav> </div>
 <!-- Main Content -->
 <div class="main-content">
-    <!-- Messages Section -->
-    <% if (locals.success) { %>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <%= success %>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    <% } %>
-
-    <% if (locals.error) { %>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <%= error %>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    <% } %>
 
     <!-- Page Header -->
     <h2 class="mb-4">Reviews & Ratings</h2>
